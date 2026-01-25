@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-html-callback"
+description = "Allow webview HTML callbacks"
+commands.allow = ["webview_html_callback"]

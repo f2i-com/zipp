@@ -1,0 +1,128 @@
+{
+  "id": "workflow-ai-music-generator",
+  "name": "AI Music Generator",
+  "description": "Takes a prompt, uses AI to create detailed music tags, then generates music.",
+  "tags": [
+    "audio",
+    "music",
+    "ai",
+    "generation"
+  ],
+  "createdAt": "2026-01-14T23:21:37.038Z",
+  "updatedAt": "2026-01-14T23:21:37.038Z",
+  "nodes": [
+    {
+      "id": "input-prompt",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "data": {
+        "name": "prompt",
+        "inputType": "text",
+        "required": true,
+        "defaultValue": "upbeat background music for a story",
+        "label": "prompt",
+        "value": "upbeat background music for a story"
+      }
+    },
+    {
+      "id": "input-duration",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "data": {
+        "name": "duration",
+        "inputType": "number",
+        "required": false,
+        "defaultValue": "60",
+        "label": "duration",
+        "value": "60"
+      }
+    },
+    {
+      "id": "music-prompt-template",
+      "type": "template",
+      "position": {
+        "x": 250,
+        "y": 100
+      },
+      "data": {
+        "template": "Create music generation tags for: {{prompt}}\n\nOutput ONLY comma-separated music tags. Include:\n- Genre (pop, orchestral, electronic, acoustic, etc.)\n- Mood (upbeat, calm, dramatic, whimsical, etc.)\n- Instruments (piano, strings, guitar, synth, etc.)\n- Tempo (fast, slow, moderate)\n- Vocals (if any: male, female, choir, or \"instrumental\")\n\nExample output: orchestral, whimsical, upbeat, strings, piano, flute, moderate tempo, instrumental\n\nOutput tags only, no explanation:",
+        "inputCount": 1,
+        "inputNames": [
+          "prompt"
+        ]
+      }
+    },
+    {
+      "id": "ai-music-tags",
+      "type": "ai_llm",
+      "position": {
+        "x": 500,
+        "y": 100
+      },
+      "data": {
+        "systemPrompt": "You are a music tag generator. Output ONLY comma-separated music tags, nothing else. No explanations."
+      }
+    },
+    {
+      "id": "music-gen",
+      "type": "music_gen",
+      "position": {
+        "x": 750,
+        "y": 150
+      },
+      "data": {
+        "apiUrl": "http://127.0.0.1:8766/generate",
+        "duration": 60,
+        "inferSteps": 27,
+        "guidanceScale": 15,
+        "seed": -1,
+        "filename": "generated_music"
+      }
+    },
+    {
+      "id": "output-audio",
+      "type": "output",
+      "position": {
+        "x": 1000,
+        "y": 150
+      },
+      "data": {
+        "name": "audio",
+        "outputType": "audio",
+        "label": "audio"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input-prompt",
+      "target": "music-prompt-template",
+      "targetHandle": "prompt",
+      "id": "e-0-1768433397292"
+    },
+    {
+      "source": "music-prompt-template",
+      "target": "ai-music-tags",
+      "id": "e-1-1768433397292"
+    },
+    {
+      "source": "ai-music-tags",
+      "target": "music-gen",
+      "targetHandle": "prompt",
+      "id": "e-2-1768433397292"
+    },
+    {
+      "source": "music-gen",
+      "target": "output-audio",
+      "sourceHandle": "audio",
+      "id": "e-3-1768433397292"
+    }
+  ],
+  "version": "1.0"
+}

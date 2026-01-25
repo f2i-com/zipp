@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-calculate-file-chunks"
+description = "Allow calculating file chunk boundaries"
+commands.allow = ["calculate_file_chunks"]

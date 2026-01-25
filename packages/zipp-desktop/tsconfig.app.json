@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["vite/client", "node"],
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "@xyflow/react": ["./node_modules/@xyflow/react"],
+      "@xyflow/react/*": ["./node_modules/@xyflow/react/*"],
+      "zipp-ui-components": ["../zipp-ui-components/src"],
+      "zipp-ui-components/*": ["../zipp-ui-components/src/*"],
+      "@monaco-editor/react": ["./node_modules/@monaco-editor/react"],
+      "zipp-core": ["../zipp-core/dist/src"],
+      "zipp-core/*": ["../zipp-core/*"]
+    },
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src", "../zipp-core/modules/*/ui/*.tsx", "../zipp-core/modules/*/ui/*.ts"]
+}

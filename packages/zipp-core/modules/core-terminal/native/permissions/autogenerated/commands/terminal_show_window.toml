@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-terminal-show-window"
+description = "Enables the terminal_show_window command without any pre-configured scope."
+commands.allow = ["terminal_show_window"]
+
+[[permission]]
+identifier = "deny-terminal-show-window"
+description = "Denies the terminal_show_window command without any pre-configured scope."
+commands.deny = ["terminal_show_window"]

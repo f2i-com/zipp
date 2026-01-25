@@ -1,0 +1,9 @@
+{
+  "id": "custom-nodes-demo-module",
+  "name": "Custom Nodes Demo Module",
+  "version": "1.0.0",
+  "description": "Demo custom nodes: Text Formatter and JSON Extractor",
+  "author": "ZIPP Team",
+  "category": "Custom",
+  "nodes": ["text_formatter", "json_extractor"]
+}

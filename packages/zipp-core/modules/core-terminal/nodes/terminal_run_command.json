@@ -1,0 +1,86 @@
+{
+  "id": "terminal_run_command",
+  "name": "Terminal Run Command",
+  "description": "Execute a command in the terminal by typing it and pressing Enter",
+  "icon": "play",
+  "color": "green",
+  "tags": ["terminal", "command", "execute", "shell"],
+  "inputs": [
+    {
+      "id": "session",
+      "name": "Session",
+      "type": "object",
+      "position": "left",
+      "required": true,
+      "description": "Terminal session from Terminal Session node"
+    },
+    {
+      "id": "command",
+      "name": "Command",
+      "type": "string",
+      "position": "left",
+      "required": false,
+      "description": "Dynamic command (overrides property if connected)"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "sessionOut",
+      "name": "Session",
+      "type": "object",
+      "position": "right",
+      "varSuffix": "_session",
+      "description": "Pass-through session for chaining"
+    },
+    {
+      "id": "output",
+      "name": "Output",
+      "type": "string",
+      "position": "right",
+      "description": "Terminal output after running the command"
+    },
+    {
+      "id": "screenshot",
+      "name": "Screenshot",
+      "type": "image",
+      "position": "right",
+      "description": "Screenshot of terminal after command execution"
+    }
+  ],
+  "properties": [
+    {
+      "id": "commandText",
+      "name": "Command",
+      "type": "string",
+      "default": "",
+      "description": "Command to execute in the terminal"
+    },
+    {
+      "id": "waitMs",
+      "name": "Wait After (ms)",
+      "type": "number",
+      "default": 1000,
+      "description": "Time to wait after pressing Enter before reading output"
+    },
+    {
+      "id": "takeScreenshot",
+      "name": "Take Screenshot",
+      "type": "boolean",
+      "default": false,
+      "description": "Capture a screenshot after the command runs"
+    }
+  ],
+  "compiler": {
+    "template": "{{outputVar}} = await Terminal.runCommand({{session}}, {{#if command}}{{command}}{{else}}{{json commandText}}{{/if}}, { waitMs: {{waitMs}}, takeScreenshot: {{takeScreenshot}} }, '{{nodeId}}'); let {{outputVar}}_session = {{outputVar}}.session; let {{outputVar}}_output = {{outputVar}}.output; let {{outputVar}}_screenshot = {{outputVar}}.screenshot",
+    "async": true,
+    "imports": []
+  },
+  "runtime": {
+    "streaming": false
+  },
+  "ui": {
+    "width": 250,
+    "resizable": false
+  },
+  "doc": "# Terminal Run Command\n\nSimple command execution in a terminal session. Types the command and presses Enter.\n\n## Properties\n\n- **Command**: The command to type and execute\n- **Wait After**: Time to wait for command to complete\n- **Take Screenshot**: Enable to capture terminal state after execution\n\n## Usage\n\nConnect a Terminal Session node to the session input, then specify the command to run.\n\n```\n[Terminal Session] --> [Terminal Run Command: \"ls -la\"]\n                                    |\n                                    v\n                               [output, screenshot]\n```"
+}

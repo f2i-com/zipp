@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-screenshot-callback"
+description = "Allow webview screenshot callbacks"
+commands.allow = ["webview_screenshot_callback"]

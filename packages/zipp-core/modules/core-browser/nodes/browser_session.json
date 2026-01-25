@@ -1,0 +1,66 @@
+{
+  "id": "browser_session",
+  "name": "Browser Session",
+  "description": "Create a browser session. WebView uses the embedded browser. Playwright uses a separate Chromium instance (requires Playwright service running).",
+  "doc": "Start a browser session for web automation.\n\nModes:\n• WebView (Embedded) - uses the app's built-in browser panel. Visible and interactive.\n• Playwright (Headless) - uses separate Chromium browser. Better for automation at scale.\n\nFeatures:\n• Choose user agent (Chrome, Firefox, Safari)\n• Custom user agent support\n• Session persists across control actions\n\nPlaywright Setup:\nRequires Playwright service running on localhost:8769. Set PLAYWRIGHT_HEADLESS=false in service .env to see the browser.",
+  "icon": "globe",
+  "color": "cyan",
+  "tags": ["browser", "session", "cookies", "headers", "playwright"],
+  "inputs": [],
+  "outputs": [
+    {
+      "id": "session",
+      "name": "Session",
+      "type": "object",
+      "position": "right",
+      "description": "Browser session object"
+    }
+  ],
+  "properties": [
+    {
+      "id": "sessionMode",
+      "name": "Browser Mode",
+      "type": "select",
+      "default": "webview",
+      "options": [
+        { "value": "webview", "label": "WebView (Embedded)" },
+        { "value": "playwright", "label": "Playwright (Headless)" }
+      ],
+      "description": "WebView: Uses embedded browser panel. Playwright: Uses separate Chromium via service."
+    },
+    {
+      "id": "userAgent",
+      "name": "User Agent",
+      "type": "select",
+      "default": "chrome",
+      "options": [
+        { "value": "chrome", "label": "Chrome" },
+        { "value": "firefox", "label": "Firefox" },
+        { "value": "safari", "label": "Safari" },
+        { "value": "custom", "label": "Custom" }
+      ]
+    },
+    {
+      "id": "customUserAgent",
+      "name": "Custom UA",
+      "type": "string",
+      "default": "",
+      "description": "Custom user agent string",
+      "showIf": { "property": "userAgent", "equals": "custom" }
+    },
+    {
+      "id": "playwrightUrl",
+      "name": "Playwright URL",
+      "type": "string",
+      "default": "http://127.0.0.1:8769",
+      "description": "URL of the Playwright service. Set PLAYWRIGHT_HEADLESS=false in service .env for visible browser.",
+      "showIf": { "property": "sessionMode", "equals": "playwright" }
+    }
+  ],
+  "compiler": {
+    "template": "Browser.createSession({{prop.userAgent.raw}}, {{prop.customUserAgent}}, {{prop.sessionMode.raw}}, {{prop.playwrightUrl}})"
+  },
+  "ui": {
+    "width": 300
+  }
+}

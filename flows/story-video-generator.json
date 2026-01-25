@@ -1,0 +1,2137 @@
+{
+  "id": "workflow-story-video-generator",
+  "name": "Story Video Generator",
+  "description": "Complete AI video pipeline: story prompt -> characters -> scenes -> videos -> narration -> final movie with music. Generates 2-3 characters and creates consistent visual scenes.",
+  "tags": [
+    "video",
+    "ai",
+    "story",
+    "narration",
+    "characters",
+    "captions",
+    "complete"
+  ],
+  "createdAt": "2026-01-14T23:21:37.038Z",
+  "updatedAt": "2026-01-17T10:00:00.000Z",
+  "nodes": [
+    {
+      "id": "input-topic",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "data": {
+        "label": "Story Prompt",
+        "value": "A magical adventure in an enchanted forest"
+      }
+    },
+    {
+      "id": "input-style",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "data": {
+        "label": "Visual Style",
+        "value": "cinematic, high quality, detailed"
+      }
+    },
+    {
+      "id": "input-avatar",
+      "type": "input_file",
+      "position": {
+        "x": 50,
+        "y": 300
+      },
+      "data": {
+        "label": "Avatar Image (Optional)",
+        "filePath": ""
+      }
+    },
+    {
+      "id": "input-enable-captions",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 400
+      },
+      "data": {
+        "label": "Enable Captions (true/false)",
+        "value": "false"
+      }
+    },
+    {
+      "id": "input-voice-reference",
+      "type": "input_audio",
+      "position": {
+        "x": 50,
+        "y": 500
+      },
+      "data": {
+        "label": "Voice Reference Audio (Optional)",
+        "filePath": ""
+      }
+    },
+    {
+      "id": "input-reference-image",
+      "type": "input_file",
+      "position": {
+        "x": 50,
+        "y": 600
+      },
+      "data": {
+        "label": "Reference Image (Optional)",
+        "filePath": ""
+      }
+    },
+    {
+      "id": "input-num-characters",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 700
+      },
+      "data": {
+        "label": "Number of Characters (1-3)",
+        "value": "2"
+      }
+    },
+    {
+      "id": "story-prompt",
+      "type": "template",
+      "position": {
+        "x": 300,
+        "y": 150
+      },
+      "data": {
+        "template": "Create a visual story about: {{topic}}\n\nNUMBER OF CHARACTERS: {{numCharacters}} (create exactly this many distinct characters for the story)\n\nRULES:\n1. Create {{numCharacters}} DISTINCT main characters with unique appearances\n2. Each character needs a DETAILED visual description (species/type, colors, clothing, distinguishing features)\n3. Characters should appear consistently throughout the story\n4. Choose 4-6 scenes that showcase the characters\n5. IMPORTANT: Each scene should have AT MOST 2 characters present (for image generation quality)\n6. Rotate characters across scenes so all {{numCharacters}} characters appear throughout the story\n7. Each narration should be 1-2 sentences\n\nCHARACTER REQUIREMENTS:\n- Give each character a unique name\n- Describe their physical appearance in detail (colors, size, clothing, features)\n- Make characters visually distinct from each other\n- Characters can be humans, animals, fantasy creatures, or anything that fits the story\n\nSCENE CHARACTER LIMIT:\n- Maximum 2 characters per scene (1 or 2, never more)\n- This is critical for image quality - scenes with too many characters look cluttered\n- Distribute characters across scenes so each character appears in multiple scenes\n\nCRITICAL IMAGE PROMPT RULES:\n- Each scene needs TWO image prompts: start_image_prompt and end_image_prompt\n- EVERY image prompt MUST include FULL descriptions of ALL characters present in the scene (max 2)\n- Copy-paste the exact character descriptions each time\n- The START and END images should show clear visual progression\n- Use WIDESCREEN composition (landscape orientation, cinematic framing)\n\nCRITICAL VIDEO PROMPT RULES:\n- video_prompt describes the MOTION/ACTION between start and end\n- MUST include full character descriptions for all characters in scene\n- MUST include the setting/environment\n- MUST describe the action/movement\n- MUST end with \"no voiceover, silent\"\n\nStyle: {{style}}\n\nOutput JSON:\n{\n  \"title\": \"Story Title\",\n  \"characters\": [\n    {\n      \"name\": \"Character Name\",\n      \"description\": \"Full detailed visual description (type, colors, size, clothing, distinguishing features)\"\n    }\n  ],\n  \"mood\": \"overall mood/tone\",\n  \"sceneCount\": <number>,\n  \"scenes\": [\n    {\n      \"number\": 1,\n      \"title\": \"Scene Title\",\n      \"charactersPresent\": [\"Character1 Name\"],\n      \"narration\": \"Voice-over text...\",\n      \"start_image_prompt\": \"[FULL descriptions of characters present - max 2], [pose/action], [setting], widescreen, {{style}}\",\n      \"end_image_prompt\": \"[FULL descriptions of characters - max 2], [new pose after progression], [setting], widescreen, {{style}}\",\n      \"video_prompt\": \"[FULL character descriptions], [setting], [action description], no voiceover, silent\"\n    }\n  ]\n}",
+        "inputCount": 3,
+        "inputNames": [
+          "topic",
+          "style",
+          "numCharacters"
+        ]
+      }
+    },
+    {
+      "id": "ai-story",
+      "type": "ai_llm",
+      "position": {
+        "x": 550,
+        "y": 150
+      },
+      "data": {
+        "systemPrompt": "You are a visual story creator. Create stories with distinct, visually interesting characters. Each character must have a unique, detailed appearance. Output valid JSON only.",
+        "imageInputCount": 1,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "parse-story",
+      "type": "logic_block",
+      "position": {
+        "x": 800,
+        "y": 150
+      },
+      "data": {
+        "code": "// Parse story JSON and extract data\nconsole.log(\"[parse-story] === PARSE STORY START ===\");\nconsole.log(\"[parse-story] Input type:\", typeof input);\nconsole.log(\"[parse-story] Input length:\", input ? input.length : 0);\n\nlet text = input;\nif (!text) {\n  console.log(\"[parse-story] ERROR: Input is null/undefined\");\n  return [];\n}\n\nif (typeof text === \"object\") {\n  text = text.text || text.content || text.response || text.message || JSON.stringify(text);\n}\nif (typeof text !== \"string\") {\n  text = String(text);\n}\n\ntry {\n  // Remove potential thinking tags, markdown code blocks, etc.\n  text = text.replace(/<think[^>]*>[\\s\\S]*?<\\/think[^>]*>/gi, \"\");\n  text = text.replace(/<thinking[^>]*>[\\s\\S]*?<\\/thinking[^>]*>/gi, \"\");\n  text = text.replace(/```json\\s*/gi, \"\");\n  text = text.replace(/```\\s*/gi, \"\");\n  text = text.trim();\n  \n  let startIdx = text.indexOf(\"{\");\n  let endIdx = text.lastIndexOf(\"}\");\n  console.log(\"[parse-story] JSON bounds: start=\", startIdx, \"end=\", endIdx);\n  \n  if (startIdx >= 0 && endIdx > startIdx) {\n    text = text.substring(startIdx, endIdx + 1);\n  }\n  \n  console.log(\"[parse-story] Extracted length:\", text.length);\n  console.log(\"[parse-story] First 500 chars:\", text.substring(0, 500));\n  \n  // Parse the JSON\n  let story = JSON.parse(text);\n  \n  // DEBUG: Check if story is an error or unexpected type\n  console.log(\"[parse-story] story type:\", typeof story);\n  console.log(\"[parse-story] story raw inspect:\", JSON.stringify(story).substring(0, 300));\n  \n  // Try Object.keys as alternative to for...in\n  let objKeys = Object.keys(story);\n  console.log(\"[parse-story] Object.keys count:\", objKeys.length);\n  console.log(\"[parse-story] Object.keys result:\", objKeys.join(\", \"));\n  \n  // Log what we got using for...in\n  let storyKeys = [];\n  for (let k in story) {\n    storyKeys.push(k);\n  }\n  console.log(\"[parse-story] for-in keys:\", storyKeys.join(\", \"));\n  console.log(\"[parse-story] title via dot:\", story.title);\n  console.log(\"[parse-story] title via bracket:\", story[\"title\"]);\n  \n  // Extract characters - create a new array to ensure it's a proper array\n  let characters = [];\n  let storyChars = story.characters || story[\"characters\"];\n  console.log(\"[parse-story] storyChars exists:\", !!storyChars);\n  console.log(\"[parse-story] storyChars type:\", typeof storyChars);\n  if (storyChars) {\n    console.log(\"[parse-story] storyChars is array:\", Array.isArray(storyChars));\n    console.log(\"[parse-story] storyChars length:\", storyChars.length);\n    for (let i = 0; i < storyChars.length; i++) {\n      let char = storyChars[i];\n      console.log(\"[parse-story] char\", i, \"type:\", typeof char);\n      let charName = char.name || char[\"name\"];\n      let charDesc = char.description || char[\"description\"];\n      console.log(\"[parse-story] char\", i, \"name:\", charName);\n      characters.push({ name: charName, description: charDesc });\n    }\n  }\n  console.log(\"[parse-story] characters extracted:\", characters.length);\n  \n  // Extract scenes - create a new array to ensure it's a proper array\n  let scenes = [];\n  let storyScenes = story.scenes || story[\"scenes\"];\n  console.log(\"[parse-story] storyScenes exists:\", !!storyScenes);\n  console.log(\"[parse-story] storyScenes type:\", typeof storyScenes);\n  if (storyScenes) {\n    console.log(\"[parse-story] storyScenes is array:\", Array.isArray(storyScenes));\n    console.log(\"[parse-story] storyScenes length:\", storyScenes.length);\n    for (let i = 0; i < storyScenes.length; i++) {\n      let scene = storyScenes[i];\n      scenes.push(scene);\n      let sceneTitle = scene.title || scene[\"title\"];\n      console.log(\"[parse-story] Added scene:\", scene.number || i, sceneTitle || \"untitled\");\n    }\n  }\n  console.log(\"[parse-story] scenes extracted:\", scenes.length);\n  \n  if (characters.length > 0) {\n    console.log(\"[parse-story] First character:\", JSON.stringify(characters[0]));\n  }\n  if (scenes.length > 0) {\n    let firstTitle = scenes[0].title || scenes[0][\"title\"];\n    let firstPrompt = scenes[0].start_image_prompt || scenes[0][\"start_image_prompt\"] || scenes[0].startImagePrompt || \"none\";\n    console.log(\"[parse-story] First scene title:\", firstTitle);\n    console.log(\"[parse-story] First scene start_image_prompt:\", firstPrompt.substring(0, 100));\n  }\n  \n  // Store data - use our extracted arrays which are guaranteed to be proper arrays\n  workflow_context[\"story\"] = story;\n  workflow_context[\"storyJson\"] = text;\n  workflow_context[\"numScenes\"] = scenes.length || 5;\n  workflow_context[\"characters\"] = characters;\n  workflow_context[\"scenes\"] = scenes;\n  \n  console.log(\"[parse-story] SUCCESS: Stored\", scenes.length, \"scenes and\", characters.length, \"characters\");\n  console.log(\"[parse-story] Verifying workflow_context.characters:\", workflow_context[\"characters\"].length);\n  console.log(\"[parse-story] Verifying workflow_context.scenes:\", workflow_context[\"scenes\"].length);\n  \n  return scenes;\n} catch (e) {\n  console.log(\"[parse-story] PARSE ERROR:\", e.message);\n  console.log(\"[parse-story] Text that failed (first 1000):\", text.substring(0, 1000));\n  return [];\n}"
+      }
+    },
+    {
+      "id": "normalize-style",
+      "type": "logic_block",
+      "position": {
+        "x": 200,
+        "y": 50
+      },
+      "data": {
+        "code": "// Ensure style has a default value if null/empty\nlet style = input;\nif (!style || style === \"null\" || style === \"\") {\n  style = \"cinematic, high quality, detailed\";\n}\nconsole.log(\"[normalize-style] Style set to:\", style);\n// Also store in a well-known key for other nodes to access\nworkflow_context[\"__style__\"] = style;\nreturn style;"
+      }
+    },
+    {
+      "id": "extract-characters",
+      "type": "logic_block",
+      "position": {
+        "x": 1000,
+        "y": 50
+      },
+      "data": {
+        "code": "// Extract characters array from story - use result variable pattern (FormLogic return issues)\nconsole.log(\"[extract-characters] === EXTRACT CHARACTERS ===\");\nlet result = null;\n\n// First try the separately stored characters array (more reliable)\nlet chars = workflow_context[\"characters\"];\nconsole.log(\"[extract-characters] workflow_context.characters exists:\", !!chars);\nconsole.log(\"[extract-characters] workflow_context.characters is array:\", Array.isArray(chars));\nconsole.log(\"[extract-characters] workflow_context.characters length:\", chars ? chars.length : 0);\n\nif (!result && chars && Array.isArray(chars) && chars.length > 0) {\n  console.log(\"[extract-characters] Using workflow_context.characters:\", chars.length);\n  result = chars;\n}\n\n// Fallback: try from story object\nif (!result) {\n  let story = workflow_context[\"story\"];\n  if (story && story.characters && Array.isArray(story.characters) && story.characters.length > 0) {\n    console.log(\"[extract-characters] Using story.characters:\", story.characters.length);\n    result = story.characters;\n  }\n}\n\n// Last fallback: re-parse storyJson\nif (!result) {\n  let storyJson = workflow_context[\"storyJson\"];\n  if (storyJson && typeof storyJson === \"string\") {\n    try {\n      let parsed = JSON.parse(storyJson);\n      if (parsed.characters && Array.isArray(parsed.characters) && parsed.characters.length > 0) {\n        console.log(\"[extract-characters] Using re-parsed storyJson:\", parsed.characters.length);\n        result = parsed.characters;\n      }\n    } catch (e) {\n      console.log(\"[extract-characters] Re-parse failed:\", e.message);\n    }\n  }\n}\n\n// Final fallback\nif (!result) {\n  console.log(\"[extract-characters] FALLBACK - using default character\");\n  result = [{ name: \"Character\", description: \"a friendly character\" }];\n}\n\nconsole.log(\"[extract-characters] Returning\", result.length, \"characters\");\nreturn result;"
+      }
+    },
+    {
+      "id": "character-gen-loop-start",
+      "type": "loop_start",
+      "position": {
+        "x": 1150,
+        "y": 50
+      },
+      "data": {
+        "loopMode": "foreach"
+      }
+    },
+    {
+      "id": "character-prompt-template",
+      "type": "template",
+      "position": {
+        "x": 1300,
+        "y": -20
+      },
+      "data": {
+        "template": "Character portrait of {{name}}: {{description}}\n\nIMPORTANT:\n- Full body view, centered composition\n- Simple solid color or gradient background\n- Focus ONLY on the character, no other characters or complex scenery\n- High quality, detailed character rendering\n- Style: {{style}}",
+        "inputCount": 3,
+        "inputNames": [
+          "name",
+          "description",
+          "style"
+        ]
+      }
+    },
+    {
+      "id": "extract-char-name",
+      "type": "logic_block",
+      "position": {
+        "x": 1150,
+        "y": -20
+      },
+      "data": {
+        "code": "// Extract character name\nlet char = input;\nif (typeof char === \"string\") {\n  try { char = JSON.parse(char); } catch(e) { return \"Character\"; }\n}\nconsole.log(\"[extract-char-name] Char:\", JSON.stringify(char).substring(0, 200));\nreturn char && (char.name || char.character_name || char.characterName) || \"Character\";"
+      }
+    },
+    {
+      "id": "extract-char-desc",
+      "type": "logic_block",
+      "position": {
+        "x": 1150,
+        "y": 120
+      },
+      "data": {
+        "code": "// Extract character description - check multiple field variations\nlet char = input;\nif (typeof char === \"string\") {\n  try { char = JSON.parse(char); } catch(e) { return char; }\n}\nconsole.log(\"[extract-char-desc] Char keys:\", char ? Object.keys(char) : \"null\");\nlet desc = char && (char.description || char.visual_description || char.visualDescription || char.appearance || char.look || char.details);\nreturn desc || \"a character\";"
+      }
+    },
+    {
+      "id": "get-style-reference",
+      "type": "logic_block",
+      "position": {
+        "x": 1350,
+        "y": 120
+      },
+      "data": {
+        "code": "// Get style reference: user's reference image OR first generated character\n// For first character (index 0), use user reference only\n// For subsequent characters, use first character as style reference\n// Read user reference from workflow_context (input_file node stores its content there)\nlet userRef = workflow_context[\"input-reference-image\"];\nconsole.log(\"[get-style-reference] loop_index:\", loop_index, \"userRef:\", userRef ? \"has value\" : \"null\");\nif (loop_index === 0) {\n  // First character - only use user reference if provided\n  return userRef || null;\n}\n// Subsequent characters - use first character image for style consistency\nlet firstChar = workflow_context[\"characterImages\"] && workflow_context[\"characterImages\"][\"char_0\"];\nif (firstChar) {\n  console.log(\"[get-style-reference] Using first character as style reference\");\n  return firstChar;\n}\nreturn userRef || null;"
+      }
+    },
+    {
+      "id": "character-image-gen",
+      "type": "image_gen",
+      "position": {
+        "x": 1500,
+        "y": 50
+      },
+      "data": {
+        "size": "1024x1024",
+        "quality": "high",
+        "imageInputCount": 1,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Optional Input Image"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image", "label": "Reference Image", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8"]
+      }
+    },
+    {
+      "id": "build-char-val-prompt-1",
+      "type": "template",
+      "position": {
+        "x": 1520,
+        "y": -50
+      },
+      "data": {
+        "template": "Rate this character image. Be LENIENT - only reject for OBVIOUS defects.\n\nCHARACTER PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms or legs obviously shown\n- Severely distorted face (missing eyes, melted)\n- Major quality issues\n\nArtistic style variations are OK. When in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
+        "inputCount": 1,
+        "inputNames": ["prompt"]
+      }
+    },
+    {
+      "id": "char-validate-1",
+      "type": "ai_llm",
+      "position": {
+        "x": 1620,
+        "y": 0
+      },
+      "data": {
+        "systemPrompt": "Rate character images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces (missing eyes, melted features), or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
+        "temperature": 0.1,
+        "maxTokens": 300,
+        "imageInputCount": 2,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "process-char-val-1",
+      "type": "logic_block",
+      "position": {
+        "x": 1720,
+        "y": 0
+      },
+      "data": {
+        "inputCount": 4,
+        "code": "// Process first validation result - parse JSON with rating and fixPrompt\nlet aiResponse = input;\nlet generatedImage = input2;\nlet prompt = input3;\nlet refImage = input4;\n\nconsole.log(\"[process-char-val-1] AI response:\", aiResponse);\n\n// Parse JSON response\nlet rating = 0;\nlet issues = '';\nlet fixPrompt = '';\ntry {\n  let jsonStr = String(aiResponse);\n  let jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    let parsed = JSON.parse(jsonMatch[0]);\n    rating = parsed.rating || 0;\n    issues = parsed.issues || '';\n    fixPrompt = parsed.fixPrompt || '';\n  }\n} catch(e) {\n  let numMatch = String(aiResponse).match(/\\d+/);\n  if (numMatch) rating = parseInt(numMatch[0], 10);\n}\n\nlet isApproved = rating >= 8;\nconsole.log(\"[process-char-val-1] Rating:\", rating, \"Issues:\", issues);\n\n// Store validation state\nworkflow_context[\"__char_\" + loop_index + \"_approved\"] = isApproved;\nworkflow_context[\"__char_\" + loop_index + \"_image\"] = generatedImage;\nworkflow_context[\"__char_\" + loop_index + \"_prompt\"] = prompt;\nworkflow_context[\"__char_\" + loop_index + \"_ref\"] = refImage;\nworkflow_context[\"__char_\" + loop_index + \"_rating\"] = rating;\nworkflow_context[\"__char_\" + loop_index + \"_fixPrompt\"] = fixPrompt;\n\nif (isApproved) {\n  console.log(\"[process-char-val-1] Image APPROVED (rating \" + rating + \")\");\n} else {\n  console.log(\"[process-char-val-1] Needs retry (rating \" + rating + \"), fix: \" + fixPrompt);\n}\n\nreturn { approved: isApproved, image: generatedImage, prompt: prompt, refImage: refImage, rating: rating, fixPrompt: fixPrompt };"
+      }
+    },
+    {
+      "id": "char-retry-needed-1",
+      "type": "condition",
+      "position": {
+        "x": 1770,
+        "y": 0
+      },
+      "data": {
+        "expression": "!workflow_context['__char_' + loop_index + '_approved']"
+      }
+    },
+    {
+      "id": "retry-char-gen-1",
+      "type": "image_gen",
+      "position": {
+        "x": 1870,
+        "y": 0
+      },
+      "data": {
+        "size": "1024x1024",
+        "quality": "high",
+        "imageInputCount": 2,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated hands, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Image to Edit"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Style Reference"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO - Retry 1",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Image to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Style Reference", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8"]
+      }
+    },
+    {
+      "id": "get-retry-1-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 1720,
+        "y": 80
+      },
+      "data": {
+        "code": "// Get prompt for retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-1-prompt] Skipped (already approved)\");\n  return null;\n}\nlet fixPrompt = workflow_context[\"__char_\" + loop_index + \"_fixPrompt\"];\nif (fixPrompt) {\n  console.log(\"[get-retry-1-prompt] Using AI fix prompt:\", fixPrompt);\n  return fixPrompt;\n}\nlet origPrompt = workflow_context[\"__char_\" + loop_index + \"_prompt\"];\nconsole.log(\"[get-retry-1-prompt] Using original prompt\");\nreturn origPrompt || \"Character portrait, high quality\";"
+      }
+    },
+    {
+      "id": "get-retry-1-ref",
+      "type": "logic_block",
+      "position": {
+        "x": 1720,
+        "y": 140
+      },
+      "data": {
+        "code": "// Get reference image for retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-1-ref] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__char_\" + loop_index + \"_ref\"] || null;"
+      }
+    },
+    {
+      "id": "get-retry-1-failed-image",
+      "type": "logic_block",
+      "position": {
+        "x": 1720,
+        "y": 200
+      },
+      "data": {
+        "code": "// Get failed image for retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-1-failed-image] Skipped (already approved)\");\n  return null;\n}\nlet failedImage = workflow_context[\"__char_\" + loop_index + \"_image\"];\nconsole.log(\"[get-retry-1-failed-image] Passing failed image for editing\");\nreturn failedImage || null;"
+      }
+    },
+    {
+      "id": "build-char-val-prompt-2",
+      "type": "template",
+      "position": {
+        "x": 1920,
+        "y": -50
+      },
+      "data": {
+        "template": "Rate this character image. Be LENIENT - only reject for OBVIOUS defects.\n\nCHARACTER PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms or legs obviously shown\n- Severely distorted face\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
+        "inputCount": 1,
+        "inputNames": ["prompt"]
+      }
+    },
+    {
+      "id": "char-validate-2",
+      "type": "ai_llm",
+      "position": {
+        "x": 2020,
+        "y": 0
+      },
+      "data": {
+        "systemPrompt": "Rate character images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces (missing eyes, melted features), or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
+        "temperature": 0.1,
+        "maxTokens": 300,
+        "imageInputCount": 2,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "process-char-val-2",
+      "type": "logic_block",
+      "position": {
+        "x": 2120,
+        "y": 0
+      },
+      "data": {
+        "inputCount": 4,
+        "code": "// Process second validation result - parse JSON with rating and fixPrompt\nlet aiResponse = input;\nlet retryImage = input2;\nlet prompt = input3;\nlet refImage = input4;\n\nconsole.log(\"[process-char-val-2] AI response:\", aiResponse);\n\n// Check if already approved on first try\nlet alreadyApproved = workflow_context[\"__char_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  console.log(\"[process-char-val-2] Already approved on first try, using original\");\n  return { approved: true, image: workflow_context[\"__char_\" + loop_index + \"_image\"] };\n}\n\n// Parse JSON response\nlet rating = 0;\nlet issues = '';\nlet fixPrompt = '';\ntry {\n  let jsonStr = String(aiResponse);\n  let jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    let parsed = JSON.parse(jsonMatch[0]);\n    rating = parsed.rating || 0;\n    issues = parsed.issues || '';\n    fixPrompt = parsed.fixPrompt || '';\n  }\n} catch(e) {\n  let numMatch = String(aiResponse).match(/\\d+/);\n  if (numMatch) rating = parseInt(numMatch[0], 10);\n}\n\nlet isApproved = rating >= 8;\nconsole.log(\"[process-char-val-2] Rating:\", rating, \"Issues:\", issues);\n\nif (isApproved) {\n  console.log(\"[process-char-val-2] Retry 1 APPROVED (rating \" + rating + \")\");\n  workflow_context[\"__char_\" + loop_index + \"_approved\"] = true;\n  workflow_context[\"__char_\" + loop_index + \"_image\"] = retryImage;\n  workflow_context[\"__char_\" + loop_index + \"_rating\"] = rating;\n} else {\n  console.log(\"[process-char-val-2] Needs improvement (rating \" + rating + \"), fix: \" + fixPrompt);\n  workflow_context[\"__char_\" + loop_index + \"_fixPrompt\"] = fixPrompt;\n}\n\nreturn { approved: isApproved, image: retryImage, prompt: prompt, refImage: refImage, rating: rating, fixPrompt: fixPrompt };"
+      }
+    },
+    {
+      "id": "char-retry-needed-2",
+      "type": "condition",
+      "position": {
+        "x": 2170,
+        "y": 0
+      },
+      "data": {
+        "expression": "!workflow_context['__char_' + loop_index + '_approved']"
+      }
+    },
+    {
+      "id": "retry-char-gen-2",
+      "type": "image_gen",
+      "position": {
+        "x": 2270,
+        "y": 0
+      },
+      "data": {
+        "size": "1024x1024",
+        "quality": "high",
+        "imageInputCount": 2,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated hands, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Image to Edit"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Style Reference"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO - Retry 2",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Image to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Style Reference", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8", "12"]
+      }
+    },
+    {
+      "id": "get-retry-2-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 2120,
+        "y": 80
+      },
+      "data": {
+        "code": "// Get prompt for retry 2 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-2-prompt] Skipped (already approved)\");\n  return null;\n}\nlet fixPrompt = workflow_context[\"__char_\" + loop_index + \"_fixPrompt\"];\nif (fixPrompt) {\n  console.log(\"[get-retry-2-prompt] Using AI fix prompt:\", fixPrompt);\n  return fixPrompt;\n}\nlet origPrompt = workflow_context[\"__char_\" + loop_index + \"_prompt\"];\nconsole.log(\"[get-retry-2-prompt] Using original prompt\");\nreturn origPrompt || \"Character portrait, high quality\";"
+      }
+    },
+    {
+      "id": "get-retry-2-ref",
+      "type": "logic_block",
+      "position": {
+        "x": 2120,
+        "y": 140
+      },
+      "data": {
+        "code": "// Get reference image for retry 2 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-2-ref] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__char_\" + loop_index + \"_ref\"] || null;"
+      }
+    },
+    {
+      "id": "get-retry-2-failed-image",
+      "type": "logic_block",
+      "position": {
+        "x": 2120,
+        "y": 200
+      },
+      "data": {
+        "code": "// Get retry 1 image for retry 2 editing - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-retry-2-failed-image] Skipped (already approved)\");\n  return null;\n}\nlet lastImage = workflow_context[\"__char_\" + loop_index + \"_image\"];\nconsole.log(\"[get-retry-2-failed-image] Passing last image for editing\");\nreturn lastImage || null;"
+      }
+    },
+    {
+      "id": "select-final-char-image",
+      "type": "logic_block",
+      "position": {
+        "x": 2320,
+        "y": 50
+      },
+      "data": {
+        "code": "// Select final character image (best approved or last attempt)\nlet finalRetryImage = input;\n\n// Check if already approved earlier\nlet alreadyApproved = workflow_context[\"__char_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  let approvedImage = workflow_context[\"__char_\" + loop_index + \"_image\"];\n  console.log(\"[select-final-char-image] Using previously approved image\");\n  return approvedImage;\n}\n\n// If we get here, validation failed all attempts - use the last generated image\nconsole.log(\"[select-final-char-image] No approved image, using last attempt\");\nreturn finalRetryImage;"
+      }
+    },
+    {
+      "id": "store-character-image",
+      "type": "logic_block",
+      "position": {
+        "x": 1800,
+        "y": 50
+      },
+      "data": {
+        "code": "// Store character image with its index for later reference\nlet charImage = input;\nlet charIndex = loop_index;\nlet characters = workflow_context[\"characters\"] || [];\nlet charName = characters[charIndex] ? characters[charIndex].name : \"Character \" + charIndex;\n\nconsole.log(\"[store-character-image] Storing image for\", charName, \"at index\", charIndex);\n\n// Store in workflow context for scene generation\nif (!workflow_context[\"characterImages\"]) {\n  workflow_context[\"characterImages\"] = {};\n}\nworkflow_context[\"characterImages\"][charName] = charImage;\nworkflow_context[\"characterImages\"][\"char_\" + charIndex] = charImage;\n\nreturn { name: charName, image: charImage, index: charIndex };"
+      }
+    },
+    {
+      "id": "character-gen-loop-end",
+      "type": "loop_end",
+      "position": {
+        "x": 1850,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "tts-loop-start",
+      "type": "loop_start",
+      "position": {
+        "x": 800,
+        "y": 300
+      },
+      "data": {
+        "loopMode": "foreach"
+      }
+    },
+    {
+      "id": "extract-scene-narration",
+      "type": "logic_block",
+      "position": {
+        "x": 950,
+        "y": 300
+      },
+      "data": {
+        "code": "// Extract narration text from scene\nlet scene = input;\nif (typeof scene === \"string\") {\n  try { scene = JSON.parse(scene); } catch (e) { return scene; }\n}\nconsole.log(\"[extract-scene-narration] Scene:\", scene ? scene.title : \"null\");\nif (scene && scene.narration) {\n  console.log(\"[extract-scene-narration] Found narration:\", scene.narration.substring(0, 100));\n  return scene.narration;\n}\n// Try alternative field names\nif (scene && (scene.voiceover || scene.voice_over || scene.text || scene.dialogue)) {\n  let narration = scene.voiceover || scene.voice_over || scene.text || scene.dialogue;\n  console.log(\"[extract-scene-narration] Found alt narration:\", narration.substring(0, 100));\n  return narration;\n}\nconsole.log(\"[extract-scene-narration] FALLBACK - no narration found\");\nreturn \"...\";"
+      }
+    },
+    {
+      "id": "scene-tts",
+      "type": "text_to_speech",
+      "position": {
+        "x": 1150,
+        "y": 300
+      },
+      "data": {
+        "mode": "external",
+        "apiUrl": "http://127.0.0.1:8765/tts",
+        "responseFormat": "json",
+        "description": "narrator voice, clear, professional",
+        "outputFormat": "wav",
+        "filename": "scene_narration"
+      }
+    },
+    {
+      "id": "tts-loop-end",
+      "type": "loop_end",
+      "position": {
+        "x": 1350,
+        "y": 300
+      },
+      "data": {}
+    },
+    {
+      "id": "process-tts-results",
+      "type": "logic_block",
+      "position": {
+        "x": 1550,
+        "y": 300
+      },
+      "data": {
+        "code": "// Process TTS results and calculate frame counts per scene\n// Uses Audio.getAudioDuration() to get actual audio duration from files\nlet ttsResults = input;\nlet fps = 25;\nlet sceneDurations = [];\nlet sceneFrameCounts = [];\nlet ttsDurations = [];\nlet totalDuration = 0;\nlet numScenes = ttsResults.length;\nlet endPaddingSeconds = 4;\n\nconsole.log(\"[process-tts-results] TTS results:\", ttsResults);\nconsole.log(\"[process-tts-results] Number of scenes:\", numScenes);\n\nfor (let i = 0; i < numScenes; i = i + 1) {\n  let result = ttsResults[i];\n  let durationMs = 0;\n  let audioPath = null;\n\n  // TTS returns objects like {audio, path, durationMs} or strings\n  if (result && typeof result === \"object\") {\n    // Try to get duration from object first\n    durationMs = result.durationMs || 0;\n    // Get path for fallback duration detection\n    audioPath = result.path || result.audio || null;\n    console.log(\"[process-tts-results] Object result - durationMs:\", durationMs, \"path:\", audioPath);\n  } else if (result && typeof result === \"string\") {\n    audioPath = result;\n    console.log(\"[process-tts-results] String result:\", audioPath);\n  }\n\n  // If no duration from object, use ffprobe to get it from file\n  if (durationMs <= 0 && audioPath) {\n    console.log(\"[process-tts-results] Getting duration via ffprobe for:\", audioPath);\n    durationMs = await Audio.getAudioDuration(audioPath);\n    console.log(\"[process-tts-results] Duration from ffprobe:\", durationMs, \"ms\");\n  }\n\n  // Fallback if duration detection failed\n  if (durationMs <= 0) {\n    console.log(\"[process-tts-results] Duration detection failed, using fallback 5000ms\");\n    durationMs = 5000;\n  }\n\n  let ttsDurationSec = durationMs / 1000;\n  ttsDurations.push(ttsDurationSec);\n\n  // Calculate frame count: duration * fps (25fps for video)\n  let frameCount = Math.ceil(ttsDurationSec * fps);\n  // Clamp frame count to reasonable range\n  if (frameCount < 72) frameCount = 72;\n  if (frameCount > 300) frameCount = 300;\n\n  console.log(\"[process-tts-results] Scene\", i, \": duration=\", ttsDurationSec, \"s, frames=\", frameCount);\n\n  let isLastScene = (i === numScenes - 1);\n  let targetDuration = ttsDurationSec;\n  if (isLastScene) {\n    targetDuration = targetDuration + endPaddingSeconds;\n  }\n\n  sceneDurations.push(targetDuration);\n  sceneFrameCounts.push(frameCount);\n  totalDuration = totalDuration + targetDuration;\n}\n\nconsole.log(\"[process-tts-results] Final frame counts:\", sceneFrameCounts);\nworkflow_context[\"ttsResults\"] = ttsResults;\nworkflow_context[\"ttsDurations\"] = ttsDurations;\nworkflow_context[\"sceneDurations\"] = sceneDurations;\nworkflow_context[\"sceneFrameCounts\"] = sceneFrameCounts;\nworkflow_context[\"totalDuration\"] = totalDuration;\n\nreturn sceneFrameCounts;"
+      }
+    },
+    {
+      "id": "image-loop-start",
+      "type": "loop_start",
+      "position": {
+        "x": 2200,
+        "y": 150
+      },
+      "data": {
+        "loopMode": "foreach"
+      }
+    },
+    {
+      "id": "get-char-image-1",
+      "type": "logic_block",
+      "position": {
+        "x": 2350,
+        "y": 0
+      },
+      "data": {
+        "code": "// Get FIRST character image for scene generation\nlet scene = input;\nlet referenceImage = null;\n\n// Check if scene has characters present\nlet charactersPresent = null;\nif (scene && typeof scene === \"object\") {\n  charactersPresent = scene.charactersPresent || scene.characters_present || scene[\"charactersPresent\"];\n}\n\nconsole.log(\"[get-char-image-1] Characters present:\", charactersPresent ? JSON.stringify(charactersPresent) : \"none\");\n\n// Get FIRST character image\nif (charactersPresent && Array.isArray(charactersPresent) && charactersPresent.length > 0) {\n  let charImages = workflow_context[\"characterImages\"];\n  if (charImages) {\n    let charName = charactersPresent[0];\n    if (charImages[charName]) {\n      console.log(\"[get-char-image-1] Using character 1 image for:\", charName);\n      referenceImage = charImages[charName];\n    }\n  }\n}\n\nreturn referenceImage;"
+      }
+    },
+    {
+      "id": "get-char-image-2",
+      "type": "logic_block",
+      "position": {
+        "x": 2350,
+        "y": 50
+      },
+      "data": {
+        "code": "// Get SECOND character image for scene generation (if present)\nlet scene = input;\nlet referenceImage = null;\n\n// Check if scene has characters present\nlet charactersPresent = null;\nif (scene && typeof scene === \"object\") {\n  charactersPresent = scene.charactersPresent || scene.characters_present || scene[\"charactersPresent\"];\n}\n\nconsole.log(\"[get-char-image-2] Characters present:\", charactersPresent ? JSON.stringify(charactersPresent) : \"none\");\n\n// Get SECOND character image (if 2 characters in scene)\nif (charactersPresent && Array.isArray(charactersPresent) && charactersPresent.length > 1) {\n  let charImages = workflow_context[\"characterImages\"];\n  if (charImages) {\n    let charName = charactersPresent[1];\n    if (charImages[charName]) {\n      console.log(\"[get-char-image-2] Using character 2 image for:\", charName);\n      referenceImage = charImages[charName];\n    }\n  }\n}\n\nif (!referenceImage) {\n  console.log(\"[get-char-image-2] No second character in this scene\");\n}\n\nreturn referenceImage;"
+      }
+    },
+        {
+      "id": "extract-end-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 2350,
+        "y": 200
+      },
+      "data": {
+        "code": "// Extract END image prompt from scene - use result variable pattern\nlet result = null;\nlet scene = input;\n\nif (typeof scene === \"string\") {\n  try { scene = JSON.parse(scene); } catch (e) { /* use as-is */ }\n}\n\nlet keys = [];\nif (scene && typeof scene === \"object\") {\n  for (let k in scene) { keys.push(k); }\n}\nconsole.log(\"[extract-end-prompt] Scene keys:\", keys.join(\", \"));\n\n// Get the style\nlet style = workflow_context[\"__style__\"] || workflow_context[\"normalize-style\"] || workflow_context[\"input-style\"] || \"cinematic, high quality\";\nconsole.log(\"[extract-end-prompt] Style:\", style);\n\nif (scene && typeof scene === \"object\") {\n  let prompt = scene.end_image_prompt || scene.endImagePrompt || scene.end_prompt || scene.endPrompt;\n  if (!prompt) {\n    prompt = scene.image_prompt || scene.imagePrompt || scene.visual_description || scene.visualDescription;\n  }\n  if (!prompt) {\n    prompt = scene.description || scene.setting;\n  }\n  \n  if (prompt) {\n    // Append style if not present\n    if (prompt.toLowerCase().indexOf(style.toLowerCase()) === -1) {\n      prompt = prompt + \", \" + style;\n    }\n    result = prompt;\n    console.log(\"[extract-end-prompt] Final prompt:\", result.substring(0, 200));\n  }\n}\n\nif (!result) {\n  result = \"A cinematic scene, \" + style;\n  console.log(\"[extract-end-prompt] FALLBACK\");\n}\n\nreturn result;"
+      }
+    },
+    {
+      "id": "end-image-gen",
+      "type": "image_gen",
+      "position": {
+        "x": 2550,
+        "y": 150
+      },
+      "data": {
+        "size": "1792x1024",
+        "quality": "high",
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Image"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Image"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Character 1", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 2", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8", "12"]
+      }
+    },
+    {
+      "id": "build-scene-val-prompt-1",
+      "type": "template",
+      "position": {
+        "x": 2600,
+        "y": 50
+      },
+      "data": {
+        "template": "Rate this scene image. Be LENIENT - only reject for OBVIOUS defects.\n\nSCENE PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms/legs on a character obviously shown\n- Severely distorted faces\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
+        "inputCount": 1,
+        "inputNames": ["prompt"]
+      }
+    },
+    {
+      "id": "scene-validate-1",
+      "type": "ai_llm",
+      "position": {
+        "x": 2700,
+        "y": 100
+      },
+      "data": {
+        "systemPrompt": "Rate scene images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces, or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
+        "temperature": 0.1,
+        "maxTokens": 300,
+        "imageInputCount": 3,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "process-scene-val-1",
+      "type": "logic_block",
+      "position": {
+        "x": 2800,
+        "y": 100
+      },
+      "data": {
+        "inputCount": 5,
+        "code": "// Process first scene validation result - parse JSON with rating and fixPrompt\nlet aiResponse = input;\nlet generatedImage = input2;\nlet prompt = input3;\nlet charImage1 = input4;\nlet charImage2 = input5;\n\nconsole.log(\"[process-scene-val-1] AI response:\", aiResponse);\n\n// Parse JSON response\nlet rating = 0;\nlet issues = '';\nlet fixPrompt = '';\ntry {\n  let jsonStr = String(aiResponse);\n  let jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    let parsed = JSON.parse(jsonMatch[0]);\n    rating = parsed.rating || 0;\n    issues = parsed.issues || '';\n    fixPrompt = parsed.fixPrompt || '';\n  }\n} catch(e) {\n  let numMatch = String(aiResponse).match(/\\d+/);\n  if (numMatch) rating = parseInt(numMatch[0], 10);\n}\n\nlet isApproved = rating >= 8;\nconsole.log(\"[process-scene-val-1] Rating:\", rating, \"Issues:\", issues);\n\n// Store validation state\nworkflow_context[\"__scene_\" + loop_index + \"_approved\"] = isApproved;\nworkflow_context[\"__scene_\" + loop_index + \"_image\"] = generatedImage;\nworkflow_context[\"__scene_\" + loop_index + \"_prompt\"] = prompt;\nworkflow_context[\"__scene_\" + loop_index + \"_char1\"] = charImage1;\nworkflow_context[\"__scene_\" + loop_index + \"_char2\"] = charImage2;\nworkflow_context[\"__scene_\" + loop_index + \"_rating\"] = rating;\nworkflow_context[\"__scene_\" + loop_index + \"_fixPrompt\"] = fixPrompt;\n\nif (isApproved) {\n  console.log(\"[process-scene-val-1] Scene APPROVED (rating \" + rating + \")\");\n} else {\n  console.log(\"[process-scene-val-1] Needs retry (rating \" + rating + \"), fix: \" + fixPrompt);\n}\n\nreturn { approved: isApproved, image: generatedImage, prompt: prompt, rating: rating, fixPrompt: fixPrompt };"
+      }
+    },
+    {
+      "id": "scene-retry-needed-1",
+      "type": "condition",
+      "position": {
+        "x": 2850,
+        "y": 50
+      },
+      "data": {
+        "expression": "!workflow_context['__scene_' + loop_index + '_approved']"
+      }
+    },
+    {
+      "id": "get-scene-retry-1-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 2800,
+        "y": 180
+      },
+      "data": {
+        "code": "// Get prompt for scene retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-scene-retry-1-prompt] Skipped (already approved)\");\n  return null;\n}\nlet fixPrompt = workflow_context[\"__scene_\" + loop_index + \"_fixPrompt\"];\nif (fixPrompt) {\n  console.log(\"[get-scene-retry-1-prompt] Using AI fix prompt:\", fixPrompt);\n  return fixPrompt;\n}\nlet origPrompt = workflow_context[\"__scene_\" + loop_index + \"_prompt\"];\nconsole.log(\"[get-scene-retry-1-prompt] Using original prompt\");\nreturn origPrompt || \"Cinematic scene, high quality\";"
+      }
+    },
+    {
+      "id": "get-scene-retry-1-char1",
+      "type": "logic_block",
+      "position": {
+        "x": 2800,
+        "y": 230
+      },
+      "data": {
+        "code": "// Get char1 for scene retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-scene-retry-1-char1] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__scene_\" + loop_index + \"_char1\"] || null;"
+      }
+    },
+    {
+      "id": "get-scene-retry-1-char2",
+      "type": "logic_block",
+      "position": {
+        "x": 2800,
+        "y": 280
+      },
+      "data": {
+        "code": "// Get char2 for scene retry 1 - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-scene-retry-1-char2] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__scene_\" + loop_index + \"_char2\"] || null;"
+      }
+    },
+    {
+      "id": "get-scene-retry-1-failed",
+      "type": "logic_block",
+      "position": {
+        "x": 2800,
+        "y": 330
+      },
+      "data": {
+        "code": "// Get failed scene image for retry 1 editing - skip if input is null (already approved)\nif (input === null) {\n  console.log(\"[get-scene-retry-1-failed] Skipped (already approved)\");\n  return null;\n}\nlet failedScene = workflow_context[\"__scene_\" + loop_index + \"_image\"];\nconsole.log(\"[get-scene-retry-1-failed] Passing failed scene for editing\");\nreturn failedScene || null;"
+      }
+    },
+    {
+      "id": "retry-scene-gen-1",
+      "type": "image_gen",
+      "position": {
+        "x": 2900,
+        "y": 150
+      },
+      "data": {
+        "size": "1792x1024",
+        "quality": "high",
+        "imageInputCount": 3,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0],"image3":["13",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Scene to Edit"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Reference"}},"13":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Reference"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO Scene - Retry 1",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Scene to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 1", "allowBypass": true}, {"nodeId": "13", "inputName": "image", "handleId": "image_2", "label": "Character 2", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8", "12", "13"]
+      }
+    },
+    {
+      "id": "build-scene-val-prompt-2",
+      "type": "template",
+      "position": {
+        "x": 3000,
+        "y": 50
+      },
+      "data": {
+        "template": "Rate this scene image. Be LENIENT - only reject for OBVIOUS defects.\n\nSCENE PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms/legs on a character\n- Severely distorted faces\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
+        "inputCount": 1,
+        "inputNames": ["prompt"]
+      }
+    },
+    {
+      "id": "scene-validate-2",
+      "type": "ai_llm",
+      "position": {
+        "x": 3100,
+        "y": 100
+      },
+      "data": {
+        "systemPrompt": "Rate scene images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces, or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
+        "temperature": 0.1,
+        "maxTokens": 300,
+        "imageInputCount": 3,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "process-scene-val-2",
+      "type": "logic_block",
+      "position": {
+        "x": 3200,
+        "y": 100
+      },
+      "data": {
+        "inputCount": 2,
+        "code": "// Process second scene validation result - parse JSON with rating and fixPrompt\nlet aiResponse = input;\nlet retryImage = input2;\n\n// Check if already approved on first try\nlet alreadyApproved = workflow_context[\"__scene_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  console.log(\"[process-scene-val-2] Already approved on first try, using original\");\n  return workflow_context[\"__scene_\" + loop_index + \"_image\"];\n}\n\nconsole.log(\"[process-scene-val-2] AI response:\", aiResponse);\n\n// Parse JSON response\nlet rating = 0;\nlet issues = '';\nlet fixPrompt = '';\ntry {\n  let jsonStr = String(aiResponse);\n  let jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    let parsed = JSON.parse(jsonMatch[0]);\n    rating = parsed.rating || 0;\n    issues = parsed.issues || '';\n    fixPrompt = parsed.fixPrompt || '';\n  }\n} catch(e) {\n  let numMatch = String(aiResponse).match(/\\d+/);\n  if (numMatch) rating = parseInt(numMatch[0], 10);\n}\n\nlet isApproved = rating >= 8;\nconsole.log(\"[process-scene-val-2] Rating:\", rating, \"Issues:\", issues);\n\nif (isApproved) {\n  console.log(\"[process-scene-val-2] Retry 1 APPROVED (rating \" + rating + \")\");\n  workflow_context[\"__scene_\" + loop_index + \"_approved\"] = true;\n  workflow_context[\"__scene_\" + loop_index + \"_image\"] = retryImage;\n  workflow_context[\"__scene_\" + loop_index + \"_rating\"] = rating;\n} else {\n  console.log(\"[process-scene-val-2] Needs improvement (rating \" + rating + \"), fix: \" + fixPrompt);\n  workflow_context[\"__scene_\" + loop_index + \"_fixPrompt\"] = fixPrompt;\n}\n\nreturn retryImage;"
+      }
+    },
+    {
+      "id": "scene-retry-needed-2",
+      "type": "condition",
+      "position": {
+        "x": 3250,
+        "y": 50
+      },
+      "data": {
+        "expression": "!workflow_context['__scene_' + loop_index + '_approved']"
+      }
+    },
+    {
+      "id": "get-scene-retry-2-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 3200,
+        "y": 180
+      },
+      "data": {
+        "code": "// Get prompt for scene retry 2 - skip if already approved\nif (input === null || workflow_context['__scene_' + loop_index + '_approved']) {\n  console.log(\"[get-scene-retry-2-prompt] Skipped (already approved)\");\n  return null;\n}\nlet fixPrompt = workflow_context[\"__scene_\" + loop_index + \"_fixPrompt\"];\nif (fixPrompt) {\n  console.log(\"[get-scene-retry-2-prompt] Using AI fix prompt:\", fixPrompt);\n  return fixPrompt;\n}\nlet origPrompt = workflow_context[\"__scene_\" + loop_index + \"_prompt\"];\nconsole.log(\"[get-scene-retry-2-prompt] Using original prompt\");\nreturn origPrompt || \"Cinematic scene, high quality\";"
+      }
+    },
+    {
+      "id": "get-scene-retry-2-char1",
+      "type": "logic_block",
+      "position": {
+        "x": 3200,
+        "y": 230
+      },
+      "data": {
+        "code": "// Get char1 for scene retry 2 - skip if already approved\nif (input === null || workflow_context['__scene_' + loop_index + '_approved']) {\n  console.log(\"[get-scene-retry-2-char1] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__scene_\" + loop_index + \"_char1\"] || null;"
+      }
+    },
+    {
+      "id": "get-scene-retry-2-char2",
+      "type": "logic_block",
+      "position": {
+        "x": 3200,
+        "y": 280
+      },
+      "data": {
+        "code": "// Get char2 for scene retry 2 - skip if already approved\nif (input === null || workflow_context['__scene_' + loop_index + '_approved']) {\n  console.log(\"[get-scene-retry-2-char2] Skipped (already approved)\");\n  return null;\n}\nreturn workflow_context[\"__scene_\" + loop_index + \"_char2\"] || null;"
+      }
+    },
+    {
+      "id": "get-scene-retry-2-failed",
+      "type": "logic_block",
+      "position": {
+        "x": 3200,
+        "y": 330
+      },
+      "data": {
+        "code": "// Get last scene image for retry 2 editing - skip if already approved\nif (input === null || workflow_context['__scene_' + loop_index + '_approved']) {\n  console.log(\"[get-scene-retry-2-failed] Skipped (already approved)\");\n  return null;\n}\nlet lastScene = workflow_context[\"__scene_\" + loop_index + \"_image\"];\nconsole.log(\"[get-scene-retry-2-failed] Passing last scene for editing\");\nreturn lastScene || null;"
+      }
+    },
+    {
+      "id": "retry-scene-gen-2",
+      "type": "image_gen",
+      "position": {
+        "x": 3300,
+        "y": 150
+      },
+      "data": {
+        "size": "1792x1024",
+        "quality": "high",
+        "imageInputCount": 3,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0],"image3":["13",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Scene to Edit"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Reference"}},"13":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Reference"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO Scene - Retry 2",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Scene to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 1", "allowBypass": true}, {"nodeId": "13", "inputName": "image", "handleId": "image_2", "label": "Character 2", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8", "12", "13"]
+      }
+    },
+    {
+      "id": "select-final-scene-image",
+      "type": "logic_block",
+      "position": {
+        "x": 3400,
+        "y": 150
+      },
+      "data": {
+        "code": "// Select final scene image (best approved or last attempt)\nlet finalRetryImage = input;\n\n// Check if already approved earlier\nlet alreadyApproved = workflow_context[\"__scene_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  let approvedImage = workflow_context[\"__scene_\" + loop_index + \"_image\"];\n  console.log(\"[select-final-scene-image] Using previously approved image\");\n  return approvedImage;\n}\n\n// If we get here, validation failed all attempts - use last generated\nconsole.log(\"[select-final-scene-image] No approved image, using last attempt\");\nreturn finalRetryImage;"
+      }
+    },
+    {
+      "id": "store-chain-end",
+      "type": "logic_block",
+      "position": {
+        "x": 3500,
+        "y": 150
+      },
+      "data": {
+        "code": "// Pass through the generated scene image\nlet sceneImage = input;\nconsole.log(\"[store-chain-end] Scene image generated\");\nreturn sceneImage;"
+      }
+    },
+    {
+      "id": "combine-image-pair",
+      "type": "logic_block",
+      "position": {
+        "x": 3600,
+        "y": 100
+      },
+      "data": {
+        "code": "// Each scene uses its own generated image for video (no chaining)\n// Character references and style are applied during image generation\nlet sceneImage = input;\n\nconsole.log(\"[combine-image-pair] === SCENE IMAGE ===\");\nconsole.log(\"[combine-image-pair] loop_index:\", loop_index);\nconsole.log(\"[combine-image-pair] Using scene's own generated image\");\nif (typeof sceneImage === \"string\") {\n  console.log(\"[combine-image-pair] image preview:\", sceneImage.substring(0, 80));\n}\n\n// Return pair with same image for both (startImage used by extract-scene-image)\nlet pair = { startImage: sceneImage, endImage: sceneImage };\nreturn pair;"
+      }
+    },
+    {
+      "id": "image-loop-end",
+      "type": "loop_end",
+      "position": {
+        "x": 3700,
+        "y": 150
+      },
+      "data": {}
+    },
+    {
+      "id": "free-gpu-memory",
+      "type": "comfyui_free_memory",
+      "position": {
+        "x": 3800,
+        "y": 150
+      },
+      "data": {
+        "unloadModels": true,
+        "freeMemory": true
+      }
+    },
+    {
+      "id": "video-loop-start",
+      "type": "loop_start",
+      "position": {
+        "x": 3900,
+        "y": 150
+      },
+      "data": {
+        "loopMode": "foreach"
+      }
+    },
+    {
+      "id": "extract-scene-image",
+      "type": "logic_block",
+      "position": {
+        "x": 4100,
+        "y": 80
+      },
+      "data": {
+        "code": "// Extract the START image for video generation\n// Scene 0: startImage = endImage (same image)\n// Scene 1+: startImage = chained image from previous scene\nconsole.log(\"[extract-scene-image] === EXTRACT SCENE IMAGE ===\");\nconsole.log(\"[extract-scene-image] Input type:\", typeof input);\nlet pair = input;\nif (typeof pair === \"string\") {\n  console.log(\"[extract-scene-image] Input is string, parsing\");\n  try { pair = JSON.parse(pair); } catch (e) { /* use as-is */ }\n}\nif (pair && typeof pair === \"object\") {\n  let keys = [];\n  for (let k in pair) { keys.push(k); }\n  console.log(\"[extract-scene-image] Pair keys:\", keys.join(\", \"));\n}\nlet result = null;\n// Use startImage - this is what the video starts from\nif (pair && pair.startImage) {\n  result = pair.startImage;\n  console.log(\"[extract-scene-image] Using startImage for video\");\n  if (typeof result === \"string\") {\n    console.log(\"[extract-scene-image] startImage preview:\", result.substring(0, 100));\n  }\n} else if (pair && pair.endImage) {\n  result = pair.endImage;\n  console.log(\"[extract-scene-image] Fallback to endImage\");\n} else {\n  console.log(\"[extract-scene-image] No image found, using pair as-is\");\n  result = pair;\n}\nreturn result;"
+      }
+    },
+    {
+      "id": "get-video-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 4100,
+        "y": 220
+      },
+      "data": {
+        "code": "// Get video prompt using loop index - use result variable pattern\nlet result = null;\nlet scenes = workflow_context[\"scenes\"] || (workflow_context[\"story\"] && workflow_context[\"story\"].scenes);\nconsole.log(\"[get-video-prompt] scenes exists:\", !!scenes, \"scenes length:\", scenes ? scenes.length : 0, \"loop_index:\", loop_index);\n\nlet style = workflow_context[\"__style__\"] || workflow_context[\"normalize-style\"] || workflow_context[\"input-style\"] || \"cinematic, high quality\";\nconsole.log(\"[get-video-prompt] Style:\", style);\n\nif (scenes && scenes[loop_index]) {\n  let scene = scenes[loop_index];\n  console.log(\"[get-video-prompt] Scene\", loop_index, \"title:\", scene.title);\n  let prompt = scene.video_prompt || scene.videoPrompt || scene.motion_prompt || scene.motionPrompt || scene.action || scene.animation;\n  if (prompt) {\n    // Append style if not present\n    if (prompt.toLowerCase().indexOf(style.toLowerCase()) === -1) {\n      prompt = prompt + \", \" + style;\n    }\n    result = prompt;\n    console.log(\"[get-video-prompt] Found prompt:\", result.substring(0, 200));\n  }\n}\n\nif (!result) {\n  result = \"cinematic video, smooth motion, \" + style;\n  console.log(\"[get-video-prompt] FALLBACK\");\n}\n\nreturn result;"
+      }
+    },
+    {
+      "id": "get-scene-frames",
+      "type": "logic_block",
+      "position": {
+        "x": 4100,
+        "y": 340
+      },
+      "data": {
+        "code": "// Get frame count for this scene\nlet frameCounts = workflow_context[\"sceneFrameCounts\"];\nif (frameCounts && frameCounts[loop_index] !== undefined) {\n  return frameCounts[loop_index];\n}\nreturn 121;"
+      }
+    },
+    {
+      "id": "refine-video-prompt-template",
+      "type": "template",
+      "position": {
+        "x": 4250,
+        "y": 220
+      },
+      "data": {
+        "template": "You are a video prompt engineer specializing in AI video generation. Refine the following video prompt using best practices for LTX-2 video generation.\n\n## LTX-2 PROMPTING GUIDE\n\n**Core Principles:**\nEffective prompts paint a complete narrative arc with natural flow. Combine cinematography language, scene-setting, character details, action sequences, camera movements, and audio descriptions into a single cohesive paragraph.\n\n**Key Elements:**\n1. SHOT ESTABLISHMENT: Use specific film terminology (\"cinematic close-up\", \"wide establishing shot\")\n2. SCENE DETAILS: Layer in lighting conditions, color palettes, textures, atmospheric qualities\n3. ACTION SEQUENCE: Write movement as natural progression, use present-tense verbs for continuous motion\n4. CHARACTER DEFINITION: Provide age, appearance, clothing, emotional cues through physical language\n5. CAMERA LANGUAGE: Specify movements with clarity (\"dolly back\", \"pan left\", \"handheld tracking\")\n6. AUDIO DESCRIPTION: Describe ambient soundscapes, but end with \"no dialogue, silent\" for video-only generation\n\n**Best Practices:**\n- Maintain 4-8 descriptive sentences\n- Use present tense throughout\n- Match detail complexity to shot scale\n- Avoid vague emotional labels - show feelings through gesture and expression\n- Avoid readable text/logos, complex physics, scene overload\n\n## ORIGINAL PROMPT TO REFINE:\n{{rawPrompt}}\n\n## VISUAL STYLE:\n{{style}}\n\n## INSTRUCTIONS:\nRewrite this prompt following the LTX-2 guide above. Create a single cohesive paragraph that:\n1. Establishes the shot type and framing\n2. Describes lighting, atmosphere, and mood through visual details\n3. Shows character actions and emotions through physical movement\n4. Specifies camera movement if applicable\n5. Ends with \"no dialogue, silent\"\n\nOutput ONLY the refined prompt, nothing else.",
+        "inputCount": 2,
+        "inputNames": [
+          "rawPrompt",
+          "style"
+        ]
+      }
+    },
+    {
+      "id": "ai-refine-video-prompt",
+      "type": "ai_llm",
+      "position": {
+        "x": 4450,
+        "y": 220
+      },
+      "data": {
+        "systemPrompt": "You are a video prompt engineer. Analyze the provided image and refine the prompt to accurately describe the scene. Output only the refined prompt, no explanations or formatting.",
+        "maxTokens": 500,
+        "imageInputCount": 1,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+    {
+      "id": "video-gen",
+      "type": "video_gen",
+      "position": {
+        "x": 4650,
+        "y": 150
+      },
+      "data": {
+        "comfyWorkflow": {"75":{"inputs":{"filename_prefix":"video/LTX_2.0_i2v","format":"auto","codec":"auto","video":["92:97",0]},"class_type":"SaveVideo","_meta":{"title":"Save Video"}},"98":{"inputs":{"image":"snow_bike_jump_crew.png"},"class_type":"LoadImage","_meta":{"title":"Load Image"}},"102":{"inputs":{"resize_type":"scale dimensions","resize_type.width":1280,"resize_type.height":720,"resize_type.crop":"center","scale_method":"lanczos","input":["98",0]},"class_type":"ResizeImageMaskNode","_meta":{"title":"Resize Image/Mask"}},"92:8":{"inputs":{"sampler_name":"euler"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:60":{"inputs":{"text_encoder":"gemma_3_12B_it.safetensors","ckpt_name":"ltx-2-19b-distilled-fp8.safetensors","device":"default"},"class_type":"LTXAVTextEncoderLoader","_meta":{"title":"LTXV Audio Text Encoder Loader"}},"92:66":{"inputs":{"sampler_name":"gradient_estimation"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:73":{"inputs":{"sigmas":"0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:81":{"inputs":{"positive":["92:22",0],"negative":["92:22",1],"latent":["92:80",0]},"class_type":"LTXVCropGuides","_meta":{"title":"LTXVCropGuides"}},"92:82":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:81",0],"negative":["92:81",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:51":{"inputs":{"frames_number":["92:62",0],"frame_rate":25,"batch_size":1,"audio_vae":["92:48",0]},"class_type":"LTXVEmptyLatentAudio","_meta":{"title":"LTXV Empty Latent Audio"}},"92:22":{"inputs":{"frame_rate":25,"positive":["92:3",0],"negative":["92:112",0]},"class_type":"LTXVConditioning","_meta":{"title":"LTXVConditioning"}},"92:89":{"inputs":{"width":["92:105",0],"height":["92:105",1],"batch_size":1,"color":0},"class_type":"EmptyImage","_meta":{"title":"EmptyImage"}},"92:41":{"inputs":{"noise":["92:11",0],"guider":["92:47",0],"sampler":["92:8",0],"sigmas":["92:113",0],"latent_image":["92:56",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:67":{"inputs":{"noise_seed":0},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:97":{"inputs":{"fps":25,"images":["92:95",0],"audio":["92:96",0]},"class_type":"CreateVideo","_meta":{"title":"Create Video"}},"92:80":{"inputs":{"av_latent":["92:41",0]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:95":{"inputs":{"samples":["92:94",0],"vae":["92:1",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"92:94":{"inputs":{"av_latent":["92:70",1]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:70":{"inputs":{"noise":["92:67",0],"guider":["92:82",0],"sampler":["92:66",0],"sigmas":["92:73",0],"latent_image":["92:83",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:96":{"inputs":{"samples":["92:94",1],"audio_vae":["92:48",0]},"class_type":"LTXVAudioVAEDecode","_meta":{"title":"LTXV Audio VAE Decode"}},"92:48":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"LTXVAudioVAELoader","_meta":{"title":"LTXV Audio VAE Loader"}},"92:56":{"inputs":{"video_latent":["92:107",0],"audio_latent":["92:51",0]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:84":{"inputs":{"samples":["92:81",2],"upscale_model":["92:76",0],"vae":["92:1",2]},"class_type":"LTXVLatentUpsampler","_meta":{"title":"spatial"}},"92:90":{"inputs":{"upscale_method":"lanczos","scale_by":0.5,"image":["92:89",0]},"class_type":"ImageScaleBy","_meta":{"title":"Upscale Image By"}},"92:62":{"inputs":{"value":121},"class_type":"PrimitiveInt","_meta":{"title":"Length"}},"92:91":{"inputs":{"image":["92:90",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:105":{"inputs":{"image":["102",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:99":{"inputs":{"img_compression":33,"image":["92:106",0]},"class_type":"LTXVPreprocess","_meta":{"title":"LTXVPreprocess"}},"92:43":{"inputs":{"width":["92:91",0],"height":["92:91",1],"length":["92:62",0],"batch_size":1},"class_type":"EmptyLTXVLatentVideo","_meta":{"title":"EmptyLTXVLatentVideo"}},"92:107":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:43",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:83":{"inputs":{"video_latent":["92:108",0],"audio_latent":["92:80",1]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:108":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:84",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:3":{"inputs":{"text":"","clip":["92:60",0]},"class_type":"CLIPTextEncode","_meta":{"title":"CLIP Text Encode (Prompt)"}},"92:112":{"inputs":{"conditioning":["92:3",0]},"class_type":"ConditioningZeroOut","_meta":{"title":"ConditioningZeroOut"}},"92:11":{"inputs":{"noise_seed":10},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:113":{"inputs":{"sigmas":"1., 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:47":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:22",0],"negative":["92:22",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:106":{"inputs":{"longer_edge":1536,"images":["102",0]},"class_type":"ResizeImagesByLongerEdge","_meta":{"title":"Resize Images by Longer Edge"}},"92:76":{"inputs":{"model_name":"ltx-2-spatial-upscaler-x2-1.0.safetensors"},"class_type":"LatentUpscaleModelLoader","_meta":{"title":"Load Latent Upscale Model"}},"92:1":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
+        "comfyWorkflowName": "LTX 2.0 i2v Distilled",
+        "comfyPrimaryPromptNodeId": "92:3",
+        "comfyImageInputConfigs": [{"nodeId": "98", "inputName": "image", "handleId": "image_0", "label": "Start Image"}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["98"]
+      }
+    },
+    {
+      "id": "video-loop-end",
+      "type": "loop_end",
+      "position": {
+        "x": 4850,
+        "y": 150
+      },
+      "data": {}
+    },
+    {
+      "id": "get-target-durations",
+      "type": "logic_block",
+      "position": {
+        "x": 4900,
+        "y": 250
+      },
+      "data": {
+        "code": "// Get target durations from workflow context\nlet sceneDurations = workflow_context[\"sceneDurations\"];\nreturn sceneDurations || [];"
+      }
+    },
+    {
+      "id": "extend-scene-videos",
+      "type": "extend_videos",
+      "position": {
+        "x": 5050,
+        "y": 150
+      },
+      "data": {
+        "filename": "extended_scene"
+      }
+    },
+    {
+      "id": "video-append",
+      "type": "video_append",
+      "position": {
+        "x": 5200,
+        "y": 150
+      },
+      "data": {
+        "filename": "story_assembled",
+        "format": "mp4"
+      }
+    },
+    {
+      "id": "audio-append",
+      "type": "audio_append",
+      "position": {
+        "x": 5050,
+        "y": 350
+      },
+      "data": {
+        "filename": "story_narration",
+        "format": "wav"
+      }
+    },
+    {
+      "id": "extract-narration",
+      "type": "logic_block",
+      "position": {
+        "x": 5250,
+        "y": 350
+      },
+      "data": {
+        "code": "// Extract narration text from story (for captions)\n// First try our extracted scenes array, then story.scenes\nlet scenes = workflow_context[\"scenes\"] || (workflow_context[\"story\"] && workflow_context[\"story\"].scenes) || [];\nconsole.log(\"[extract-narration] Found\", scenes.length, \"scenes\");\nlet narrations = [];\nfor (let i = 0; i < scenes.length; i = i + 1) {\n  let scene = scenes[i];\n  let narration = scene && (scene.narration || scene.voiceover || scene.voice_over || scene.text);\n  if (narration) {\n    narrations.push(narration);\n    console.log(\"[extract-narration] Scene\", i, \":\", narration.substring(0, 50));\n  }\n}\nconsole.log(\"[extract-narration] Total narrations:\", narrations.length);\nreturn narrations.join(\" ... \");"
+      }
+    },
+    {
+      "id": "video-avatar",
+      "type": "video_avatar",
+      "position": {
+        "x": 5650,
+        "y": 100
+      },
+      "data": {
+        "apiUrl": "http://127.0.0.1:8768/generate",
+        "prompt": "A person speaking naturally, realistic, high quality",
+        "guidanceScale": 5,
+        "numInferenceSteps": 30
+      }
+    },
+    {
+      "id": "video-pip",
+      "type": "video_pip",
+      "position": {
+        "x": 5850,
+        "y": 100
+      },
+      "data": {
+        "position": "bottom-right",
+        "size": 25,
+        "margin": 20,
+        "shape": "circle",
+        "mainVolume": 0.2,
+        "pipVolume": 1
+      }
+    },
+    {
+      "id": "no-avatar-audio-mix",
+      "type": "audio_mixer",
+      "position": {
+        "x": 5750,
+        "y": 350
+      },
+      "data": {
+        "videoVolume": 1,
+        "audioVolume": 1,
+        "replaceAudio": true,
+        "filename": "video_with_narration"
+      }
+    },
+    {
+      "id": "select-video-path",
+      "type": "logic_block",
+      "position": {
+        "x": 6050,
+        "y": 200
+      },
+      "data": {
+        "code": "// Select video based on whether avatar PiP was generated\nlet avatarVideo = workflow_context[\"video-pip\"];\nlet plainVideo = workflow_context[\"no-avatar-audio-mix\"];\n\nif (avatarVideo && avatarVideo.path && avatarVideo.path !== \"\") {\n  return avatarVideo;\n}\n\nif (plainVideo && plainVideo.path) {\n  return plainVideo;\n}\n\nreturn workflow_context[\"video-append\"];"
+      }
+    },
+    {
+      "id": "gate-captions-text",
+      "type": "logic_block",
+      "position": {
+        "x": 6250,
+        "y": 350
+      },
+      "data": {
+        "code": "// Only pass narration text if captions are enabled\nlet captionsEnabled = workflow_context[\"input-enable-captions\"];\nlet narrationText = workflow_context[\"extract-narration\"];\n\nif (captionsEnabled === \"true\" || captionsEnabled === true) {\n  return narrationText || \"\";\n}\n\nreturn \"\";"
+      }
+    },
+    {
+      "id": "get-caption-durations",
+      "type": "logic_block",
+      "position": {
+        "x": 6250,
+        "y": 450
+      },
+      "data": {
+        "code": "// Get per-scene durations for caption timing\nlet captionsEnabled = workflow_context[\"input-enable-captions\"];\nif (captionsEnabled !== \"true\" && captionsEnabled !== true) {\n  return null;\n}\n\nlet sceneDurations = workflow_context[\"sceneDurations\"];\nif (sceneDurations && Array.isArray(sceneDurations) && sceneDurations.length > 0) {\n  return sceneDurations;\n}\n\nreturn null;"
+      }
+    },
+    {
+      "id": "video-captions",
+      "type": "video_captions",
+      "position": {
+        "x": 6450,
+        "y": 100
+      },
+      "data": {
+        "position": "bottom",
+        "fontSize": 32,
+        "fontColor": "white",
+        "backgroundColor": "black@0.4",
+        "padding": 12,
+        "margin": 40,
+        "filename": "video_with_captions"
+      }
+    },
+    {
+      "id": "select-final-video",
+      "type": "logic_block",
+      "position": {
+        "x": 6650,
+        "y": 200
+      },
+      "data": {
+        "code": "// Get final video\nlet captionedVideo = workflow_context[\"video-captions\"];\nlet plainVideo = workflow_context[\"select-video-path\"];\n\nif (captionedVideo && captionedVideo.path && captionedVideo.path !== \"\") {\n  return captionedVideo;\n}\n\nif (plainVideo && plainVideo.path) {\n  return plainVideo;\n}\nreturn input;"
+      }
+    },
+    {
+      "id": "music-prompt",
+      "type": "logic_block",
+      "position": {
+        "x": 6850,
+        "y": 350
+      },
+      "data": {
+        "code": "// Create music prompt from story\nlet story = workflow_context[\"story\"];\nlet title = \"a video\";\nlet mood = \"cinematic\";\nif (story) {\n  if (story.title) title = story.title;\n  if (story.mood) mood = story.mood;\n}\nreturn \"background music for \" + title + \", \" + mood + \", orchestral, instrumental, no vocals\";"
+      }
+    },
+    {
+      "id": "get-music-duration",
+      "type": "logic_block",
+      "position": {
+        "x": 6850,
+        "y": 450
+      },
+      "data": {
+        "code": "// Get total video duration for music generation\nlet totalDuration = workflow_context[\"totalDuration\"];\n\nif (totalDuration && totalDuration > 0) {\n  let musicDuration = Math.ceil(totalDuration) + 5;\n  if (musicDuration < 10) musicDuration = 10;\n  if (musicDuration > 240) musicDuration = 240;\n  return musicDuration;\n}\n\nreturn 60;"
+      }
+    },
+    {
+      "id": "music-gen",
+      "type": "music_gen",
+      "position": {
+        "x": 7050,
+        "y": 350
+      },
+      "data": {
+        "apiUrl": "http://127.0.0.1:8766/generate",
+        "duration": 60,
+        "inferSteps": 27,
+        "guidanceScale": 15,
+        "seed": -1,
+        "filename": "story_music"
+      }
+    },
+    {
+      "id": "audio-mixer",
+      "type": "audio_mixer",
+      "position": {
+        "x": 7250,
+        "y": 250
+      },
+      "data": {
+        "videoVolume": 1,
+        "audioVolume": 0.12,
+        "replaceAudio": false,
+        "filename": "final_with_music"
+      }
+    },
+    {
+      "id": "video-save",
+      "type": "video_save",
+      "position": {
+        "x": 7450,
+        "y": 250
+      },
+      "data": {
+        "filename": "final_story_video",
+        "format": "mp4"
+      }
+    },
+    {
+      "id": "output-video",
+      "type": "output",
+      "position": {
+        "x": 7650,
+        "y": 200
+      },
+      "data": {
+        "name": "video",
+        "outputType": "video",
+        "label": "video"
+      }
+    },
+    {
+      "id": "output-story",
+      "type": "output",
+      "position": {
+        "x": 7650,
+        "y": 350
+      },
+      "data": {
+        "name": "story",
+        "outputType": "text",
+        "label": "story"
+      }
+    },
+    {
+      "id": "debug-ai-output",
+      "type": "logic_block",
+      "position": {
+        "x": 650,
+        "y": 250
+      },
+      "data": {
+        "code": "// Debug: show AI output directly\nconsole.log(\"[debug-ai-output] === AI OUTPUT RECEIVED ===\");\nconsole.log(\"[debug-ai-output] Type:\", typeof input);\nif (input) {\n  let preview = typeof input === \"string\" ? input : JSON.stringify(input);\n  console.log(\"[debug-ai-output] Length:\", preview.length);\n  console.log(\"[debug-ai-output] Preview:\", preview.substring(0, 500));\n} else {\n  console.log(\"[debug-ai-output] ERROR: No input received from AI!\");\n}\nreturn input;"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input-topic",
+      "target": "story-prompt",
+      "targetHandle": "topic",
+      "id": "e-topic-story"
+    },
+    {
+      "source": "input-style",
+      "target": "normalize-style",
+      "id": "e-style-normalize"
+    },
+    {
+      "source": "input-num-characters",
+      "target": "story-prompt",
+      "targetHandle": "numCharacters",
+      "id": "e-numchars-story"
+    },
+    {
+      "source": "normalize-style",
+      "target": "story-prompt",
+      "targetHandle": "style",
+      "id": "e-normstyle-story"
+    },
+    {
+      "source": "story-prompt",
+      "target": "ai-story",
+      "id": "e-story-ai"
+    },
+    {
+      "source": "input-reference-image",
+      "sourceHandle": "content",
+      "target": "ai-story",
+      "targetHandle": "image",
+      "id": "e-refimg-ai"
+    },
+    {
+      "source": "ai-story",
+      "target": "debug-ai-output",
+      "id": "e-ai-debug"
+    },
+    {
+      "source": "debug-ai-output",
+      "target": "parse-story",
+      "id": "e-debug-parse"
+    },
+    {
+      "source": "parse-story",
+      "target": "extract-characters",
+      "id": "e-parse-chars"
+    },
+    {
+      "source": "extract-characters",
+      "target": "character-gen-loop-start",
+      "targetHandle": "array",
+      "id": "e-chars-loopstart"
+    },
+    {
+      "source": "character-gen-loop-start",
+      "target": "extract-char-name",
+      "sourceHandle": "item",
+      "id": "e-charloop-name"
+    },
+    {
+      "source": "character-gen-loop-start",
+      "target": "extract-char-desc",
+      "sourceHandle": "item",
+      "id": "e-charloop-desc"
+    },
+    {
+      "source": "extract-char-name",
+      "target": "character-prompt-template",
+      "targetHandle": "name",
+      "id": "e-charname-template"
+    },
+    {
+      "source": "extract-char-desc",
+      "target": "character-prompt-template",
+      "targetHandle": "description",
+      "id": "e-chardesc-template"
+    },
+    {
+      "source": "normalize-style",
+      "target": "character-prompt-template",
+      "targetHandle": "style",
+      "id": "e-style-chartemplate"
+    },
+    {
+      "source": "character-prompt-template",
+      "target": "character-image-gen",
+      "targetHandle": "prompt",
+      "id": "e-chartemplate-gen"
+    },
+    {
+      "source": "character-gen-loop-start",
+      "target": "get-style-reference",
+      "sourceHandle": "item",
+      "targetHandle": "input",
+      "id": "e-charloop-styleref"
+    },
+    {
+      "source": "get-style-reference",
+      "target": "character-image-gen",
+      "targetHandle": "image",
+      "id": "e-styleref-chargen"
+    },
+    {
+      "source": "character-prompt-template",
+      "target": "build-char-val-prompt-1",
+      "targetHandle": "prompt",
+      "id": "e-charprompt-valprompt1"
+    },
+    {
+      "source": "build-char-val-prompt-1",
+      "target": "char-validate-1",
+      "id": "e-valprompt1-validate1"
+    },
+    {
+      "source": "character-image-gen",
+      "target": "char-validate-1",
+      "targetHandle": "image",
+      "id": "e-chargen-validate1-img"
+    },
+    {
+      "source": "get-style-reference",
+      "target": "char-validate-1",
+      "targetHandle": "image_1",
+      "id": "e-styleref-validate1"
+    },
+    {
+      "source": "char-validate-1",
+      "target": "process-char-val-1",
+      "id": "e-validate1-process1"
+    },
+    {
+      "source": "character-image-gen",
+      "target": "process-char-val-1",
+      "targetHandle": "input2",
+      "id": "e-chargen-process1-img"
+    },
+    {
+      "source": "character-prompt-template",
+      "target": "process-char-val-1",
+      "targetHandle": "input3",
+      "id": "e-charprompt-process1"
+    },
+    {
+      "source": "get-style-reference",
+      "target": "process-char-val-1",
+      "targetHandle": "input4",
+      "id": "e-styleref-process1"
+    },
+    {
+      "source": "process-char-val-1",
+      "target": "char-retry-needed-1",
+      "id": "e-process1-condition1"
+    },
+    {
+      "source": "char-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-retry-1-prompt",
+      "id": "e-condition1-retry1prompt"
+    },
+    {
+      "source": "char-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-retry-1-ref",
+      "id": "e-condition1-retry1ref"
+    },
+    {
+      "source": "char-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-retry-1-failed-image",
+      "id": "e-condition1-retry1failed"
+    },
+    {
+      "source": "char-retry-needed-1",
+      "sourceHandle": "false",
+      "target": "select-final-char-image",
+      "id": "e-condition1-select"
+    },
+    {
+      "source": "get-retry-1-prompt",
+      "target": "retry-char-gen-1",
+      "targetHandle": "prompt",
+      "id": "e-retry1prompt-gen"
+    },
+    {
+      "source": "get-retry-1-failed-image",
+      "target": "retry-char-gen-1",
+      "targetHandle": "image_0",
+      "id": "e-retry1failed-gen"
+    },
+    {
+      "source": "get-retry-1-ref",
+      "target": "retry-char-gen-1",
+      "targetHandle": "image_1",
+      "id": "e-retry1ref-gen"
+    },
+    {
+      "source": "get-retry-1-prompt",
+      "target": "build-char-val-prompt-2",
+      "targetHandle": "prompt",
+      "id": "e-retry1prompt-valprompt2"
+    },
+    {
+      "source": "build-char-val-prompt-2",
+      "target": "char-validate-2",
+      "id": "e-valprompt2-validate2"
+    },
+    {
+      "source": "retry-char-gen-1",
+      "target": "char-validate-2",
+      "targetHandle": "image",
+      "id": "e-retry1gen-validate2-img"
+    },
+    {
+      "source": "get-retry-1-ref",
+      "target": "char-validate-2",
+      "targetHandle": "image_1",
+      "id": "e-retry1ref-validate2"
+    },
+    {
+      "source": "char-validate-2",
+      "target": "process-char-val-2",
+      "id": "e-validate2-process2"
+    },
+    {
+      "source": "retry-char-gen-1",
+      "target": "process-char-val-2",
+      "targetHandle": "input2",
+      "id": "e-retry1gen-process2-img"
+    },
+    {
+      "source": "get-retry-1-prompt",
+      "target": "process-char-val-2",
+      "targetHandle": "input3",
+      "id": "e-retry1prompt-process2"
+    },
+    {
+      "source": "get-retry-1-ref",
+      "target": "process-char-val-2",
+      "targetHandle": "input4",
+      "id": "e-retry1ref-process2"
+    },
+    {
+      "source": "process-char-val-2",
+      "target": "char-retry-needed-2",
+      "id": "e-process2-condition2"
+    },
+    {
+      "source": "char-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-retry-2-prompt",
+      "id": "e-condition2-retry2prompt"
+    },
+    {
+      "source": "char-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-retry-2-ref",
+      "id": "e-condition2-retry2ref"
+    },
+    {
+      "source": "char-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-retry-2-failed-image",
+      "id": "e-condition2-retry2failed"
+    },
+    {
+      "source": "char-retry-needed-2",
+      "sourceHandle": "false",
+      "target": "select-final-char-image",
+      "id": "e-condition2-select"
+    },
+    {
+      "source": "get-retry-2-prompt",
+      "target": "retry-char-gen-2",
+      "targetHandle": "prompt",
+      "id": "e-retry2prompt-gen"
+    },
+    {
+      "source": "get-retry-2-failed-image",
+      "target": "retry-char-gen-2",
+      "targetHandle": "image_0",
+      "id": "e-retry2failed-gen"
+    },
+    {
+      "source": "get-retry-2-ref",
+      "target": "retry-char-gen-2",
+      "targetHandle": "image_1",
+      "id": "e-retry2ref-gen"
+    },
+    {
+      "source": "retry-char-gen-2",
+      "target": "select-final-char-image",
+      "id": "e-retry2gen-select"
+    },
+    {
+      "source": "select-final-char-image",
+      "target": "store-character-image",
+      "id": "e-select-store"
+    },
+    {
+      "source": "store-character-image",
+      "target": "character-gen-loop-end",
+      "targetHandle": "input",
+      "id": "e-storechar-loopend"
+    },
+    {
+      "source": "parse-story",
+      "target": "tts-loop-start",
+      "targetHandle": "array",
+      "id": "e-parse-ttsloop"
+    },
+    {
+      "source": "tts-loop-start",
+      "target": "extract-scene-narration",
+      "sourceHandle": "item",
+      "id": "e-ttsloop-narration"
+    },
+    {
+      "source": "extract-scene-narration",
+      "target": "scene-tts",
+      "targetHandle": "text",
+      "id": "e-narration-tts"
+    },
+    {
+      "source": "input-voice-reference",
+      "sourceHandle": "audio",
+      "target": "scene-tts",
+      "targetHandle": "audioPrompt",
+      "id": "e-voice-tts"
+    },
+    {
+      "source": "scene-tts",
+      "target": "tts-loop-end",
+      "targetHandle": "input",
+      "id": "e-tts-loopend"
+    },
+    {
+      "source": "tts-loop-end",
+      "target": "process-tts-results",
+      "sourceHandle": "results",
+      "id": "e-ttsloopend-process"
+    },
+    {
+      "source": "parse-story",
+      "target": "image-loop-start",
+      "targetHandle": "array",
+      "id": "e-parse-imgloop"
+    },
+    {
+      "source": "image-loop-start",
+      "target": "get-char-image-1",
+      "sourceHandle": "item",
+      "id": "e-imgloop-char1"
+    },
+    {
+      "source": "image-loop-start",
+      "target": "get-char-image-2",
+      "sourceHandle": "item",
+      "id": "e-imgloop-char2"
+    },
+    {
+      "source": "image-loop-start",
+      "target": "extract-end-prompt",
+      "sourceHandle": "item",
+      "id": "e-imgloop-endprompt"
+    },
+    {
+      "source": "extract-end-prompt",
+      "target": "end-image-gen",
+      "targetHandle": "prompt",
+      "id": "e-endprompt-gen"
+    },
+    {
+      "source": "get-char-image-1",
+      "target": "end-image-gen",
+      "targetHandle": "image_0",
+      "id": "e-char1-endgen"
+    },
+    {
+      "source": "get-char-image-2",
+      "target": "end-image-gen",
+      "targetHandle": "image_1",
+      "id": "e-char2-endgen"
+    },
+    {
+      "source": "extract-end-prompt",
+      "target": "build-scene-val-prompt-1",
+      "targetHandle": "prompt",
+      "id": "e-endprompt-scenevalp1"
+    },
+    {
+      "source": "build-scene-val-prompt-1",
+      "target": "scene-validate-1",
+      "id": "e-scenevalprompt1-val1"
+    },
+    {
+      "source": "end-image-gen",
+      "target": "scene-validate-1",
+      "targetHandle": "image",
+      "id": "e-endgen-sceneval1-img"
+    },
+    {
+      "source": "get-char-image-1",
+      "target": "scene-validate-1",
+      "targetHandle": "image_1",
+      "id": "e-char1-sceneval1"
+    },
+    {
+      "source": "get-char-image-2",
+      "target": "scene-validate-1",
+      "targetHandle": "image_2",
+      "id": "e-char2-sceneval1"
+    },
+    {
+      "source": "scene-validate-1",
+      "target": "process-scene-val-1",
+      "id": "e-sceneval1-process1"
+    },
+    {
+      "source": "end-image-gen",
+      "target": "process-scene-val-1",
+      "targetHandle": "input2",
+      "id": "e-endgen-sceneprocess1-img"
+    },
+    {
+      "source": "extract-end-prompt",
+      "target": "process-scene-val-1",
+      "targetHandle": "input3",
+      "id": "e-endprompt-sceneprocess1"
+    },
+    {
+      "source": "get-char-image-1",
+      "target": "process-scene-val-1",
+      "targetHandle": "input4",
+      "id": "e-char1-sceneprocess1"
+    },
+    {
+      "source": "get-char-image-2",
+      "target": "process-scene-val-1",
+      "targetHandle": "input5",
+      "id": "e-char2-sceneprocess1"
+    },
+    {
+      "source": "process-scene-val-1",
+      "target": "scene-retry-needed-1",
+      "id": "e-sceneprocess1-condition1"
+    },
+    {
+      "source": "scene-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-1-prompt",
+      "id": "e-scenecondition1-retryprompt"
+    },
+    {
+      "source": "scene-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-1-char1",
+      "id": "e-scenecondition1-retrychar1"
+    },
+    {
+      "source": "scene-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-1-char2",
+      "id": "e-scenecondition1-retrychar2"
+    },
+    {
+      "source": "scene-retry-needed-1",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-1-failed",
+      "id": "e-scenecondition1-retryfailed"
+    },
+    {
+      "source": "scene-retry-needed-1",
+      "sourceHandle": "false",
+      "target": "select-final-scene-image",
+      "id": "e-scenecondition1-select"
+    },
+    {
+      "source": "get-scene-retry-1-prompt",
+      "target": "retry-scene-gen-1",
+      "targetHandle": "prompt",
+      "id": "e-sceneretryprompt1-gen"
+    },
+    {
+      "source": "get-scene-retry-1-failed",
+      "target": "retry-scene-gen-1",
+      "targetHandle": "image_0",
+      "id": "e-sceneretry1failed-gen"
+    },
+    {
+      "source": "get-scene-retry-1-char1",
+      "target": "retry-scene-gen-1",
+      "targetHandle": "image_1",
+      "id": "e-sceneretrychar1-gen1"
+    },
+    {
+      "source": "get-scene-retry-1-char2",
+      "target": "retry-scene-gen-1",
+      "targetHandle": "image_2",
+      "id": "e-sceneretrychar2-gen1"
+    },
+    {
+      "source": "get-scene-retry-1-prompt",
+      "target": "build-scene-val-prompt-2",
+      "targetHandle": "prompt",
+      "id": "e-sceneretryprompt1-valp2"
+    },
+    {
+      "source": "build-scene-val-prompt-2",
+      "target": "scene-validate-2",
+      "id": "e-scenevalprompt2-val2"
+    },
+    {
+      "source": "retry-scene-gen-1",
+      "target": "scene-validate-2",
+      "targetHandle": "image",
+      "id": "e-sceneretry1-val2-img"
+    },
+    {
+      "source": "get-scene-retry-1-char1",
+      "target": "scene-validate-2",
+      "targetHandle": "image_1",
+      "id": "e-sceneretrychar1-val2"
+    },
+    {
+      "source": "get-scene-retry-1-char2",
+      "target": "scene-validate-2",
+      "targetHandle": "image_2",
+      "id": "e-sceneretrychar2-val2"
+    },
+    {
+      "source": "scene-validate-2",
+      "target": "process-scene-val-2",
+      "id": "e-sceneval2-process2"
+    },
+    {
+      "source": "retry-scene-gen-1",
+      "target": "process-scene-val-2",
+      "targetHandle": "input2",
+      "id": "e-sceneretry1-process2-img"
+    },
+    {
+      "source": "process-scene-val-2",
+      "target": "scene-retry-needed-2",
+      "id": "e-sceneprocess2-condition2"
+    },
+    {
+      "source": "scene-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-2-prompt",
+      "id": "e-scenecondition2-retryprompt"
+    },
+    {
+      "source": "scene-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-2-char1",
+      "id": "e-scenecondition2-retrychar1"
+    },
+    {
+      "source": "scene-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-2-char2",
+      "id": "e-scenecondition2-retrychar2"
+    },
+    {
+      "source": "scene-retry-needed-2",
+      "sourceHandle": "true",
+      "target": "get-scene-retry-2-failed",
+      "id": "e-scenecondition2-retryfailed"
+    },
+    {
+      "source": "scene-retry-needed-2",
+      "sourceHandle": "false",
+      "target": "select-final-scene-image",
+      "id": "e-scenecondition2-select"
+    },
+    {
+      "source": "get-scene-retry-2-prompt",
+      "target": "retry-scene-gen-2",
+      "targetHandle": "prompt",
+      "id": "e-sceneretryprompt2-gen"
+    },
+    {
+      "source": "get-scene-retry-2-failed",
+      "target": "retry-scene-gen-2",
+      "targetHandle": "image_0",
+      "id": "e-sceneretry2failed-gen"
+    },
+    {
+      "source": "get-scene-retry-2-char1",
+      "target": "retry-scene-gen-2",
+      "targetHandle": "image_1",
+      "id": "e-sceneretrychar1-gen2"
+    },
+    {
+      "source": "get-scene-retry-2-char2",
+      "target": "retry-scene-gen-2",
+      "targetHandle": "image_2",
+      "id": "e-sceneretrychar2-gen2"
+    },
+    {
+      "source": "retry-scene-gen-2",
+      "target": "select-final-scene-image",
+      "id": "e-sceneretry2-select"
+    },
+    {
+      "source": "select-final-scene-image",
+      "target": "store-chain-end",
+      "id": "e-sceneselectfinal-storeend"
+    },
+    {
+      "source": "store-chain-end",
+      "target": "combine-image-pair",
+      "id": "e-storeend-combine"
+    },
+    {
+      "source": "combine-image-pair",
+      "target": "image-loop-end",
+      "targetHandle": "input",
+      "id": "e-combine-imgloopend"
+    },
+    {
+      "source": "image-loop-end",
+      "target": "free-gpu-memory",
+      "sourceHandle": "results",
+      "targetHandle": "input",
+      "id": "e-imgloopend-free"
+    },
+    {
+      "source": "free-gpu-memory",
+      "target": "video-loop-start",
+      "targetHandle": "array",
+      "id": "e-free-vidloop"
+    },
+    {
+      "source": "video-loop-start",
+      "target": "extract-scene-image",
+      "sourceHandle": "item",
+      "id": "e-vidloop-startimg"
+    },
+    {
+      "source": "video-loop-start",
+      "target": "get-video-prompt",
+      "sourceHandle": "item",
+      "id": "e-vidloop-prompt"
+    },
+    {
+      "source": "video-loop-start",
+      "target": "get-scene-frames",
+      "sourceHandle": "item",
+      "id": "e-vidloop-frames"
+    },
+    {
+      "source": "process-tts-results",
+      "target": "get-scene-frames",
+      "id": "e-process-frames"
+    },
+    {
+      "source": "extract-scene-image",
+      "target": "video-gen",
+      "targetHandle": "image_0",
+      "id": "e-startimg-vidgen"
+    },
+    {
+      "source": "get-video-prompt",
+      "target": "refine-video-prompt-template",
+      "targetHandle": "rawPrompt",
+      "id": "e-vidprompt-refine"
+    },
+    {
+      "source": "normalize-style",
+      "target": "refine-video-prompt-template",
+      "targetHandle": "style",
+      "id": "e-style-refine"
+    },
+    {
+      "source": "refine-video-prompt-template",
+      "target": "ai-refine-video-prompt",
+      "id": "e-refinetemplate-ai"
+    },
+    {
+      "source": "extract-scene-image",
+      "target": "ai-refine-video-prompt",
+      "targetHandle": "image",
+      "id": "e-startimg-refine"
+    },
+    {
+      "source": "ai-refine-video-prompt",
+      "target": "video-gen",
+      "targetHandle": "prompt",
+      "id": "e-refinedprompt-gen"
+    },
+    {
+      "source": "get-scene-frames",
+      "target": "video-gen",
+      "targetHandle": "frameCount",
+      "id": "e-frames-vidgen"
+    },
+    {
+      "source": "video-gen",
+      "target": "video-loop-end",
+      "targetHandle": "input",
+      "id": "e-vidgen-loopend"
+    },
+    {
+      "source": "process-tts-results",
+      "target": "get-target-durations",
+      "id": "e-process-durations"
+    },
+    {
+      "source": "video-loop-end",
+      "target": "extend-scene-videos",
+      "sourceHandle": "results",
+      "targetHandle": "videos",
+      "id": "e-vidloopend-extend"
+    },
+    {
+      "source": "get-target-durations",
+      "target": "extend-scene-videos",
+      "targetHandle": "durations",
+      "id": "e-durations-extend"
+    },
+    {
+      "source": "extend-scene-videos",
+      "target": "video-append",
+      "sourceHandle": "videos",
+      "targetHandle": "videos",
+      "id": "e-extend-append"
+    },
+    {
+      "source": "tts-loop-end",
+      "target": "audio-append",
+      "sourceHandle": "results",
+      "targetHandle": "audios",
+      "id": "e-ttsend-audioappend"
+    },
+    {
+      "source": "video-append",
+      "target": "extract-narration",
+      "id": "e-vidappend-narration"
+    },
+    {
+      "source": "input-avatar",
+      "sourceHandle": "content",
+      "target": "video-avatar",
+      "targetHandle": "image",
+      "id": "e-avatar-vidavatar"
+    },
+    {
+      "source": "audio-append",
+      "target": "video-avatar",
+      "sourceHandle": "path",
+      "targetHandle": "audio",
+      "id": "e-audioappend-avatar"
+    },
+    {
+      "source": "video-append",
+      "target": "video-pip",
+      "sourceHandle": "video",
+      "targetHandle": "mainVideo",
+      "id": "e-vidappend-pip"
+    },
+    {
+      "source": "video-avatar",
+      "target": "video-pip",
+      "sourceHandle": "video",
+      "targetHandle": "pipVideo",
+      "id": "e-avatar-pip"
+    },
+    {
+      "source": "video-append",
+      "target": "no-avatar-audio-mix",
+      "sourceHandle": "video",
+      "targetHandle": "video",
+      "id": "e-vidappend-noavatar"
+    },
+    {
+      "source": "audio-append",
+      "target": "no-avatar-audio-mix",
+      "sourceHandle": "path",
+      "targetHandle": "audio",
+      "id": "e-audioappend-noavatar"
+    },
+    {
+      "source": "video-pip",
+      "target": "select-video-path",
+      "id": "e-pip-select"
+    },
+        {
+      "source": "input-enable-captions",
+      "target": "gate-captions-text",
+      "id": "e-captions-gate"
+    },
+        {
+      "source": "input-enable-captions",
+      "target": "get-caption-durations",
+      "id": "e-captions-durations"
+    },
+        {
+      "source": "select-video-path",
+      "target": "video-captions",
+      "targetHandle": "video",
+      "id": "e-select-captions"
+    },
+    {
+      "source": "gate-captions-text",
+      "target": "video-captions",
+      "targetHandle": "text",
+      "id": "e-gatetext-captions"
+    },
+    {
+      "source": "get-caption-durations",
+      "target": "video-captions",
+      "targetHandle": "durations",
+      "id": "e-durations-captions"
+    },
+    {
+      "source": "video-captions",
+      "target": "select-final-video",
+      "id": "e-captions-final"
+    },
+        {
+      "source": "select-final-video",
+      "target": "music-prompt",
+      "id": "e-final-musicprompt"
+    },
+    {
+      "source": "music-prompt",
+      "target": "music-gen",
+      "targetHandle": "prompt",
+      "id": "e-musicprompt-gen"
+    },
+    {
+      "source": "process-tts-results",
+      "target": "get-music-duration",
+      "id": "e-process-musicduration"
+    },
+    {
+      "source": "get-music-duration",
+      "target": "music-gen",
+      "targetHandle": "duration",
+      "id": "e-duration-musicgen"
+    },
+    {
+      "source": "select-final-video",
+      "target": "audio-mixer",
+      "targetHandle": "video",
+      "id": "e-final-mixer"
+    },
+    {
+      "source": "music-gen",
+      "target": "audio-mixer",
+      "sourceHandle": "path",
+      "targetHandle": "audio",
+      "id": "e-musicgen-mixer"
+    },
+    {
+      "source": "audio-mixer",
+      "target": "video-save",
+      "sourceHandle": "video",
+      "targetHandle": "video",
+      "id": "e-mixer-save"
+    },
+    {
+      "source": "video-save",
+      "target": "output-video",
+      "sourceHandle": "path",
+      "id": "e-save-output"
+    },
+    {
+      "source": "ai-story",
+      "target": "output-story",
+      "id": "e-ai-storyoutput"
+    }
+  ],
+  "version": "1.0"
+}

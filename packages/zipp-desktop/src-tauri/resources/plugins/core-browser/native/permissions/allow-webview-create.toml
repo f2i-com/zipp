@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-create"
+description = "Allow creating webview sessions"
+commands.allow = ["webview_create"]

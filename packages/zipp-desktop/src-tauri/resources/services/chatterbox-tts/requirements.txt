@@ -1,0 +1,20 @@
+# Chatterbox TTS Server Dependencies
+# Python 3.11 recommended
+
+# Core TTS library
+chatterbox-tts
+
+# Web server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# PyTorch and audio (installed by chatterbox-tts, but explicit for clarity)
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Optional: for faster inference on NVIDIA GPUs
+# pip install torch --index-url https://download.pytorch.org/whl/cu118

@@ -1,0 +1,161 @@
+{
+  "version": "1.0",
+  "id": "flow-browser-control",
+  "name": "AI Web Analyzer Demo",
+  "description": "Fetch a webpage and have AI analyze and describe its content",
+  "tags": [
+    "browser",
+    "ai",
+    "desktop-only"
+  ],
+  "createdAt": "2026-01-14T23:46:24.343Z",
+  "updatedAt": "2026-01-14T23:46:24.343Z",
+  "nodes": [
+    {
+      "id": "analyzer-input-url",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "data": {
+        "value": "https://example.com",
+        "label": "target_url"
+      }
+    },
+    {
+      "id": "analyzer-input-goal",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 250
+      },
+      "data": {
+        "value": "Describe this webpage. What is it about? Identify any key content, links, or calls to action.",
+        "label": "analysis_goal"
+      }
+    },
+    {
+      "id": "analyzer-browser-session",
+      "type": "browser_session",
+      "position": {
+        "x": 50,
+        "y": 400
+      },
+      "data": {
+        "browserProfile": "chrome_windows",
+        "sessionMode": "http"
+      }
+    },
+    {
+      "id": "analyzer-browser-request",
+      "type": "browser_request",
+      "position": {
+        "x": 350,
+        "y": 200
+      },
+      "data": {
+        "method": "GET",
+        "url": "",
+        "responseFormat": "html",
+        "followRedirects": true
+      }
+    },
+    {
+      "id": "analyzer-extract-text",
+      "type": "browser_extract",
+      "position": {
+        "x": 650,
+        "y": 200
+      },
+      "data": {
+        "extractionType": "css_selector",
+        "selector": "body",
+        "extractTarget": "text",
+        "outputFormat": "first"
+      }
+    },
+    {
+      "id": "analyzer-prompt-template",
+      "type": "template",
+      "position": {
+        "x": 950,
+        "y": 150
+      },
+      "data": {
+        "template": "Analyze this webpage content:\\n\\nGoal: {{goal}}\\n\\nPage Content:\\n{{content}}\\n\\nProvide a detailed analysis of what this page is about.",
+        "inputCount": 2,
+        "inputNames": [
+          "goal",
+          "content"
+        ]
+      }
+    },
+    {
+      "id": "analyzer-ai-analyze",
+      "type": "ai_llm",
+      "position": {
+        "x": 1250,
+        "y": 180
+      },
+      "data": {
+        "model": "gpt-4o-mini",
+        "systemPrompt": "You are a helpful assistant that analyzes web page content and provides clear, concise summaries.",
+        "requestFormat": "openai"
+      }
+    },
+    {
+      "id": "analyzer-output",
+      "type": "output",
+      "position": {
+        "x": 1550,
+        "y": 200
+      },
+      "data": {
+        "label": "analysis_result"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "analyzer-input-url",
+      "target": "analyzer-browser-request",
+      "targetHandle": "url",
+      "id": "e-0-1768434384343"
+    },
+    {
+      "source": "analyzer-browser-session",
+      "target": "analyzer-browser-request",
+      "targetHandle": "session",
+      "id": "e-1-1768434384343"
+    },
+    {
+      "source": "analyzer-browser-request",
+      "target": "analyzer-extract-text",
+      "id": "e-2-1768434384343"
+    },
+    {
+      "source": "analyzer-input-goal",
+      "target": "analyzer-prompt-template",
+      "targetHandle": "goal",
+      "id": "e-3-1768434384343"
+    },
+    {
+      "source": "analyzer-extract-text",
+      "target": "analyzer-prompt-template",
+      "targetHandle": "content",
+      "id": "e-4-1768434384343"
+    },
+    {
+      "source": "analyzer-prompt-template",
+      "target": "analyzer-ai-analyze",
+      "targetHandle": "prompt",
+      "id": "e-5-1768434384343"
+    },
+    {
+      "source": "analyzer-ai-analyze",
+      "target": "analyzer-output",
+      "id": "e-6-1768434384343"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-terminal-read-output"
+description = "Enables the terminal_read_output command without any pre-configured scope."
+commands.allow = ["terminal_read_output"]
+
+[[permission]]
+identifier = "deny-terminal-read-output"
+description = "Denies the terminal_read_output command without any pre-configured scope."
+commands.deny = ["terminal_read_output"]

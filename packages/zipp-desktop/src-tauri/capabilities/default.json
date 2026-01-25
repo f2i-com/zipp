@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0-rc/capabilities",
+  "identifier": "default",
+  "description": "Default capabilities for Zipp Desktop",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:path:default",
+    "shell:allow-open",
+    "dialog:default",
+    "sql:default",
+    "sql:allow-execute",
+    "screenshots:default",
+    "zipp-filesystem:default",
+    "zipp-browser:default",
+    "zipp-terminal:default",
+    {
+      "identifier": "core:app:default",
+      "allow": []
+    }
+  ]
+}

@@ -1,0 +1,848 @@
+@import "tailwindcss";
+
+/* Configure dark mode variant for class-based switching */
+@variant dark (&:where(.dark, .dark *));
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  /* Font */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Accent color (can be customized via ThemeContext) */
+  --accent-primary: 59 130 246;
+  --accent-hover: 96 165 250;
+  --accent-glow: 59 130 246;
+
+  /* Dynamic background tint (can be customized via ThemeContext) */
+  --bg-primary: 15 23 42;
+  --bg-secondary: 30 41 59;
+  --bg-tertiary: 51 65 85;
+
+  /* Default theme colors (dark) - ensures variables are always defined */
+  color-scheme: dark;
+  --color-bg-primary: 15 23 42;
+  --color-bg-secondary: 30 41 59;
+  --color-bg-tertiary: 51 65 85;
+  --color-bg-elevated: 30 41 59;
+  --color-bg-canvas: 15 23 42;
+  --color-text-primary: 226 232 240;
+  --color-text-secondary: 203 213 225;
+  --color-text-tertiary: 148 163 184;
+  --color-text-muted: 100 116 139;
+  --color-border-primary: 51 65 85;
+  --color-border-secondary: 30 41 59;
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+:root.light {
+  color-scheme: light;
+
+  /* Background colors */
+  --color-bg-primary: 248 250 252;
+  --color-bg-secondary: 241 245 249;
+  --color-bg-tertiary: 226 232 240;
+  --color-bg-elevated: 255 255 255;
+  --color-bg-canvas: 241 245 249;
+
+  /* Text colors */
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-tertiary: 100 116 139;
+  --color-text-muted: 148 163 184;
+
+  /* Border colors */
+  --color-border-primary: 203 213 225;
+  --color-border-secondary: 226 232 240;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-glow-accent: 0 0 0 3px rgb(var(--accent-primary) / 0.3);
+  --shadow-glow-green: 0 0 0 3px rgb(34 197 94 / 0.3);
+}
+
+/* ============================================
+   DARK THEME (default)
+   ============================================ */
+:root.dark, :root:not(.light) {
+  color-scheme: dark;
+
+  /* Background colors */
+  --color-bg-primary: 15 23 42;
+  --color-bg-secondary: 30 41 59;
+  --color-bg-tertiary: 51 65 85;
+  --color-bg-elevated: 30 41 59;
+  --color-bg-canvas: 15 23 42;
+
+  /* Text colors */
+  --color-text-primary: 226 232 240;
+  --color-text-secondary: 203 213 225;
+  --color-text-tertiary: 148 163 184;
+  --color-text-muted: 100 116 139;
+
+  /* Border colors */
+  --color-border-primary: 51 65 85;
+  --color-border-secondary: 30 41 59;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-glow-accent: 0 0 0 3px rgb(var(--accent-primary) / 0.3);
+  --shadow-glow-green: 0 0 0 3px rgb(34 197 94 / 0.3);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+/* ============================================
+   GLOBAL FOCUS STATES
+   ============================================ */
+
+/* Improved focus visibility for all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(15 23 42), 0 0 0 4px rgb(59 130 246);
+}
+
+/* Focus within for custom components */
+.focus-ring:focus-within {
+  box-shadow: 0 0 0 2px rgb(15 23 42), 0 0 0 4px rgb(59 130 246);
+}
+
+/* ============================================
+   BUTTON UTILITIES
+   ============================================ */
+
+/* Base button reset */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button sizes */
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.btn-md {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.btn-lg {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Button variants */
+.btn-primary {
+  background-color: rgb(37 99 235);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: rgb(59 130 246);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary {
+  background-color: rgb(51 65 85);
+  color: rgb(226 232 240);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: rgb(71 85 105);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: rgb(203 213 225);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: rgb(51 65 85 / 0.5);
+}
+
+.btn-danger {
+  background-color: rgb(220 38 38);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: rgb(239 68 68);
+}
+
+/* Icon button */
+.btn-icon {
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+.btn-icon-sm {
+  padding: 0.375rem;
+}
+
+/* ============================================
+   INPUT UTILITIES
+   ============================================ */
+
+.input {
+  width: 100%;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 2rem;
+  padding-right: 0.75rem;
+  background-color: rgb(255 255 255);
+  border: 1px solid rgb(203 213 225);
+  border-radius: var(--radius-md);
+  color: rgb(15 23 42);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dark .input {
+  background-color: rgb(15 23 42);
+  border-color: rgb(51 65 85);
+  color: rgb(226 232 240);
+}
+
+.input::placeholder {
+  color: rgb(148 163 184);
+}
+
+.dark .input::placeholder {
+  color: rgb(100 116 139);
+}
+
+.input:hover:not(:disabled) {
+  border-color: rgb(148 163 184);
+}
+
+.dark .input:hover:not(:disabled) {
+  border-color: rgb(71 85 105);
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgb(59 130 246);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   PANEL UTILITIES
+   ============================================ */
+
+.panel {
+  background-color: rgb(255 255 255);
+  border: 1px solid rgb(226 232 240);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.dark .panel {
+  background-color: rgb(15 23 42);
+  border-color: rgb(30 41 59);
+}
+
+.panel-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgb(30 41 59);
+  background-color: rgb(15 23 42 / 0.5);
+}
+
+.panel-body {
+  padding: 1rem;
+}
+
+.panel-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgb(30 41 59);
+  background-color: rgb(15 23 42 / 0.5);
+}
+
+/* ============================================
+   CARD UTILITIES
+   ============================================ */
+
+.card {
+  background-color: rgb(30 41 59);
+  border: 1px solid rgb(51 65 85);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: all var(--transition-fast);
+}
+
+.card-interactive:hover {
+  border-color: rgb(71 85 105);
+  background-color: rgb(30 41 59 / 0.8);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   LIST UTILITIES
+   ============================================ */
+
+.list-item {
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.list-item:hover {
+  background-color: rgb(51 65 85 / 0.5);
+}
+
+.list-item-active {
+  background-color: rgb(59 130 246 / 0.15);
+  color: rgb(147 197 253);
+}
+
+.list-item-active:hover {
+  background-color: rgb(59 130 246 / 0.2);
+}
+
+/* ============================================
+   TRANSITIONS & ANIMATIONS
+   ============================================ */
+
+/* Fade in */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn var(--transition-base) forwards;
+}
+
+/* Slide up */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp var(--transition-base) forwards;
+}
+
+/* Slide down */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown var(--transition-base) forwards;
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn var(--transition-fast) forwards;
+}
+
+/* Blinking cursor animation for streaming */
+@keyframes blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Spin animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Toast Animations */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.animate-toast-enter {
+  animation: toast-enter 0.3s ease-out forwards;
+}
+
+.animate-toast-exit {
+  animation: toast-exit 0.3s ease-in forwards;
+}
+
+/* ============================================
+   REACT FLOW CUSTOMIZATIONS
+   ============================================ */
+
+.react-flow__node {
+  border-radius: var(--radius-lg);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.react-flow__node.selected>div {
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+  border-radius: var(--radius-lg);
+}
+
+.react-flow__handle {
+  /* Force larger handle size for easier clicking */
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  min-height: 1.5rem !important;
+  border-radius: var(--radius-full);
+  border-width: 2px;
+  border-color: rgb(71 85 105);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.react-flow__handle:hover {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  /* No transform - prevents movement that interferes with connecting */
+}
+
+.react-flow__handle-left {
+  left: -0.75rem;
+}
+
+.react-flow__handle-right {
+  right: -0.75rem;
+}
+
+/* Edge styles */
+.react-flow__edge {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke: rgb(100 116 139);
+  stroke-width: 2;
+  pointer-events: stroke;
+  transition: stroke var(--transition-fast), stroke-width var(--transition-fast);
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: rgb(59 130 246);
+  stroke-width: 3;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: rgb(148 163 184);
+  stroke-width: 3;
+}
+
+.react-flow__edge.selected:hover .react-flow__edge-path {
+  stroke: rgb(96 165 250);
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(71 85 105);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) transparent;
+}
+
+/* ============================================
+   FORM ELEMENTS IN REACT FLOW
+   ============================================ */
+
+/* Ensure text selection works in form elements */
+input,
+textarea,
+select,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Allow text selection to be deselected on click */
+.react-flow {
+  user-select: none;
+}
+
+.react-flow__node input,
+.react-flow__node textarea,
+.react-flow__node select {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+/* Prevent React Flow from intercepting mouse events on form elements */
+.react-flow__node input,
+.react-flow__node textarea,
+.react-flow__node select,
+.react-flow__node button {
+  pointer-events: auto;
+}
+
+/* ============================================
+   NODE STATUS ANIMATIONS
+   ============================================ */
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px 0 rgba(59, 130, 246, 0.5),
+      0 0 20px 0 rgba(59, 130, 246, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 10px 2px rgba(59, 130, 246, 0.8),
+      0 0 40px 5px rgba(59, 130, 246, 0.4);
+  }
+}
+
+@keyframes success-flash {
+  0% {
+    box-shadow: 0 0 20px 5px rgba(34, 197, 94, 0.8);
+  }
+
+  100% {
+    box-shadow: none;
+  }
+}
+
+.node-running {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+  border-color: rgb(59 130 246) !important;
+}
+
+.node-completed {
+  animation: success-flash 0.5s ease-out forwards;
+}
+
+.node-error {
+  box-shadow: 0 0 15px 3px rgba(239, 68, 68, 0.6);
+  border-color: rgb(239 68 68) !important;
+}
+
+/* ============================================
+   EMPTY STATE UTILITIES
+   ============================================ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: rgb(148 163 184);
+}
+
+.empty-state-icon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(203 213 225);
+  margin-bottom: 0.25rem;
+}
+
+.empty-state-description {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+/* ============================================
+   SKELETON LOADING
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      rgb(30 41 59) 25%,
+      rgb(51 65 85) 50%,
+      rgb(30 41 59) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-0.5rem);
+  padding: 0.375rem 0.625rem;
+  background-color: rgb(15 23 42);
+  border: 1px solid rgb(51 65 85);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  color: rgb(226 232 240);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+  pointer-events: none;
+  z-index: 50;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-0.25rem);
+}
+
+/* ============================================
+   BADGE UTILITIES
+   ============================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.badge-blue {
+  background-color: rgb(59 130 246 / 0.2);
+  color: rgb(147 197 253);
+}
+
+.badge-green {
+  background-color: rgb(34 197 94 / 0.2);
+  color: rgb(134 239 172);
+}
+
+.badge-red {
+  background-color: rgb(239 68 68 / 0.2);
+  color: rgb(252 165 165);
+}
+
+.badge-amber {
+  background-color: rgb(245 158 11 / 0.2);
+  color: rgb(252 211 77);
+}
+
+.badge-slate {
+  background-color: rgb(100 116 139 / 0.2);
+  color: rgb(203 213 225);
+}

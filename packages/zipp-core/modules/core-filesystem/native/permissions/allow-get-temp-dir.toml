@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-get-temp-dir"
+description = "Allow getting temp directory path"
+commands.allow = ["get_temp_dir"]

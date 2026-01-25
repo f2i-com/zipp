@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "id": "macro-data-agent",
+  "name": "Data Agent",
+  "description": "Process and transform data with AI - extract, clean, format, or analyze any data",
+  "isMacro": true,
+  "tags": ["macro", "data", "transform", "ai", "extract", "analyze"],
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "nodes": [
+    {
+      "id": "input-data",
+      "type": "macro_input",
+      "position": { "x": 100, "y": 100 },
+      "data": { "name": "data", "inputType": "any", "required": true }
+    },
+    {
+      "id": "input-operation",
+      "type": "macro_input",
+      "position": { "x": 100, "y": 250 },
+      "data": { "name": "operation", "inputType": "text", "required": false, "defaultValue": "analyze and summarize" }
+    },
+    {
+      "id": "input-format",
+      "type": "macro_input",
+      "position": { "x": 100, "y": 400 },
+      "data": { "name": "outputFormat", "inputType": "text", "required": false, "defaultValue": "JSON" }
+    },
+    {
+      "id": "format-input",
+      "type": "logic_block",
+      "position": { "x": 350, "y": 100 },
+      "data": { "code": "// Convert input to string\nconst dataStr = typeof $input === 'string' ? $input : JSON.stringify($input, null, 2);\ndataStr" }
+    },
+    {
+      "id": "build-prompt",
+      "type": "template",
+      "position": { "x": 600, "y": 200 },
+      "data": { "inputCount": 3, "inputNames": ["data", "operation", "format"], "template": "Process the following data according to the instructions.\n\n## Operation\n{{operation}}\n\n## Output Format\n{{format}}\n\n## Rules\n- If no operation specified, analyze the data and provide key insights\n- If no output format specified, use the most appropriate format\n- Be precise and accurate\n\n## Input Data\n```\n{{data}}\n```\n\nProvide only the processed result." }
+    },
+    {
+      "id": "ai-process",
+      "type": "ai_llm",
+      "position": { "x": 950, "y": 200 },
+      "data": { "systemPrompt": "You are an expert data processor. Extract, transform, clean, analyze data. Output clean, usable results.", "temperature": 0.1 }
+    },
+    {
+      "id": "parse-output",
+      "type": "logic_block",
+      "position": { "x": 1250, "y": 150 },
+      "data": { "code": "// Try to parse as JSON if it looks like JSON\ntry {\n  const trimmed = $input.trim();\n  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {\n    JSON.parse(trimmed)\n  } else { $input }\n} catch (e) { $input }" }
+    },
+    {
+      "id": "output-result",
+      "type": "macro_output",
+      "position": { "x": 1550, "y": 150 },
+      "data": { "name": "result", "outputType": "any" }
+    },
+    {
+      "id": "output-raw",
+      "type": "macro_output",
+      "position": { "x": 1550, "y": 300 },
+      "data": { "name": "rawResult", "outputType": "text" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "input-data", "sourceHandle": "value", "target": "format-input", "targetHandle": "input" },
+    { "id": "e2", "source": "format-input", "sourceHandle": "output", "target": "build-prompt", "targetHandle": "input" },
+    { "id": "e3", "source": "input-operation", "sourceHandle": "value", "target": "build-prompt", "targetHandle": "input2" },
+    { "id": "e4", "source": "input-format", "sourceHandle": "value", "target": "build-prompt", "targetHandle": "input3" },
+    { "id": "e5", "source": "build-prompt", "sourceHandle": "result", "target": "ai-process", "targetHandle": "prompt" },
+    { "id": "e6", "source": "ai-process", "sourceHandle": "response", "target": "parse-output", "targetHandle": "input" },
+    { "id": "e7", "source": "parse-output", "sourceHandle": "output", "target": "output-result", "targetHandle": "value" },
+    { "id": "e8", "source": "ai-process", "sourceHandle": "response", "target": "output-raw", "targetHandle": "value" }
+  ]
+}

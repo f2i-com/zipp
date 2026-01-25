@@ -1,0 +1,14 @@
+# ACE-Step Music Generation Server Requirements
+
+# Web framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# PyTorch (install separately with CUDA support if needed)
+# pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
+# For nightly (RTX 5090): pip install --pre torch torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+
+# ACE-Step (install from git)
+# pip install git+https://github.com/ace-step/ACE-Step.git

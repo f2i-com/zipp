@@ -1,0 +1,7 @@
+{
+  "name": "ACE-Step Music",
+  "description": "AI music generation with lyrics",
+  "port": 8766,
+  "icon": "music",
+  "color": "#8B5CF6"
+}

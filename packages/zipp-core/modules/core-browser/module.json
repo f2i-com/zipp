@@ -1,0 +1,53 @@
+{
+  "id": "core-browser",
+  "name": "Core Browser",
+  "version": "1.0.0",
+  "description": "HTTP requests and browser automation",
+  "author": "Zipp Team",
+  "category": "Browser",
+  "icon": "globe",
+  "color": "cyan",
+  "nodes": ["browser_session", "browser_request", "browser_extract", "browser_control"],
+  "permissions": ["network"],
+  "runtime": {
+    "typescript": "runtime.ts",
+    "compiler": "compiler.ts",
+    "native": {
+      "plugin": "zipp-browser",
+      "source": "native/src/lib.rs",
+      "cargo": "native/Cargo.toml"
+    }
+  },
+  "ui": {
+    "nodes": [
+      { "nodeType": "browser_session", "componentName": "BrowserSessionNode" },
+      { "nodeType": "browser_request", "componentName": "BrowserRequestNode" },
+      { "nodeType": "browser_extract", "componentName": "BrowserExtractNode" },
+      { "nodeType": "browser_control", "componentName": "BrowserControlNode" }
+    ]
+  },
+  "settings": {
+    "defaultMode": {
+      "type": "select",
+      "label": "Default Session Mode",
+      "description": "Default browser session mode",
+      "default": "http",
+      "options": [
+        { "value": "http", "label": "HTTP Only (fetch-based)" },
+        { "value": "webview", "label": "WebView (Tauri embedded)" },
+        { "value": "headless", "label": "Headless Chrome" }
+      ]
+    },
+    "defaultUserAgent": {
+      "type": "string",
+      "label": "Default User Agent",
+      "description": "Default user agent string for requests"
+    },
+    "defaultTimeout": {
+      "type": "number",
+      "label": "Default Timeout (ms)",
+      "description": "Default timeout for browser operations",
+      "default": 30000
+    }
+  }
+}

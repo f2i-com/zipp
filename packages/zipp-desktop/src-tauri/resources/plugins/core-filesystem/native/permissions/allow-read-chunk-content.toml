@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-read-chunk-content"
+description = "Allow reading file chunks"
+commands.allow = ["read_chunk_content"]

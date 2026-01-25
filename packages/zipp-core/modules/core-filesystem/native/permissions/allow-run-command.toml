@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-run-command"
+description = "Allow running whitelisted commands (ffmpeg, ffprobe)"
+commands.allow = ["run_command"]

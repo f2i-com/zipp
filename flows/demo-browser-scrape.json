@@ -1,0 +1,156 @@
+{
+  "version": "1.0",
+  "id": "flow-browser-scrape",
+  "name": "Web Scraper Demo",
+  "description": "Scrape products from demo site using CSS selectors",
+  "tags": [
+    "browser",
+    "scraping",
+    "desktop-only"
+  ],
+  "createdAt": "2026-01-14T23:46:24.343Z",
+  "updatedAt": "2026-01-14T23:46:24.343Z",
+  "nodes": [
+    {
+      "id": "session",
+      "type": "browser_session",
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "data": {
+        "profile": "chrome_windows"
+      }
+    },
+    {
+      "id": "fetch-page",
+      "type": "browser_request",
+      "position": {
+        "x": 300,
+        "y": 200
+      },
+      "data": {
+        "method": "GET",
+        "url": "http://localhost:3456/scrape-test",
+        "responseFormat": "html",
+        "followRedirects": true
+      }
+    },
+    {
+      "id": "extract-title",
+      "type": "browser_extract",
+      "position": {
+        "x": 600,
+        "y": 50
+      },
+      "data": {
+        "extractionType": "css_selector",
+        "selector": "h1",
+        "extractTarget": "text",
+        "outputFormat": "first"
+      }
+    },
+    {
+      "id": "extract-products",
+      "type": "browser_extract",
+      "position": {
+        "x": 600,
+        "y": 200
+      },
+      "data": {
+        "extractionType": "css_selector",
+        "selector": ".product-name",
+        "extractTarget": "text",
+        "outputFormat": "all"
+      }
+    },
+    {
+      "id": "extract-prices",
+      "type": "browser_extract",
+      "position": {
+        "x": 600,
+        "y": 350
+      },
+      "data": {
+        "extractionType": "css_selector",
+        "selector": ".product-price",
+        "extractTarget": "data-price",
+        "outputFormat": "all"
+      }
+    },
+    {
+      "id": "format-result",
+      "type": "template",
+      "position": {
+        "x": 950,
+        "y": 200
+      },
+      "data": {
+        "template": "Scraping Complete!\\n\\nPage: {{title}}\\n\\nProducts found:\\n{{products}}\\n\\nPrices:\\n{{prices}}",
+        "inputCount": 3,
+        "inputNames": [
+          "title",
+          "products",
+          "prices"
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "position": {
+        "x": 1250,
+        "y": 200
+      },
+      "data": {
+        "label": "scraped_data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "session",
+      "target": "fetch-page",
+      "targetHandle": "session",
+      "id": "e-0-1768434384343"
+    },
+    {
+      "source": "fetch-page",
+      "target": "extract-title",
+      "id": "e-1-1768434384343"
+    },
+    {
+      "source": "fetch-page",
+      "target": "extract-products",
+      "id": "e-2-1768434384343"
+    },
+    {
+      "source": "fetch-page",
+      "target": "extract-prices",
+      "id": "e-3-1768434384343"
+    },
+    {
+      "source": "extract-title",
+      "target": "format-result",
+      "targetHandle": "title",
+      "id": "e-4-1768434384343"
+    },
+    {
+      "source": "extract-products",
+      "target": "format-result",
+      "targetHandle": "products",
+      "id": "e-5-1768434384343"
+    },
+    {
+      "source": "extract-prices",
+      "target": "format-result",
+      "targetHandle": "prices",
+      "id": "e-6-1768434384343"
+    },
+    {
+      "source": "format-result",
+      "target": "output",
+      "id": "e-7-1768434384343"
+    }
+  ]
+}

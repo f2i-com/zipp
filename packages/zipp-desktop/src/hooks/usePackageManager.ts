@@ -1,0 +1,782 @@
+/**
+ * usePackageManager Hook
+ *
+ * Manages loading, unloading, and state of .zipp packages.
+ * Extracted from ZippApp.tsx for maintainability.
+ */
+
+import { useState, useCallback, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+import type {
+  Flow,
+  WorkflowGraph,
+  ZippPackageManifest,
+  ZippPackageManifestWithEmbedded,
+  NodeDefinition,
+  GraphNode,
+  ProjectSettings,
+  PackageNodeModule,
+} from 'zipp-core';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('PackageManager');
+
+// A loaded package with all its flows and macros
+export interface LoadedPackage {
+  manifest: ZippPackageManifest;
+  sourcePath: string;
+  flows: Flow[]; // All flows in the package
+  macros: Flow[]; // All macros in the package
+}
+
+// Reference to an active package flow
+export interface ActivePackageFlow {
+  packageId: string;
+  flowId: string;
+}
+
+// Pending package awaiting trust confirmation
+interface PendingPackage {
+  path: string;
+  manifest: ZippPackageManifest;
+}
+
+// Pending dependencies awaiting resolution
+interface PendingDependencies {
+  packageName: string;
+  packagePath: string;
+  manifest: ZippPackageManifest;
+  dependencies: Array<{ id: string; version?: string }>;
+}
+
+// Changed package notification
+interface ChangedPackage {
+  packageId: string;
+  manifest: ZippPackageManifest;
+}
+
+interface UsePackageManagerOptions {
+  projectFlows: Flow[];
+  projectSettings?: ProjectSettings;
+  onShowToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+  setActiveFlowId: (id: string | null) => void;
+  createFlow: (name: string, graph?: WorkflowGraph) => Flow;
+  updateFlow: (id: string, updates: Partial<Omit<Flow, 'id' | 'createdAt'>>) => void;
+  getSettings: () => ProjectSettings;
+  loadPackageNodes: (packageId: string, packagePath: string, nodes: PackageNodeModule[]) => Promise<Array<{ originalId: string; prefixedId: string; definition: NodeDefinition }>>;
+  unloadPackageNodes: (packageId: string) => void;
+  loadEmbeddedContent: (packageId: string, manifest: ZippPackageManifestWithEmbedded) => Promise<unknown>;
+  unloadEmbeddedContent: (packageId: string) => void;
+}
+
+/**
+ * Prefix custom node types in a flow with the package ID.
+ * This allows flows to use unprefixed node types (e.g., "text_formatter")
+ * which get resolved to their prefixed versions (e.g., "pkg:com.example:text_formatter")
+ * when loaded from a package.
+ *
+ * Also attaches the node definition to each node's data.__definition so GenericNode can render it.
+ */
+export function prefixPackageNodeTypes(
+  flow: Flow,
+  packageId: string,
+  customNodeIds: string[],
+  nodeDefinitions?: Map<string, NodeDefinition>
+): Flow {
+  if (!flow.graph || !flow.graph.nodes || customNodeIds.length === 0) {
+    return flow;
+  }
+
+  // Create a set of custom node IDs for fast lookup
+  const customNodeSet = new Set(customNodeIds);
+
+  // Map nodes and prefix custom node types
+  const prefixedNodes = flow.graph.nodes.map(node => {
+    // Check if this node type is a custom node (unprefixed)
+    if (customNodeSet.has(node.type)) {
+      const prefixedType = `pkg:${packageId}:${node.type}`;
+      const definition = nodeDefinitions?.get(prefixedType);
+      return {
+        ...node,
+        type: prefixedType as GraphNode['type'], // Cast to allow prefixed types
+        data: {
+          ...node.data,
+          // Attach the node definition so GenericNode can render it
+          __definition: definition,
+        },
+      };
+    }
+    return node;
+  });
+
+  return {
+    ...flow,
+    graph: {
+      ...flow.graph,
+      nodes: prefixedNodes as GraphNode[], // Cast since we're allowing prefixed types
+    },
+  };
+}
+
+/**
+ * Apply default provider settings to nodes in a workflow graph.
+ */
+export function applyDefaultProviders(graph: WorkflowGraph, settings: ProjectSettings): WorkflowGraph {
+  const updatedNodes = graph.nodes.map(node => {
+    // AI LLM nodes - apply default AI settings
+    if (node.type === 'ai_llm') {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          endpoint: settings.defaultAIEndpoint || '',
+          model: settings.defaultAIModel || '',
+          apiKeyConstant: settings.defaultAIApiKeyConstant || '',
+          apiKey: '',
+          provider: settings.defaultAIProvider || 'openai',
+        },
+      };
+    }
+    // Image Gen nodes - apply default image settings
+    if (node.type === 'image_gen') {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          endpoint: settings.defaultImageEndpoint || '',
+          model: settings.defaultImageModel || '',
+          apiKeyConstant: settings.defaultImageApiKeyConstant || '',
+          apiFormat: settings.defaultImageProvider || 'openai',
+        },
+      };
+    }
+    // Video Gen nodes - apply default video endpoint
+    if (node.type === 'video_gen') {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          endpoint: settings.defaultVideoEndpoint || 'http://localhost:8188',
+        },
+      };
+    }
+    // ComfyUI Free Memory - apply default ComfyUI URL
+    if (node.type === 'comfyui_free_memory') {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          comfyuiUrl: settings.defaultVideoEndpoint || 'http://127.0.0.1:8188',
+        },
+      };
+    }
+    return node;
+  });
+  return { ...graph, nodes: updatedNodes };
+}
+
+/**
+ * Normalize flow data - handle both flat format (nodes/edges at root)
+ * and nested format (graph: { nodes, edges })
+ */
+export function normalizeFlowData(data: Record<string, unknown>): Partial<Flow> | null {
+  // Check for flat format: { nodes: [...], edges: [...], name, ... }
+  if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+    return {
+      name: data.name as string | undefined,
+      description: data.description as string | undefined,
+      tags: data.tags as string[] | undefined,
+      localOnly: data.localOnly as boolean | undefined,
+      graph: {
+        nodes: data.nodes as WorkflowGraph['nodes'],
+        edges: data.edges as WorkflowGraph['edges'],
+      },
+    };
+  }
+  // Check for nested format: { graph: { nodes, edges }, name, ... }
+  if (data.graph && typeof data.graph === 'object') {
+    const graph = data.graph as Record<string, unknown>;
+    if (Array.isArray(graph.nodes) && Array.isArray(graph.edges)) {
+      return data as Partial<Flow>;
+    }
+  }
+  return null;
+}
+
+export function usePackageManager(options: UsePackageManagerOptions) {
+  const {
+    projectFlows,
+    onShowToast,
+    setActiveFlowId,
+    createFlow,
+    updateFlow,
+    getSettings,
+    loadPackageNodes,
+    unloadPackageNodes,
+    loadEmbeddedContent,
+    unloadEmbeddedContent,
+  } = options;
+
+  // Multi-package state - can load multiple packages, each self-contained
+  const [loadedPackages, setLoadedPackages] = useState<Map<string, LoadedPackage>>(new Map());
+  const [activePackageFlow, setActivePackageFlow] = useState<ActivePackageFlow | null>(null);
+  const [pendingPackage, setPendingPackage] = useState<PendingPackage | null>(null);
+  const [pendingDependencies, setPendingDependencies] = useState<PendingDependencies | null>(null);
+  const [changedPackage, setChangedPackage] = useState<ChangedPackage | null>(null);
+  const [showPackageBrowser, setShowPackageBrowser] = useState(false);
+
+  // Ref to track if package changed notification is already showing
+  const changedPackageRef = useRef<ChangedPackage | null>(null);
+
+  // Helper to load a package's flows and add it to loaded packages
+  const loadPackageFlows = useCallback(async (
+    path: string,
+    manifest: ZippPackageManifest,
+    navigate: boolean = true
+  ): Promise<LoadedPackage> => {
+    // Load package nodes FIRST if defined (to get custom node IDs for prefixing)
+    let customNodeIds: string[] = [];
+    let nodeDefinitions: Map<string, NodeDefinition> = new Map();
+    if (manifest.nodes && manifest.nodes.length > 0) {
+      try {
+        const loadedNodes = await loadPackageNodes(manifest.id, path, manifest.nodes);
+        // Extract original (unprefixed) node IDs for flow prefixing
+        customNodeIds = loadedNodes.map(n => n.originalId);
+        // Build a map of prefixedId -> definition for attaching to flow nodes
+        for (const node of loadedNodes) {
+          nodeDefinitions.set(node.prefixedId, node.definition);
+        }
+        logger.debug(`Loaded ${loadedNodes.length} custom nodes for package ${manifest.id}: ${customNodeIds.join(', ')}`);
+      } catch (err) {
+        logger.warn('Failed to load package nodes', { error: err });
+      }
+    }
+
+    // Load embedded custom nodes and extensions (TypeScript-based)
+    const embeddedManifest = manifest as ZippPackageManifestWithEmbedded;
+    if (embeddedManifest.embeddedCustomNodes?.length || embeddedManifest.embeddedNodeExtensions?.length) {
+      try {
+        const embeddedResults = await loadEmbeddedContent(manifest.id, embeddedManifest);
+        logger.debug(`Loaded embedded content for package ${manifest.id}`, { results: embeddedResults });
+
+        // Add embedded custom node IDs for flow prefixing
+        if (embeddedManifest.embeddedCustomNodes) {
+          for (const node of embeddedManifest.embeddedCustomNodes) {
+            customNodeIds.push(node.id);
+          }
+        }
+      } catch (err) {
+        logger.warn('Failed to load embedded content', { error: err });
+      }
+    }
+
+    // Load all flows from the package
+    let flows: Flow[] = [];
+    for (const flowPath of manifest.flows) {
+      try {
+        const flowContent = await invoke<string>('read_package_flow_content', {
+          packagePath: path,
+          flowPath: flowPath,
+        });
+        let flowData = JSON.parse(flowContent) as Flow;
+        // Prefix custom node types in the flow and attach definitions
+        if (customNodeIds.length > 0) {
+          flowData = prefixPackageNodeTypes(flowData, manifest.id, customNodeIds, nodeDefinitions);
+        }
+        flows.push(flowData);
+      } catch (err) {
+        logger.warn(`Failed to load flow ${flowPath}`, { error: err });
+      }
+    }
+
+    if (flows.length === 0) {
+      throw new Error('No flows found in package');
+    }
+
+    // Load macros from package if present
+    let macros: Flow[] = [];
+    if (manifest.macros && manifest.macros.length > 0) {
+      for (const macroPath of manifest.macros) {
+        try {
+          const macroContent = await invoke<string>('read_package_flow_content', {
+            packagePath: path,
+            flowPath: macroPath,
+          });
+          let macroData = JSON.parse(macroContent) as Flow;
+          // Prefix custom node types in macros too and attach definitions
+          if (customNodeIds.length > 0) {
+            macroData = prefixPackageNodeTypes(macroData, manifest.id, customNodeIds, nodeDefinitions);
+          }
+          macros.push(macroData);
+        } catch (err) {
+          logger.warn(`Failed to load macro ${macroPath}`, { error: err });
+        }
+      }
+      logger.debug(`Loaded ${macros.length} macros from package`);
+    }
+
+    // Create the loaded package
+    const loadedPackage: LoadedPackage = {
+      manifest,
+      sourcePath: path,
+      flows,
+      macros,
+    };
+
+    // Add to loaded packages
+    setLoadedPackages(prev => {
+      const next = new Map(prev);
+      next.set(manifest.id, loadedPackage);
+      return next;
+    });
+
+    // Navigate to the entry flow if requested
+    if (navigate) {
+      const entryFlow = flows.find(f =>
+        manifest.entryFlow.includes(f.id) ||
+        manifest.entryFlow.endsWith(`${f.id}.json`)
+      ) || flows[0];
+
+      setActivePackageFlow({ packageId: manifest.id, flowId: entryFlow.id });
+      setActiveFlowId(null);
+    }
+
+    return loadedPackage;
+  }, [setActiveFlowId, loadPackageNodes, loadEmbeddedContent]);
+
+  // Handle loading a .zipp package from a path
+  const handleLoadPackageFromPath = useCallback(async (packagePath: string) => {
+    try {
+      // Read the package manifest
+      const manifest = await invoke<ZippPackageManifest>('read_package', {
+        packagePath,
+      });
+
+      // Show trust dialog before loading
+      setPendingPackage({ path: packagePath, manifest });
+    } catch (err) {
+      logger.error('Failed to load package', { error: err });
+      onShowToast(`Failed to load package: ${err}`, 'error');
+    }
+  }, [onShowToast]);
+
+  // Handle loading a .zipp package or standalone .json flow via file picker
+  const handleLoadPackage = useCallback(async () => {
+    try {
+      const result = await open({
+        title: 'Load Package or Flow',
+        filters: [
+          { name: 'All Supported', extensions: ['zipp', 'json'] },
+          { name: 'ZIPP Package', extensions: ['zipp'] },
+          { name: 'Flow JSON', extensions: ['json'] },
+        ],
+        multiple: false,
+      });
+
+      if (!result) return;
+
+      const path = typeof result === 'string' ? result : result;
+
+      // Check if it's a standalone JSON flow file
+      if (path.toLowerCase().endsWith('.json')) {
+        // Read the JSON file
+        const fileResult = await invoke<{ content: string }>('plugin:zipp-filesystem|read_file', {
+          path,
+          readAs: 'text',
+        });
+
+        const jsonData = JSON.parse(fileResult.content);
+        const fileName = path.split(/[/\\]/).pop()?.replace('.json', '') || 'Imported Flow';
+
+        // Determine the format and extract flow(s)
+        let flowsToImport: Partial<Flow>[] = [];
+
+        if (jsonData.flows && Array.isArray(jsonData.flows)) {
+          // Project format: { flows: [...], ... }
+          for (const flowItem of jsonData.flows) {
+            const normalized = normalizeFlowData(flowItem);
+            if (normalized) {
+              flowsToImport.push(normalized);
+            }
+          }
+        } else {
+          // Single flow - try to normalize it
+          const normalized = normalizeFlowData(jsonData);
+          if (normalized) {
+            flowsToImport.push(normalized);
+          } else if (jsonData.flow) {
+            // Wrapped flow format: { flow: { ... } }
+            const wrappedNormalized = normalizeFlowData(jsonData.flow);
+            if (wrappedNormalized) {
+              flowsToImport.push(wrappedNormalized);
+            }
+          }
+        }
+
+        // Validate we found valid flows
+        if (flowsToImport.length === 0) {
+          onShowToast('Invalid file: no valid flow data found. Expected nodes and edges arrays.', 'error');
+          return;
+        }
+
+        // Get current project settings to apply defaults
+        const settings = getSettings();
+
+        // Import each valid flow
+        let lastFlow: Flow | null = null;
+        for (const flowData of flowsToImport) {
+          const flowName = flowData.name || fileName;
+
+          // Apply default providers to the graph
+          const graphWithDefaults = applyDefaultProviders(flowData.graph!, settings);
+
+          // Create a new flow with the imported data
+          const newFlow = createFlow(flowName, graphWithDefaults);
+          lastFlow = newFlow;
+
+          // Update with additional properties if present
+          if (flowData.description || flowData.tags || flowData.localOnly) {
+            updateFlow(newFlow.id, {
+              description: flowData.description,
+              tags: flowData.tags,
+              localOnly: flowData.localOnly,
+            });
+          }
+        }
+
+        // Clear any active package flow to ensure we're viewing user flows
+        setActivePackageFlow(null);
+
+        if (flowsToImport.length === 1) {
+          onShowToast(`Flow "${lastFlow?.name || fileName}" imported successfully`, 'success');
+        } else {
+          onShowToast(`${flowsToImport.length} flows imported successfully`, 'success');
+        }
+        return;
+      }
+
+      // Otherwise, load as a .zipp package
+      await handleLoadPackageFromPath(path);
+    } catch (err) {
+      logger.error('Failed to load file', { error: err });
+      onShowToast(`Failed to load file: ${err}`, 'error');
+    }
+  }, [handleLoadPackageFromPath, createFlow, updateFlow, onShowToast, getSettings]);
+
+  // Handle package trust confirmation - load all flows from the package
+  const handlePackageTrustConfirm = useCallback(async (_grantedPermissions: string[]) => {
+    if (!pendingPackage) return;
+
+    try {
+      // Check if package is already loaded
+      if (loadedPackages.has(pendingPackage.manifest.id)) {
+        // Just navigate to it
+        const pkg = loadedPackages.get(pendingPackage.manifest.id)!;
+        const entryFlow = pkg.flows.find(f =>
+          pendingPackage.manifest.entryFlow.includes(f.id) ||
+          pendingPackage.manifest.entryFlow.endsWith(`${f.id}.json`)
+        ) || pkg.flows[0];
+        if (entryFlow) {
+          setActivePackageFlow({ packageId: pkg.manifest.id, flowId: entryFlow.id });
+          setActiveFlowId(null); // Clear user flow selection
+        }
+        setPendingPackage(null);
+        onShowToast(`Switched to package: ${pendingPackage.manifest.name}`, 'info');
+        return;
+      }
+
+      // Check for package dependencies
+      const requiredPackages = pendingPackage.manifest.dependencies?.packages || [];
+      if (requiredPackages.length > 0) {
+        const missingPackages = requiredPackages.filter(dep => !loadedPackages.has(dep.id));
+        if (missingPackages.length > 0) {
+          // Show dependency dialog instead of just a toast
+          setPendingDependencies({
+            packageName: pendingPackage.manifest.name,
+            packagePath: pendingPackage.path,
+            manifest: pendingPackage.manifest,
+            dependencies: requiredPackages,
+          });
+          // Don't proceed with loading yet - wait for dependency resolution
+          return;
+        }
+      }
+
+      // Use the loadPackageFlows helper
+      const loadedPackage = await loadPackageFlows(pendingPackage.path, pendingPackage.manifest, true);
+
+      setPendingPackage(null);
+      onShowToast(`Loaded package: ${pendingPackage.manifest.name} (${loadedPackage.flows.length} flow${loadedPackage.flows.length !== 1 ? 's' : ''})`, 'success');
+    } catch (err) {
+      logger.error('Failed to load package', { error: err });
+      onShowToast(`Failed to load package: ${err}`, 'error');
+      setPendingPackage(null);
+    }
+  }, [pendingPackage, loadedPackages, onShowToast, setActiveFlowId, loadPackageFlows]);
+
+  // Handle dependency package being loaded (from DependencyDialog)
+  const handleDependencyLoaded = useCallback(async (path: string, manifest: ZippPackageManifest) => {
+    // Load the dependency package (don't navigate to it)
+    await loadPackageFlows(path, manifest, false);
+    onShowToast(`Loaded dependency: ${manifest.name}`, 'success');
+  }, [loadPackageFlows, onShowToast]);
+
+  // Handle all dependencies satisfied - continue loading the main package
+  const handleDependenciesSatisfied = useCallback(async () => {
+    if (!pendingDependencies) return;
+
+    try {
+      await loadPackageFlows(
+        pendingDependencies.packagePath,
+        pendingDependencies.manifest,
+        true
+      );
+      onShowToast(
+        `Loaded package: ${pendingDependencies.manifest.name}`,
+        'success'
+      );
+    } catch (err) {
+      logger.error('Failed to load package after dependencies', { error: err });
+      onShowToast(`Failed to load package: ${err}`, 'error');
+    }
+
+    setPendingDependencies(null);
+    setPendingPackage(null);
+  }, [pendingDependencies, loadPackageFlows, onShowToast]);
+
+  // Handle continuing without all dependencies
+  const handleContinueWithoutDeps = useCallback(async () => {
+    if (!pendingDependencies) return;
+
+    try {
+      await loadPackageFlows(
+        pendingDependencies.packagePath,
+        pendingDependencies.manifest,
+        true
+      );
+      onShowToast(
+        `Loaded package: ${pendingDependencies.manifest.name} (some dependencies missing)`,
+        'warning'
+      );
+    } catch (err) {
+      logger.error('Failed to load package', { error: err });
+      onShowToast(`Failed to load package: ${err}`, 'error');
+    }
+
+    setPendingDependencies(null);
+    setPendingPackage(null);
+  }, [pendingDependencies, loadPackageFlows, onShowToast]);
+
+  // Handle closing a specific package
+  const handleClosePackage = useCallback((packageId: string) => {
+    const pkg = loadedPackages.get(packageId);
+    if (!pkg) return;
+
+    // Unload package nodes (path-based and embedded)
+    unloadPackageNodes(packageId);
+    unloadEmbeddedContent(packageId);
+
+    // Remove from loaded packages
+    setLoadedPackages(prev => {
+      const next = new Map(prev);
+      next.delete(packageId);
+      return next;
+    });
+
+    // If we were viewing this package, switch to user flows
+    if (activePackageFlow?.packageId === packageId) {
+      setActivePackageFlow(null);
+      // Select first user flow if available
+      if (projectFlows.length > 0) {
+        setActiveFlowId(projectFlows[0].id);
+      }
+    }
+
+    onShowToast(`Closed package: ${pkg.manifest.name}`, 'info');
+  }, [loadedPackages, activePackageFlow, projectFlows, setActiveFlowId, onShowToast, unloadPackageNodes, unloadEmbeddedContent]);
+
+  // Handle reloading a package that has changed
+  const handleReloadPackage = useCallback(async (packageId: string) => {
+    const pkg = loadedPackages.get(packageId);
+    if (!pkg) {
+      setChangedPackage(null);
+      return;
+    }
+
+    try {
+      // Unload existing package nodes first (path-based and embedded)
+      await unloadPackageNodes(packageId);
+      await unloadEmbeddedContent(packageId);
+
+      // Re-read the manifest
+      const manifest = await invoke<ZippPackageManifest>('read_package', {
+        packagePath: pkg.sourcePath,
+      });
+
+      // Reload package nodes FIRST if defined (to get custom node IDs for prefixing)
+      let customNodeIds: string[] = [];
+      let nodeDefinitions: Map<string, NodeDefinition> = new Map();
+      if (manifest.nodes && manifest.nodes.length > 0) {
+        try {
+          const loadedNodes = await loadPackageNodes(packageId, pkg.sourcePath, manifest.nodes);
+          customNodeIds = loadedNodes.map(n => n.originalId);
+          // Build nodeDefinitions map for attaching to flow nodes
+          for (const node of loadedNodes) {
+            nodeDefinitions.set(node.prefixedId, node.definition);
+          }
+        } catch (err) {
+          logger.warn('Failed to reload package nodes', { error: err });
+        }
+      }
+
+      // Reload embedded custom nodes and extensions (TypeScript-based)
+      const embeddedManifest = manifest as ZippPackageManifestWithEmbedded;
+      if (embeddedManifest.embeddedCustomNodes?.length || embeddedManifest.embeddedNodeExtensions?.length) {
+        try {
+          await loadEmbeddedContent(packageId, embeddedManifest);
+          // Add embedded custom node IDs for flow prefixing
+          if (embeddedManifest.embeddedCustomNodes) {
+            for (const node of embeddedManifest.embeddedCustomNodes) {
+              customNodeIds.push(node.id);
+            }
+          }
+        } catch (err) {
+          logger.warn('Failed to reload embedded content', { error: err });
+        }
+      }
+
+      // Re-load all flows from the package (with node type prefixing)
+      let flows: Flow[] = [];
+      for (const flowPath of manifest.flows) {
+        try {
+          const flowContent = await invoke<string>('read_package_flow_content', {
+            packagePath: pkg.sourcePath,
+            flowPath: flowPath,
+          });
+          let flowData = JSON.parse(flowContent) as Flow;
+          // Prefix custom node types in the flow and attach definitions
+          if (customNodeIds.length > 0) {
+            flowData = prefixPackageNodeTypes(flowData, packageId, customNodeIds, nodeDefinitions);
+          }
+          flows.push(flowData);
+        } catch (err) {
+          logger.warn(`Failed to reload flow ${flowPath}`, { error: err });
+        }
+      }
+
+      if (flows.length === 0) {
+        throw new Error('No flows found in package');
+      }
+
+      // Re-load macros from package if present (with node type prefixing)
+      let macros: Flow[] = [];
+      if (manifest.macros && manifest.macros.length > 0) {
+        for (const macroPath of manifest.macros) {
+          try {
+            const macroContent = await invoke<string>('read_package_flow_content', {
+              packagePath: pkg.sourcePath,
+              flowPath: macroPath,
+            });
+            let macroData = JSON.parse(macroContent) as Flow;
+            // Prefix custom node types in macros too and attach definitions
+            if (customNodeIds.length > 0) {
+              macroData = prefixPackageNodeTypes(macroData, packageId, customNodeIds, nodeDefinitions);
+            }
+            macros.push(macroData);
+          } catch (err) {
+            logger.warn(`Failed to reload macro ${macroPath}`, { error: err });
+          }
+        }
+      }
+
+      // Update the loaded package
+      const updatedPackage: LoadedPackage = {
+        manifest,
+        sourcePath: pkg.sourcePath,
+        flows,
+        macros,
+      };
+
+      setLoadedPackages(prev => {
+        const next = new Map(prev);
+        next.set(packageId, updatedPackage);
+        return next;
+      });
+
+      // If we were viewing this package, stay on it but refresh
+      if (activePackageFlow?.packageId === packageId) {
+        // Try to stay on the same flow, or go to first flow
+        const currentFlowStillExists = flows.find(f => f.id === activePackageFlow.flowId);
+        if (!currentFlowStillExists && flows.length > 0) {
+          setActivePackageFlow({ packageId, flowId: flows[0].id });
+        }
+      }
+
+      setChangedPackage(null);
+      onShowToast(`Reloaded package: ${manifest.name} v${manifest.version}`, 'success');
+    } catch (err) {
+      logger.error('Failed to reload package', { error: err });
+      onShowToast(`Failed to reload package: ${err}`, 'error');
+      setChangedPackage(null);
+    }
+  }, [loadedPackages, activePackageFlow, onShowToast, unloadPackageNodes, loadPackageNodes, unloadEmbeddedContent, loadEmbeddedContent]);
+
+  // Handle selecting a package flow
+  const handleSelectPackageFlow = useCallback((packageId: string, flowId: string) => {
+    setActivePackageFlow({ packageId, flowId });
+    setActiveFlowId(null); // Clear user flow selection
+  }, [setActiveFlowId]);
+
+  // Handle package change notification
+  const handlePackageChanged = useCallback((packageId: string, manifest: ZippPackageManifest) => {
+    // Only show one notification at a time
+    if (!changedPackageRef.current) {
+      changedPackageRef.current = { packageId, manifest };
+      setChangedPackage({ packageId, manifest });
+    }
+  }, []);
+
+  // Clear package change notification
+  const clearChangedPackage = useCallback(() => {
+    changedPackageRef.current = null;
+    setChangedPackage(null);
+  }, []);
+
+  // Get currently active package and flow (if viewing a package)
+  const activePackage = activePackageFlow ? loadedPackages.get(activePackageFlow.packageId) : null;
+  const activePackageFlowData = activePackage?.flows.find(f => f.id === activePackageFlow?.flowId);
+  const activePackageMacros = activePackage?.macros || [];
+
+  return {
+    // State
+    loadedPackages,
+    activePackageFlow,
+    activePackage,
+    activePackageFlowData,
+    activePackageMacros,
+    pendingPackage,
+    pendingDependencies,
+    changedPackage,
+    showPackageBrowser,
+
+    // Setters
+    setActivePackageFlow,
+    setPendingPackage,
+    setPendingDependencies,
+    setShowPackageBrowser,
+    clearChangedPackage,
+
+    // Handlers
+    handleLoadPackage,
+    handleLoadPackageFromPath,
+    handlePackageTrustConfirm,
+    handleDependencyLoaded,
+    handleDependenciesSatisfied,
+    handleContinueWithoutDeps,
+    handleClosePackage,
+    handleReloadPackage,
+    handleSelectPackageFlow,
+    handlePackageChanged,
+  };
+}

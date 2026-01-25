@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-native-copy-file"
+description = "Enables the native_copy_file command without any pre-configured scope."
+commands.allow = ["native_copy_file"]
+
+[[permission]]
+identifier = "deny-native-copy-file"
+description = "Denies the native_copy_file command without any pre-configured scope."
+commands.deny = ["native_copy_file"]

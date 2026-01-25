@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-evaluate"
+description = "Allow evaluating JavaScript in webview"
+commands.allow = ["webview_evaluate"]

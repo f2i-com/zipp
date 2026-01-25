@@ -1,0 +1,70 @@
+{
+  "id": "text_formatter",
+  "name": "Text Formatter",
+  "description": "Formats text with various transformations like uppercase, lowercase, title case, and more",
+  "icon": "type",
+  "color": "emerald",
+  "inputs": [
+    {
+      "id": "text",
+      "name": "Text",
+      "type": "string",
+      "position": "left",
+      "required": true,
+      "description": "The input text to format"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "output",
+      "name": "Formatted",
+      "type": "string",
+      "position": "right",
+      "description": "The formatted text output"
+    },
+    {
+      "id": "length",
+      "name": "Length",
+      "type": "number",
+      "position": "right",
+      "description": "Character count of the formatted text"
+    }
+  ],
+  "properties": [
+    {
+      "id": "format",
+      "name": "Format",
+      "type": "select",
+      "default": "uppercase",
+      "description": "The text transformation to apply",
+      "options": [
+        { "value": "uppercase", "label": "UPPERCASE" },
+        { "value": "lowercase", "label": "lowercase" },
+        { "value": "titlecase", "label": "Title Case" },
+        { "value": "reverse", "label": "esreveR" },
+        { "value": "trim", "label": "Trim Whitespace" }
+      ]
+    },
+    {
+      "id": "prefix",
+      "name": "Prefix",
+      "type": "string",
+      "default": "",
+      "description": "Text to add before the formatted output"
+    },
+    {
+      "id": "suffix",
+      "name": "Suffix",
+      "type": "string",
+      "default": "",
+      "description": "Text to add after the formatted output"
+    }
+  ],
+  "compiler": {
+    "template": "// Text Formatter: {{nodeId}}\nlet {{outputVar}} = {{inputs.text}};\nif ({{outputVar}} == null) { {{outputVar}} = ''; }\nlet format_{{sanitizedId}} = {{props.format}};\nlet prefix_{{sanitizedId}} = {{props.prefix}};\nlet suffix_{{sanitizedId}} = {{props.suffix}};\nif (format_{{sanitizedId}} == 'uppercase') {\n  {{outputVar}} = {{outputVar}}.toUpperCase();\n} else if (format_{{sanitizedId}} == 'lowercase') {\n  {{outputVar}} = {{outputVar}}.toLowerCase();\n} else if (format_{{sanitizedId}} == 'titlecase') {\n  let words_{{sanitizedId}} = {{outputVar}}.split(' ');\n  let result_{{sanitizedId}} = '';\n  let i_{{sanitizedId}} = 0;\n  while (i_{{sanitizedId}} < words_{{sanitizedId}}.length) {\n    let word_{{sanitizedId}} = words_{{sanitizedId}}[i_{{sanitizedId}}];\n    if (word_{{sanitizedId}}.length > 0) {\n      let first_{{sanitizedId}} = word_{{sanitizedId}}.charAt(0).toUpperCase();\n      let rest_{{sanitizedId}} = word_{{sanitizedId}}.slice(1).toLowerCase();\n      if (i_{{sanitizedId}} > 0) { result_{{sanitizedId}} = result_{{sanitizedId}} + ' '; }\n      result_{{sanitizedId}} = result_{{sanitizedId}} + first_{{sanitizedId}} + rest_{{sanitizedId}};\n    }\n    i_{{sanitizedId}} = i_{{sanitizedId}} + 1;\n  }\n  {{outputVar}} = result_{{sanitizedId}};\n} else if (format_{{sanitizedId}} == 'reverse') {\n  {{outputVar}} = {{outputVar}}.split('').reverse().join('');\n} else if (format_{{sanitizedId}} == 'trim') {\n  {{outputVar}} = {{outputVar}}.trim();\n}\n{{outputVar}} = prefix_{{sanitizedId}} + {{outputVar}} + suffix_{{sanitizedId}};\nlet length_{{sanitizedId}} = {{outputVar}}.length;",
+    "outputVariable": "{{outputVar}}",
+    "additionalOutputs": {
+      "length": "length_{{sanitizedId}}"
+    }
+  }
+}

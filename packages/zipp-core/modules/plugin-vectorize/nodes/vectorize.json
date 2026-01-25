@@ -1,0 +1,116 @@
+{
+  "id": "vectorize",
+  "name": "Vectorize Image",
+  "description": "Convert raster images (JPEG, PNG) to vector SVG format using color quantization and path tracing.",
+  "doc": "Convert raster images to scalable SVG vectors.\n\nProcess:\n• Color quantization - reduces to specified palette\n• Path tracing - converts pixels to vector paths\n• Optimization - minimizes SVG file size\n\nSettings:\n• Colors - fewer = simpler, more = detailed\n• Quality - fast vs detailed tracing\n• Smoothness - path curve smoothing\n• Min Area - removes tiny shapes\n\nBest For:\n• Logos and icons\n• Simple illustrations\n• Images with solid colors\n\nTip: Use 'Detailed' quality for text or fine lines.",
+  "icon": "vector-square",
+  "color": "purple",
+  "tags": ["image", "vector", "svg", "convert", "trace"],
+  "flowplan": {
+    "stepTypes": ["vectorize", "image_to_svg"],
+    "fieldMapping": {
+      "image": "image"
+    },
+    "templateFields": ["outputPath"],
+    "inputHandleMapping": {
+      "image": "image"
+    }
+  },
+  "inputs": [
+    {
+      "id": "image",
+      "name": "Image",
+      "type": "image",
+      "position": "left",
+      "required": true,
+      "description": "Input raster image (path, URL, or base64 data URL)"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "svg",
+      "name": "SVG",
+      "type": "string",
+      "position": "right",
+      "description": "Output SVG file path"
+    }
+  ],
+  "properties": [
+    {
+      "id": "outputPath",
+      "name": "Output Path",
+      "type": "string",
+      "default": "",
+      "placeholder": "Auto-generate in Downloads",
+      "description": "Output SVG file path (leave empty for auto)"
+    },
+    {
+      "id": "colorCount",
+      "name": "Colors",
+      "type": "number",
+      "default": 16,
+      "min": 2,
+      "max": 64,
+      "description": "Number of colors in the output"
+    },
+    {
+      "id": "quality",
+      "name": "Quality",
+      "type": "select",
+      "default": "balanced",
+      "options": [
+        { "value": "fast", "label": "Fast" },
+        { "value": "balanced", "label": "Balanced" },
+        { "value": "high", "label": "High Quality" },
+        { "value": "detailed", "label": "Detailed" }
+      ],
+      "description": "Quality level (detailed preserves text/fine lines)"
+    },
+    {
+      "id": "smoothness",
+      "name": "Smoothness",
+      "type": "number",
+      "default": 1.0,
+      "min": 0.1,
+      "max": 5.0,
+      "step": 0.1,
+      "description": "Path smoothing level"
+    },
+    {
+      "id": "minArea",
+      "name": "Min Area",
+      "type": "number",
+      "default": 4,
+      "min": 1,
+      "max": 100,
+      "description": "Minimum shape area in pixels"
+    },
+    {
+      "id": "removeBackground",
+      "name": "Remove Background",
+      "type": "boolean",
+      "default": false,
+      "description": "Remove detected background color"
+    },
+    {
+      "id": "optimize",
+      "name": "Optimize SVG",
+      "type": "boolean",
+      "default": true,
+      "description": "Optimize SVG for smaller file size"
+    }
+  ],
+  "compiler": {
+    "template": "{{await}}Vectorize.convert({{input}}, {{prop.outputPath}}, {{prop.colorCount}}, {{prop.quality}}, {{prop.smoothness}}, {{prop.minArea}}, {{prop.removeBackground}}, {{prop.optimize}}, \"{{nodeId}}\")",
+    "async": true,
+    "abortable": true,
+    "statusTracking": true
+  },
+  "runtime": {
+    "streaming": false
+  },
+  "ui": {
+    "width": 280,
+    "resizable": false
+  }
+}

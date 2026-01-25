@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-navigate"
+description = "Allow navigating webview to URLs"
+commands.allow = ["webview_navigate"]

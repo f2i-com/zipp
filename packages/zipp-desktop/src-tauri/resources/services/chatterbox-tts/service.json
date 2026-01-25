@@ -1,0 +1,8 @@
+{
+  "name": "Chatterbox TTS",
+  "description": "Text-to-speech with voice cloning",
+  "category": "tts",
+  "port": 8765,
+  "icon": "mic",
+  "color": "#10B981"
+}

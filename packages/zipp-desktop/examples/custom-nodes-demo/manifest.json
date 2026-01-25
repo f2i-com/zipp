@@ -1,0 +1,147 @@
+{
+  "formatVersion": "1.0",
+  "id": "com.zipp.custom-nodes-demo",
+  "name": "Custom Nodes & Extensions Demo",
+  "version": "2.0.0",
+  "description": "Demonstrates TypeScript-based custom nodes in Zipp packages. Includes Text Formatter, JSON Extractor nodes, and AI/LLM extension.",
+  "author": "ZIPP Team",
+  "license": "Apache-2.0",
+  "tags": ["example", "custom-nodes", "typescript", "demo"],
+  "entryFlow": "flows/demo.flow.json",
+  "flows": [
+    "flows/demo.flow.json"
+  ],
+  "nodes": [
+    {
+      "path": "custom-nodes"
+    }
+  ],
+  "assets": [],
+  "dependencies": {
+    "zippVersion": ">=0.1.0"
+  },
+  "permissions": [],
+  "isolation": {
+    "sandboxed": true,
+    "networkAccess": false
+  },
+  "embeddedCustomNodes": [
+    {
+      "id": "ts_text_formatter",
+      "name": "TS Text Formatter",
+      "description": "Format text with various transformations (TypeScript-based)",
+      "category": "Text",
+      "icon": "type",
+      "inputs": [
+        { "id": "text", "name": "Input Text", "type": "string", "required": true }
+      ],
+      "outputs": [
+        { "id": "result", "name": "Formatted Text", "type": "string" },
+        { "id": "length", "name": "Length", "type": "number" }
+      ],
+      "properties": [
+        {
+          "id": "format",
+          "name": "Format",
+          "type": "select",
+          "default": "uppercase",
+          "options": [
+            { "value": "uppercase", "label": "UPPERCASE" },
+            { "value": "lowercase", "label": "lowercase" },
+            { "value": "titlecase", "label": "Title Case" },
+            { "value": "reverse", "label": "Reverse" }
+          ]
+        },
+        {
+          "id": "prefix",
+          "name": "Prefix",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "suffix",
+          "name": "Suffix",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "trim",
+          "name": "Trim Whitespace",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "source": {
+        "compiler": "interface CompileContext {\n  node: { id: string; type: string; data: Record<string, unknown> };\n  inputs: Map<string, string>;\n  outputVar: string;\n  sanitizedId: string;\n  escapeString: (str: string) => string;\n}\n\nexport function compile(ctx: CompileContext): string {\n  const textInput = ctx.inputs.get('text') || 'null';\n  const format = ctx.node.data?.format || 'uppercase';\n  const prefix = ctx.node.data?.prefix || '';\n  const suffix = ctx.node.data?.suffix || '';\n  const trim = ctx.node.data?.trim === true;\n  \n  return `\n  // --- TS Text Formatter: ${ctx.node.id} ---\n  let ${ctx.outputVar}_result = null;\n  let ${ctx.outputVar}_length = 0;\n  (function() {\n    const text = ${textInput};\n    if (text !== null && text !== undefined) {\n      let strText = String(text);\n      const shouldTrim = ${trim};\n      if (shouldTrim) {\n        strText = strText.trim();\n      }\n      const format = \"${format}\";\n      let formatted = strText;\n      if (format === 'uppercase') {\n        formatted = strText.toUpperCase();\n      } else if (format === 'lowercase') {\n        formatted = strText.toLowerCase();\n      } else if (format === 'titlecase') {\n        const words = strText.split(' ');\n        let titleResult = '';\n        for (const word of words) {\n          if (word.length > 0) {\n            if (titleResult.length > 0) {\n              titleResult = titleResult + ' ';\n            }\n            titleResult = titleResult + word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();\n          }\n        }\n        formatted = titleResult;\n      } else if (format === 'reverse') {\n        formatted = strText.split('').reverse().join('');\n      }\n      ${ctx.outputVar}_result = \"${prefix}\" + formatted + \"${suffix}\";\n      ${ctx.outputVar}_length = ${ctx.outputVar}_result.length;\n    }\n  })();\n  workflow_context[\"${ctx.node.id}\"] = ${ctx.outputVar}_result;\n  workflow_context[\"${ctx.node.id}_length\"] = ${ctx.outputVar}_length;\n`;\n}\n",
+        "runtime": "export async function execute(inputs: Record<string, unknown>): Promise<{ result: string; length: number }> {\n  let text = String(inputs.text || '');\n  const format = String(inputs.format || 'uppercase');\n  const prefix = String(inputs.prefix || '');\n  const suffix = String(inputs.suffix || '');\n  const trim = inputs.trim === true;\n  \n  if (trim) {\n    text = text.trim();\n  }\n  \n  let result: string;\n  switch (format) {\n    case 'uppercase':\n      result = text.toUpperCase();\n      break;\n    case 'lowercase':\n      result = text.toLowerCase();\n      break;\n    case 'titlecase':\n      result = text.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');\n      break;\n    case 'reverse':\n      result = text.split('').reverse().join('');\n      break;\n    default:\n      result = text;\n  }\n  \n  result = prefix + result + suffix;\n  return { result, length: result.length };\n}\n"
+      }
+    },
+    {
+      "id": "ts_json_parser",
+      "name": "TS JSON Parser",
+      "description": "Parse JSON and extract values by path (TypeScript-based)",
+      "category": "Data",
+      "icon": "braces",
+      "inputs": [
+        { "id": "json", "name": "JSON Input", "type": "string", "required": true }
+      ],
+      "outputs": [
+        { "id": "value", "name": "Extracted Value", "type": "any" },
+        { "id": "parsed", "name": "Parsed Object", "type": "object" },
+        { "id": "valid", "name": "Is Valid", "type": "boolean" }
+      ],
+      "properties": [
+        {
+          "id": "path",
+          "name": "JSON Path",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "defaultValue",
+          "name": "Default Value",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "stringify",
+          "name": "Stringify Output",
+          "type": "boolean",
+          "default": false
+        }
+      ],
+      "source": {
+        "compiler": "interface CompileContext {\n  node: { id: string; type: string; data: Record<string, unknown> };\n  inputs: Map<string, string>;\n  outputVar: string;\n  sanitizedId: string;\n  escapeString: (str: string) => string;\n}\n\nexport function compile(ctx: CompileContext): string {\n  const jsonInput = ctx.inputs.get('json') || 'null';\n  const path = ctx.node.data?.path || '';\n  const defaultValue = ctx.node.data?.defaultValue || '';\n  const stringify = ctx.node.data?.stringify === true;\n  \n  return `\n  // --- TS JSON Parser: ${ctx.node.id} ---\n  let ${ctx.outputVar}_value = null;\n  let ${ctx.outputVar}_parsed = null;\n  let ${ctx.outputVar}_valid = false;\n  (function() {\n    const jsonStr = ${jsonInput};\n    const jsonPath = \"${path}\";\n    const defaultVal = \"${defaultValue}\";\n    const shouldStringify = ${stringify};\n    try {\n      const parsedObj = JSON.parse(jsonStr);\n      ${ctx.outputVar}_parsed = parsedObj;\n      ${ctx.outputVar}_valid = true;\n      \n      if (jsonPath && jsonPath.length > 0) {\n        const parts = jsonPath.split('.');\n        let current = parsedObj;\n        for (const part of parts) {\n          if (current !== null && current !== undefined && typeof current === 'object' && current[part] !== undefined) {\n            current = current[part];\n          } else {\n            current = null;\n            break;\n          }\n        }\n        ${ctx.outputVar}_value = current !== null ? current : (defaultVal || null);\n      } else {\n        ${ctx.outputVar}_value = parsedObj;\n      }\n      if (shouldStringify && ${ctx.outputVar}_value !== null) {\n        ${ctx.outputVar}_value = JSON.stringify(${ctx.outputVar}_value);\n      }\n    } catch (e) {\n      ${ctx.outputVar}_valid = false;\n      ${ctx.outputVar}_value = defaultVal || null;\n    }\n  })();\n  workflow_context[\"${ctx.node.id}\"] = ${ctx.outputVar}_value;\n  workflow_context[\"${ctx.node.id}_parsed\"] = ${ctx.outputVar}_parsed;\n  workflow_context[\"${ctx.node.id}_valid\"] = ${ctx.outputVar}_valid;\n`;\n}\n",
+        "runtime": "export async function execute(inputs: Record<string, unknown>): Promise<{ value: unknown; parsed: unknown; valid: boolean }> {\n  const jsonStr = String(inputs.json || '');\n  const path = String(inputs.path || '');\n  const defaultValue = inputs.defaultValue !== undefined ? inputs.defaultValue : null;\n  const stringify = inputs.stringify === true;\n  \n  try {\n    const parsed = JSON.parse(jsonStr);\n    let value: unknown = parsed;\n    \n    if (path) {\n      const parts = path.split('.');\n      for (const part of parts) {\n        if (value && typeof value === 'object' && (value as Record<string, unknown>)[part] !== undefined) {\n          value = (value as Record<string, unknown>)[part];\n        } else {\n          value = null;\n          break;\n        }\n      }\n    }\n    \n    if (value === null && defaultValue !== null) {\n      value = defaultValue;\n    }\n    \n    if (stringify && value !== null) {\n      value = JSON.stringify(value);\n    }\n    \n    return { value, parsed, valid: true };\n  } catch {\n    return { value: defaultValue, parsed: null, valid: false };\n  }\n}\n"
+      }
+    }
+  ],
+  "embeddedNodeExtensions": [
+    {
+      "id": "custom_ai_provider",
+      "name": "Custom AI Provider Extension",
+      "description": "Adds a custom AI provider option to the AI/LLM node",
+      "extends": "ai_llm",
+      "additionalInputs": [
+        {
+          "id": "custom_endpoint",
+          "name": "Custom Endpoint",
+          "type": "string",
+          "required": false,
+          "defaultValue": ""
+        }
+      ],
+      "additionalProperties": [
+        {
+          "id": "custom_api_key",
+          "name": "Custom API Key",
+          "type": "string",
+          "group": "Custom Provider"
+        }
+      ],
+      "source": {
+        "runtimeHook": "interface RuntimeContext {\n  log: (level: string, message: string) => void;\n  nodeId: string;\n  nodeData: Record<string, unknown>;\n}\n\nexport function preExecute(inputs: Record<string, unknown>, ctx: RuntimeContext): Record<string, unknown> {\n  if (inputs.custom_endpoint) {\n    ctx.log('info', `[CustomAI] Using custom endpoint: ${inputs.custom_endpoint}`);\n    return {\n      ...inputs,\n      _useCustomProvider: true,\n      _customEndpoint: inputs.custom_endpoint\n    };\n  }\n  return inputs;\n}\n\nexport function postExecute(result: unknown, inputs: Record<string, unknown>, ctx: RuntimeContext): unknown {\n  if (inputs._useCustomProvider) {\n    ctx.log('info', '[CustomAI] Response from custom provider processed');\n  }\n  return result;\n}\n"
+      }
+    }
+  ]
+}

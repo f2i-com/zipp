@@ -1,0 +1,43 @@
+{
+  "id": "plugin-vectorize",
+  "name": "Raster to Vector",
+  "version": "1.0.0",
+  "description": "Convert raster images (JPEG, PNG) to vector SVG format using color quantization and path tracing",
+  "author": "Zipp Team",
+  "category": "Image",
+  "icon": "vector-square",
+  "color": "purple",
+  "nodes": ["vectorize"],
+  "permissions": ["filesystem"],
+  "runtime": {
+    "typescript": "runtime.ts",
+    "compiler": "compiler.ts"
+  },
+  "ui": {
+    "nodes": [
+      { "nodeType": "vectorize", "componentName": "VectorizeNode" }
+    ]
+  },
+  "settings": {
+    "defaultColorCount": {
+      "type": "number",
+      "label": "Default Color Count",
+      "description": "Default number of colors for vectorization",
+      "default": 16,
+      "min": 2,
+      "max": 64
+    },
+    "defaultQuality": {
+      "type": "select",
+      "label": "Default Quality",
+      "description": "Default quality level for vectorization",
+      "default": "balanced",
+      "options": [
+        { "value": "fast", "label": "Fast" },
+        { "value": "balanced", "label": "Balanced" },
+        { "value": "high", "label": "High Quality" },
+        { "value": "detailed", "label": "Detailed (Text/Fine Lines)" }
+      ]
+    }
+  }
+}

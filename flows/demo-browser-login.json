@@ -1,0 +1,216 @@
+{
+  "version": "1.0",
+  "id": "flow-browser-login",
+  "name": "Browser Login & Scrape",
+  "description": "Login to demo site, maintain session cookies, and fetch protected dashboard",
+  "tags": [
+    "browser",
+    "login",
+    "scraping",
+    "desktop-only"
+  ],
+  "createdAt": "2026-01-14T23:46:24.343Z",
+  "updatedAt": "2026-01-14T23:46:24.343Z",
+  "nodes": [
+    {
+      "id": "input-username",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "data": {
+        "label": "Username",
+        "value": "demo"
+      }
+    },
+    {
+      "id": "input-password",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "data": {
+        "label": "Password",
+        "value": "password123"
+      }
+    },
+    {
+      "id": "session",
+      "type": "browser_session",
+      "position": {
+        "x": 50,
+        "y": 350
+      },
+      "data": {
+        "profile": "chrome_windows"
+      }
+    },
+    {
+      "id": "template-login-body",
+      "type": "template",
+      "position": {
+        "x": 350,
+        "y": 150
+      },
+      "data": {
+        "template": "{\"username\": \"{{username}}\", \"password\": \"{{password}}\"}",
+        "inputCount": 2,
+        "inputNames": [
+          "username",
+          "password"
+        ]
+      }
+    },
+    {
+      "id": "login-request",
+      "type": "browser_request",
+      "position": {
+        "x": 650,
+        "y": 200
+      },
+      "data": {
+        "method": "POST",
+        "url": "http://localhost:3456/api/login",
+        "bodyType": "json",
+        "customHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+        "responseFormat": "json",
+        "followRedirects": true,
+        "maxRedirects": 5
+      }
+    },
+    {
+      "id": "extract-login",
+      "type": "browser_extract",
+      "position": {
+        "x": 950,
+        "y": 200
+      },
+      "data": {
+        "extractionType": "regex",
+        "pattern": "\"name\":\\s*\"([^\"]+)\"",
+        "outputFormat": "first"
+      }
+    },
+    {
+      "id": "dashboard-request",
+      "type": "browser_request",
+      "position": {
+        "x": 1250,
+        "y": 200
+      },
+      "data": {
+        "method": "GET",
+        "url": "http://localhost:3456/api/dashboard",
+        "responseFormat": "json",
+        "followRedirects": true
+      }
+    },
+    {
+      "id": "extract-dashboard",
+      "type": "browser_extract",
+      "position": {
+        "x": 1550,
+        "y": 200
+      },
+      "data": {
+        "extractionType": "regex",
+        "pattern": "\"message\":\\s*\"([^\"]+)\"",
+        "outputFormat": "first"
+      }
+    },
+    {
+      "id": "format-output",
+      "type": "template",
+      "position": {
+        "x": 1550,
+        "y": 400
+      },
+      "data": {
+        "template": "Login & Dashboard Demo Complete!\\n\\nLogged in as: {{login_name}}\\n\\nDashboard says: {{dashboard_msg}}\\n\\nThis demonstrates:\\n- Session cookies persist between requests\\n- Protected content requires authentication\\n- Multi-step web automation",
+        "inputCount": 2,
+        "inputNames": [
+          "login_name",
+          "dashboard_msg"
+        ]
+      }
+    },
+    {
+      "id": "output-final",
+      "type": "output",
+      "position": {
+        "x": 1850,
+        "y": 300
+      },
+      "data": {
+        "label": "result"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "session",
+      "target": "login-request",
+      "targetHandle": "session",
+      "id": "e-0-1768434384343"
+    },
+    {
+      "source": "session",
+      "target": "dashboard-request",
+      "targetHandle": "session",
+      "id": "e-1-1768434384343"
+    },
+    {
+      "source": "input-username",
+      "target": "template-login-body",
+      "targetHandle": "username",
+      "id": "e-2-1768434384343"
+    },
+    {
+      "source": "input-password",
+      "target": "template-login-body",
+      "targetHandle": "password",
+      "id": "e-3-1768434384343"
+    },
+    {
+      "source": "template-login-body",
+      "target": "login-request",
+      "targetHandle": "body",
+      "id": "e-4-1768434384343"
+    },
+    {
+      "source": "login-request",
+      "target": "extract-login",
+      "id": "e-5-1768434384343"
+    },
+    {
+      "source": "extract-login",
+      "target": "dashboard-request",
+      "targetHandle": "trigger",
+      "id": "e-6-1768434384343"
+    },
+    {
+      "source": "dashboard-request",
+      "target": "extract-dashboard",
+      "id": "e-7-1768434384343"
+    },
+    {
+      "source": "extract-login",
+      "target": "format-output",
+      "targetHandle": "login_name",
+      "id": "e-8-1768434384343"
+    },
+    {
+      "source": "extract-dashboard",
+      "target": "format-output",
+      "targetHandle": "dashboard_msg",
+      "id": "e-9-1768434384343"
+    },
+    {
+      "source": "format-output",
+      "target": "output-final",
+      "id": "e-10-1768434384343"
+    }
+  ]
+}

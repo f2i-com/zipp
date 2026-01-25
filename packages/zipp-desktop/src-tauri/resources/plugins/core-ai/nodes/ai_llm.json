@@ -1,0 +1,306 @@
+{
+  "id": "ai_llm",
+  "name": "AI LLM",
+  "description": "Send prompts to an LLM (Language Model) and receive generated responses. Supports OpenAI-compatible APIs.",
+  "doc": "Connect to AI language models like GPT-4, Claude, Gemini, or local models via Ollama/LM Studio.\n\nSupported Providers:\n• OpenAI (GPT-4, GPT-4o, etc.)\n• Anthropic (Claude 3, Claude 3.5)\n• Google AI (Gemini Pro, Flash)\n• OpenRouter (access multiple models)\n• Groq (fast inference)\n• Ollama & LM Studio (local models)\n\nFeatures:\n• Vision support - attach images for multimodal analysis\n• Streaming responses\n• Custom system prompts\n• Configurable token limits\n\nTip: Set default API keys in Project Settings to avoid configuring each node.",
+  "icon": "brain",
+  "color": "purple",
+  "tags": [
+    "ai",
+    "llm",
+    "chat",
+    "gpt",
+    "openai"
+  ],
+  "flowplan": {
+    "stepTypes": [
+      "ai_llm"
+    ],
+    "fieldMapping": {
+      "prompt": "prompt",
+      "image": "image",
+      "systemPrompt": "systemPrompt"
+    },
+    "literalInputFields": [
+      "prompt"
+    ],
+    "compilerOptionsMapping": {
+      "aiModel": "model",
+      "aiEndpoint": "endpoint",
+      "aiApiKeyConstant": "apiKeyConstant",
+      "aiRequestFormat": "format",
+      "aiProvider": "provider"
+    },
+    "conditionalDefaults": {
+      "imageFormat": {
+        "when": "image",
+        "then": "base64_inline",
+        "else": "none"
+      },
+      "imageInputCount": {
+        "when": "image",
+        "then": 1,
+        "else": 0
+      }
+    },
+    "templateFields": [
+      "prompt",
+      "image"
+    ],
+    "inputHandleMapping": {
+      "prompt": "prompt",
+      "image": "image"
+    }
+  },
+  "inputs": [
+    {
+      "id": "prompt",
+      "name": "Prompt",
+      "type": "string",
+      "position": "left",
+      "required": true,
+      "description": "The user prompt to send to the LLM"
+    },
+    {
+      "id": "image",
+      "name": "Image",
+      "type": "image",
+      "position": "left",
+      "description": "Optional image for vision models"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "response",
+      "name": "Response",
+      "type": "string",
+      "position": "right",
+      "description": "The generated response from the LLM"
+    }
+  ],
+  "properties": [
+    {
+      "id": "provider",
+      "name": "Provider",
+      "type": "select",
+      "default": "openai",
+      "options": [
+        {
+          "value": "openai",
+          "label": "OpenAI"
+        },
+        {
+          "value": "anthropic",
+          "label": "Anthropic"
+        },
+        {
+          "value": "google",
+          "label": "Google AI"
+        },
+        {
+          "value": "openrouter",
+          "label": "OpenRouter"
+        },
+        {
+          "value": "groq",
+          "label": "Groq"
+        },
+        {
+          "value": "ollama",
+          "label": "Ollama (Local)"
+        },
+        {
+          "value": "lmstudio",
+          "label": "LM Studio (Local)"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "description": "AI Provider service"
+    },
+    {
+      "id": "apiKeyConstant",
+      "name": "API Key Constant",
+      "type": "string",
+      "default": "",
+      "placeholder": "Enter constant name (e.g. OPENAI_API_KEY)",
+      "description": "Name of the constant containing the API key (overrides manual key)"
+    },
+    {
+      "id": "headers",
+      "name": "Custom Headers",
+      "type": "json",
+      "default": {},
+      "description": "Custom headers (JSON)",
+      "rows": 3,
+      "advanced": true
+    },
+    {
+      "id": "imageInputCount",
+      "name": "Image Input Count",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 10,
+      "description": "Number of image inputs for vision",
+      "advanced": true
+    },
+    {
+      "id": "systemPrompt",
+      "name": "System Prompt",
+      "type": "textarea",
+      "default": "",
+      "description": "Optional system prompt to set context",
+      "rows": 3
+    },
+    {
+      "id": "model",
+      "name": "Model",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "Model name (e.g., gpt-4, claude-3)"
+    },
+    {
+      "id": "endpoint",
+      "name": "API Endpoint",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "OpenAI-compatible API endpoint"
+    },
+    {
+      "id": "apiKey",
+      "name": "API Key",
+      "type": "secret",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "API key for authentication"
+    },
+    {
+      "id": "format",
+      "name": "API Format",
+      "type": "select",
+      "default": "openai",
+      "options": [
+        {
+          "value": "openai",
+          "label": "OpenAI"
+        },
+        {
+          "value": "anthropic",
+          "label": "Anthropic"
+        },
+        {
+          "value": "ollama",
+          "label": "Ollama"
+        },
+        {
+          "value": "lmstudio",
+          "label": "LM Studio"
+        }
+      ],
+      "description": "API format to use"
+    },
+    {
+      "id": "imageFormat",
+      "name": "Image Format",
+      "type": "select",
+      "default": "none",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "base64_inline",
+          "label": "Base64 Inline"
+        },
+        {
+          "value": "base64_separate",
+          "label": "Base64 Separate"
+        },
+        {
+          "value": "url",
+          "label": "URL"
+        },
+        {
+          "value": "binary",
+          "label": "Binary"
+        }
+      ],
+      "description": "How to handle image input for vision",
+      "advanced": true
+    },
+    {
+      "id": "maxImageDimension",
+      "name": "Max Image Dimension",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 4096,
+      "description": "Maximum width/height for images (0 = use default 1024px)",
+      "advanced": true,
+      "showWhen": {
+        "imageFormat": [
+          "base64_inline",
+          "base64_separate",
+          "binary"
+        ]
+      }
+    },
+    {
+      "id": "maxImageSizeKB",
+      "name": "Max Image Size (KB)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 20480,
+      "description": "Maximum image size in KB (0 = use default 200KB). OpenAI accepts up to 20MB.",
+      "advanced": true,
+      "showWhen": {
+        "imageFormat": [
+          "base64_inline",
+          "base64_separate",
+          "binary"
+        ]
+      }
+    },
+    {
+      "id": "maxTokens",
+      "name": "Max Tokens",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 100000,
+      "description": "Maximum tokens in response (0 = no limit)",
+      "advanced": true
+    },
+    {
+      "id": "contextLength",
+      "name": "Context Length",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 200000,
+      "description": "Max context window size (0 = default)",
+      "advanced": true
+    }
+  ],
+  "compiler": {
+    "template": "{{await}}AI.vision({{input}}, {{input.image}}, {{prop.systemPrompt}}, {{prop.model.raw}}, \"{{nodeId}}\", {{prop.format.raw}}, {{prop.endpoint.raw}}, {{prop.apiKey.raw}}, {{prop.imageFormat.raw}}, {{prop.contextLength}}, {{prop.maxTokens}}, {{prop.maxImageDimension}}, {{prop.maxImageSizeKB}})",
+    "async": true,
+    "abortable": true,
+    "statusTracking": true
+  },
+  "runtime": {
+    "streaming": true
+  },
+  "ui": {
+    "width": 340,
+    "resizable": true,
+    "minWidth": 280
+  }
+}

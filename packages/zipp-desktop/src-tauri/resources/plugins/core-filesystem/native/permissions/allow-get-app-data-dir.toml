@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-get-app-data-dir"
+description = "Allow getting app data directory path"
+commands.allow = ["get_app_data_dir"]

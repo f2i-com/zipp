@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "id": "flow-comfyui-gen",
+  "name": "ComfyUI Generator",
+  "description": "Simple image generation with ComfyUI - load your own workflow from ComfyUI",
+  "tags": [
+    "utility",
+    "image",
+    "comfyui"
+  ],
+  "createdAt": "2026-01-14T23:46:24.341Z",
+  "updatedAt": "2026-01-14T23:46:24.341Z",
+  "nodes": [
+    {
+      "id": "input-prompt",
+      "type": "input_text",
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "data": {
+        "value": "A beautiful mountain landscape at sunset with dramatic clouds"
+      }
+    },
+    {
+      "id": "image-gen",
+      "type": "image_gen",
+      "position": {
+        "x": 400,
+        "y": 50
+      },
+      "data": {
+        "apiFormat": "comfyui",
+        "endpoint": "http://localhost:8188"
+      }
+    },
+    {
+      "id": "output-image",
+      "type": "output",
+      "position": {
+        "x": 780,
+        "y": 100
+      },
+      "data": {
+        "label": "generated_image"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "input-prompt",
+      "sourceHandle": "text",
+      "target": "image-gen",
+      "targetHandle": "prompt"
+    },
+    {
+      "id": "e2",
+      "source": "image-gen",
+      "sourceHandle": "image",
+      "target": "output-image",
+      "targetHandle": "result"
+    }
+  ]
+}

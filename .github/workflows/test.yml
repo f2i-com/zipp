@@ -1,0 +1,91 @@
+name: Test Suite
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-zipp-core:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/zipp-core/package-lock.json
+
+      - name: Clone formlogic-typescript
+        uses: actions/checkout@v4
+        with:
+          repository: f2i-com/formlogic-typescript
+          path: formlogic-typescript
+
+      - name: Install and build formlogic-typescript
+        working-directory: formlogic-typescript
+        run: |
+          npm install
+          npm run build
+
+      - name: Install zipp-core dependencies
+        working-directory: packages/zipp-core
+        run: npm ci
+
+      - name: Build zipp-core
+        working-directory: packages/zipp-core
+        run: npm run build
+
+      - name: Run tests with coverage
+        working-directory: packages/zipp-core
+        run: npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: packages/zipp-core/coverage/lcov.info
+          flags: zipp-core
+          name: zipp-core-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/zipp-core/package-lock.json
+
+      - name: Clone formlogic-typescript
+        uses: actions/checkout@v4
+        with:
+          repository: f2i-com/formlogic-typescript
+          path: formlogic-typescript
+
+      - name: Install and build formlogic-typescript
+        working-directory: formlogic-typescript
+        run: |
+          npm install
+          npm run build
+
+      - name: Install zipp-core dependencies
+        working-directory: packages/zipp-core
+        run: npm ci
+
+      - name: TypeScript type check
+        working-directory: packages/zipp-core
+        run: npx tsc --noEmit

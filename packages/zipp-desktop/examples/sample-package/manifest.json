@@ -1,0 +1,30 @@
+{
+  "formatVersion": "1.0",
+  "id": "com.example.hello-world",
+  "name": "Hello World Package",
+  "version": "1.0.0",
+  "description": "A simple example package that demonstrates the .zipp package format",
+  "author": "ZIPP Team",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/example/hello-world-package",
+  "icon": "assets/icon.png",
+  "tags": ["example", "starter", "tutorial"],
+  "entryFlow": "flows/main.flow.json",
+  "flows": [
+    "flows/main.flow.json"
+  ],
+  "assets": [
+    "assets/icon.png"
+  ],
+  "dependencies": {
+    "zippVersion": ">=0.0.1"
+  },
+  "permissions": [
+    "filesystem:read"
+  ],
+  "isolation": {
+    "sandboxed": true,
+    "allowedPaths": ["$DOCUMENT"],
+    "networkAccess": false
+  }
+}

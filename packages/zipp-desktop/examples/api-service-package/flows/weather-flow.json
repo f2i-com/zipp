@@ -1,0 +1,95 @@
+{
+  "id": "weather-flow",
+  "name": "Weather Lookup",
+  "description": "Get weather information for a city using the bundled API service",
+  "tags": ["weather", "api"],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z",
+  "graph": {
+    "nodes": [
+      {
+        "id": "city-input",
+        "type": "input_text",
+        "data": {
+          "label": "City",
+          "value": "London"
+        },
+        "position": { "x": 100, "y": 200 }
+      },
+      {
+        "id": "build-url",
+        "type": "template",
+        "data": {
+          "label": "Build URL",
+          "template": "http://localhost:8950/weather?city={{input}}"
+        },
+        "position": { "x": 350, "y": 200 }
+      },
+      {
+        "id": "api-request",
+        "type": "browser_request",
+        "data": {
+          "label": "Fetch Weather",
+          "method": "GET",
+          "responseFormat": "json",
+          "allowLocalNetwork": true
+        },
+        "position": { "x": 600, "y": 200 }
+      },
+      {
+        "id": "format-output",
+        "type": "template",
+        "data": {
+          "label": "Format Result",
+          "template": "Weather in {{input2}}:\nTemperature: {{input}}°C\nConditions: Sunny\nHumidity: 65%"
+        },
+        "position": { "x": 880, "y": 200 }
+      },
+      {
+        "id": "result-output",
+        "type": "output",
+        "data": {
+          "label": "Weather Result"
+        },
+        "position": { "x": 1150, "y": 200 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1",
+        "source": "city-input",
+        "target": "build-url",
+        "sourceHandle": "text",
+        "targetHandle": "input"
+      },
+      {
+        "id": "edge-2",
+        "source": "build-url",
+        "target": "api-request",
+        "sourceHandle": "result",
+        "targetHandle": "url"
+      },
+      {
+        "id": "edge-3",
+        "source": "api-request",
+        "target": "format-output",
+        "sourceHandle": "response",
+        "targetHandle": "input"
+      },
+      {
+        "id": "edge-4",
+        "source": "city-input",
+        "target": "format-output",
+        "sourceHandle": "text",
+        "targetHandle": "input2"
+      },
+      {
+        "id": "edge-5",
+        "source": "format-output",
+        "target": "result-output",
+        "sourceHandle": "result",
+        "targetHandle": "result"
+      }
+    ]
+  }
+}

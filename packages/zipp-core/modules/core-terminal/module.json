@@ -1,0 +1,54 @@
+{
+  "id": "core-terminal",
+  "name": "Core Terminal",
+  "version": "1.0.0",
+  "description": "AI-driven terminal automation with keyboard simulation",
+  "author": "Zipp Team",
+  "category": "Terminal",
+  "icon": "terminal",
+  "color": "green",
+  "nodes": ["terminal_ai_control", "terminal_session", "terminal_run_command"],
+  "permissions": ["shell", "process"],
+  "runtime": {
+    "typescript": "runtime.ts",
+    "compiler": "compiler.ts",
+    "native": {
+      "plugin": "zipp-terminal",
+      "source": "native/src/lib.rs",
+      "cargo": "native/Cargo.toml"
+    }
+  },
+  "settings": {
+    "defaultShell": {
+      "type": "select",
+      "label": "Default Shell",
+      "description": "Default shell to use for terminal sessions",
+      "default": "auto",
+      "options": [
+        { "value": "auto", "label": "Auto-detect (PowerShell/Bash)" },
+        { "value": "powershell", "label": "PowerShell" },
+        { "value": "cmd", "label": "Command Prompt (cmd)" },
+        { "value": "bash", "label": "Bash" },
+        { "value": "sh", "label": "sh" },
+        { "value": "zsh", "label": "Zsh" }
+      ]
+    },
+    "defaultWorkingDir": {
+      "type": "string",
+      "label": "Default Working Directory",
+      "description": "Default directory for new terminal sessions (empty = current directory)"
+    },
+    "screenshotDelay": {
+      "type": "number",
+      "label": "Screenshot Delay (ms)",
+      "description": "Default delay after actions before taking screenshots",
+      "default": 500
+    },
+    "maxIterations": {
+      "type": "number",
+      "label": "Max AI Iterations",
+      "description": "Maximum AI control loop iterations",
+      "default": 20
+    }
+  }
+}

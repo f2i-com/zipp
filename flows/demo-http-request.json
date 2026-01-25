@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "id": "flow-http-demo",
+  "name": "HTTP Request Demo",
+  "description": "Demonstrates HTTP requests and JSON processing",
+  "tags": [
+    "http",
+    "api"
+  ],
+  "createdAt": "2026-01-14T23:46:24.342Z",
+  "updatedAt": "2026-01-14T23:46:24.342Z",
+  "nodes": [
+    {
+      "id": "http-get",
+      "type": "browser_request",
+      "position": {
+        "x": 100,
+        "y": 150
+      },
+      "data": {
+        "method": "GET",
+        "url": "https://httpbin.org/json",
+        "bodyType": "none",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "logic-parse",
+      "type": "logic_block",
+      "position": {
+        "x": 500,
+        "y": 100
+      },
+      "data": {
+        "code": "// Process JSON response\nlet result = \"Response: \" + input;\nreturn result;"
+      }
+    },
+    {
+      "id": "output-data",
+      "type": "output",
+      "position": {
+        "x": 900,
+        "y": 150
+      },
+      "data": {
+        "label": "api_data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "http-get",
+      "target": "logic-parse",
+      "id": "e-0-1768434384342"
+    },
+    {
+      "source": "logic-parse",
+      "target": "output-data",
+      "id": "e-1-1768434384342"
+    }
+  ]
+}

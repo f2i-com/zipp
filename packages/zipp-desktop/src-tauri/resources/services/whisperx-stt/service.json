@@ -1,0 +1,7 @@
+{
+  "name": "WhisperX Speech-to-Text",
+  "description": "Fast speech recognition with word-level timestamps and speaker diarization",
+  "port": 8770,
+  "icon": "speech",
+  "color": "#8B5CF6"
+}

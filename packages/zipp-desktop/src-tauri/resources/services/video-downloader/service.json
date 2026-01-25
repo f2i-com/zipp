@@ -1,0 +1,7 @@
+{
+  "name": "Video Downloader",
+  "description": "Download videos and audio from YouTube and 1000+ sites",
+  "port": 8771,
+  "icon": "download",
+  "color": "#F97316"
+}

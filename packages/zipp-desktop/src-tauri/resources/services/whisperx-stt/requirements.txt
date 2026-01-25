@@ -1,0 +1,30 @@
+# WhisperX Speech-to-Text Server Dependencies
+# Python 3.10-3.11 recommended (WhisperX compatibility)
+
+# NOTE: PyTorch is installed by start.bat with auto-detected CUDA version
+# NOTE: av (PyAV) is installed separately with --only-binary to avoid building from source
+
+# Core STT library
+whisperx>=3.7.4
+
+# Web server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# Faster HuggingFace downloads (silences hf_xet warning)
+huggingface_hub[hf_xet]
+
+# Audio processing
+soundfile>=0.12.0
+ffmpeg-python>=0.2.0
+
+# whisperx 3.7.4 requires transformers>=4.48.0 - let whisperx handle version
+
+# Speaker diarization (requires HuggingFace token)
+# Accept model terms at: https://huggingface.co/pyannote/speaker-diarization-3.1
+# Note: av is installed separately with --only-binary in start.bat
+# whisperx 3.7.4 requires pyannote.audio>=3.3.2,<4.0.0 - let whisperx handle version

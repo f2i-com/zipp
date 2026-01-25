@@ -1,0 +1,82 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Zipp",
+  "version": "1.0.0",
+  "identifier": "org.zipp.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:plugins && npm run prepare:services && npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Zipp - Visual Workflow Builder",
+        "width": 1400,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "minWidth": 800,
+        "minHeight": 600,
+        "devtools": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https: http://localhost:* http://127.0.0.1:*; media-src 'self' data: blob: asset: https: http://localhost:* http://127.0.0.1:*; connect-src 'self' https: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; font-src 'self' data:;",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$HOME/**",
+          "$APPDATA/**",
+          "$APPLOCALDATA/**",
+          "$PICTURE/**",
+          "$VIDEO/**",
+          "$DOWNLOAD/**",
+          "$DOCUMENT/**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/plugins",
+      "resources/services"
+    ],
+    "externalBin": [
+      "bin/ffmpeg",
+      "bin/ffprobe"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["zipp"],
+        "name": "ZIPP Package",
+        "description": "ZIPP Workflow Package",
+        "mimeType": "application/x-zipp-package",
+        "role": "Editor"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis/installer-hooks.nsi",
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libayatana-appindicator3-1"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    }
+  }
+}

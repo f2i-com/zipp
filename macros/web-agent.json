@@ -1,0 +1,467 @@
+{
+  "version": "1.0",
+  "id": "macro-web-agent",
+  "name": "Web Agent",
+  "description": "AI-powered web browsing agent that recursively navigates and interacts with websites to accomplish a goal. Configure the Browser Session node to use WebView (embedded) or Playwright (headless Chromium).",
+  "isMacro": true,
+  "tags": [
+    "macro",
+    "web",
+    "browser",
+    "agent",
+    "ai",
+    "automation",
+    "scrape",
+    "playwright"
+  ],
+  "createdAt": "2026-01-16T00:00:00.000Z",
+  "updatedAt": "2026-01-25T00:00:00.000Z",
+  "nodes": [
+    {
+      "id": "input-url",
+      "type": "macro_input",
+      "position": { "x": 50, "y": 100 },
+      "data": {
+        "name": "url",
+        "inputType": "text",
+        "required": true,
+        "defaultValue": "https://example.com"
+      }
+    },
+    {
+      "id": "input-goal",
+      "type": "macro_input",
+      "position": { "x": 50, "y": 250 },
+      "data": {
+        "name": "goal",
+        "inputType": "text",
+        "required": true,
+        "defaultValue": "Find and extract the main content from this page"
+      }
+    },
+    {
+      "id": "input-max-iterations",
+      "type": "macro_input",
+      "position": { "x": 50, "y": 400 },
+      "data": {
+        "name": "maxIterations",
+        "inputType": "number",
+        "required": false,
+        "defaultValue": "10"
+      }
+    },
+    {
+      "id": "browser-session",
+      "type": "browser_session",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "userAgent": "chrome",
+        "sessionMode": "playwright",
+        "playwrightUrl": "http://127.0.0.1:8769"
+      }
+    },
+    {
+      "id": "initial-navigate",
+      "type": "browser_control",
+      "position": { "x": 550, "y": 100 },
+      "data": {
+        "action": "goto",
+        "selector": "",
+        "timeout": 30000
+      }
+    },
+    {
+      "id": "init-history-value",
+      "type": "logic_block",
+      "position": { "x": 300, "y": 400 },
+      "data": {
+        "code": "\"(no previous actions)\""
+      }
+    },
+    {
+      "id": "init-history",
+      "type": "memory",
+      "position": { "x": 500, "y": 400 },
+      "data": {
+        "key": "agent_history",
+        "operation": "set"
+      }
+    },
+    {
+      "id": "loop-start",
+      "type": "loop_start",
+      "position": { "x": 800, "y": 150 },
+      "data": {
+        "loopMode": "count",
+        "iterations": 10
+      }
+    },
+    {
+      "id": "get-page-html",
+      "type": "browser_control",
+      "position": { "x": 1050, "y": 100 },
+      "data": {
+        "action": "get_html",
+        "selector": "",
+        "timeout": 10000
+      }
+    },
+    {
+      "id": "read-history",
+      "type": "memory",
+      "position": { "x": 1050, "y": 300 },
+      "data": {
+        "key": "agent_history",
+        "operation": "get"
+      }
+    },
+    {
+      "id": "extract-text",
+      "type": "browser_extract",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "extractionType": "css_selector",
+        "selector": "body",
+        "extractTarget": "text",
+        "outputFormat": "first",
+        "maxLength": 2500
+      }
+    },
+    {
+      "id": "ai-prompt",
+      "type": "template",
+      "position": { "x": 1550, "y": 50 },
+      "data": {
+        "inputCount": 3,
+        "inputNames": ["goal", "page_content", "history"],
+        "template": "You are a web browsing agent that accomplishes goals by navigating websites.\n\n## YOUR GOAL\n{{goal}}\n\n## CURRENT PAGE CONTENT\n{{page_content}}\n\n## PREVIOUS ACTIONS\n{{history}}\n\n## ACTIONS\n- click: Click element. Selectors: 'a' (first link), 'a:has-text(\"Text\")' (link with text), 'button', '#id'\n- type: Type in input (selector + value)\n- scroll: Scroll page (value = pixels)\n- goto: Go to URL (selector = full URL)\n- done: FINISH and report answer. The 'result' field MUST contain your finding.\n\n## FORMAT\nRespond with ONLY JSON:\n{\"thinking\": \"reasoning\", \"action\": \"click|type|scroll|goto|done\", \"selector\": \"...\", \"value\": \"...\", \"result\": \"your answer here\"}\n\n## CRITICAL RULES\n1. First iteration: You MUST click/scroll/type/goto. Never 'done' on the first attempt.\n2. Later iterations: If you can see the answer in the page content, use 'done' with the answer.\n3. The 'result' field must contain THE SPECIFIC ANSWER (e.g., page title, organization name), never just 'Task completed'.\n4. READ the page content - if it contains what you're looking for, report it with 'done'.\n5. Don't keep clicking if you already have the information needed to answer the goal."
+      }
+    },
+    {
+      "id": "ai-decide",
+      "type": "ai_llm",
+      "position": { "x": 1900, "y": 150 },
+      "data": {
+        "systemPrompt": "You are a precise web automation agent. Always respond with valid JSON only. No markdown code blocks, no explanations outside the JSON.",
+        "temperature": 0.2,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "id": "parse-response",
+      "type": "logic_block",
+      "position": { "x": 2200, "y": 150 },
+      "data": {
+        "code": "let text = String(input).trim();\nif (text.startsWith('```')) {\n  text = text.replace(/^```(?:json)?\\s*/, '').replace(/\\s*```$/, '');\n}\nreturn JSON.parse(text);"
+      }
+    },
+    {
+      "id": "extract-isdone",
+      "type": "logic_block",
+      "position": { "x": 2500, "y": 150 },
+      "data": {
+        "code": "return input.action == \"done\" ? \"true\" : \"false\";"
+      }
+    },
+    {
+      "id": "check-done",
+      "type": "condition",
+      "position": { "x": 2700, "y": 150 },
+      "data": {
+        "operator": "equals",
+        "compareValue": "true"
+      }
+    },
+    {
+      "id": "extract-action",
+      "type": "logic_block",
+      "position": { "x": 2750, "y": 300 },
+      "data": {
+        "code": "return input.action;"
+      }
+    },
+    {
+      "id": "extract-selector",
+      "type": "logic_block",
+      "position": { "x": 2750, "y": 450 },
+      "data": {
+        "code": "return input.selector;"
+      }
+    },
+    {
+      "id": "extract-value",
+      "type": "logic_block",
+      "position": { "x": 2750, "y": 600 },
+      "data": {
+        "code": "return input.value;"
+      }
+    },
+    {
+      "id": "execute-action",
+      "type": "browser_control",
+      "position": { "x": 3050, "y": 400 },
+      "data": {
+        "action": "click",
+        "selector": "",
+        "timeout": 15000
+      }
+    },
+    {
+      "id": "update-history",
+      "type": "logic_block",
+      "position": { "x": 3350, "y": 300 },
+      "data": {
+        "code": "return input3 + '\\n' + input2.action + ' on ' + (input2.selector || '');"
+      }
+    },
+    {
+      "id": "save-history",
+      "type": "memory",
+      "position": { "x": 3650, "y": 300 },
+      "data": {
+        "key": "agent_history",
+        "operation": "set"
+      }
+    },
+    {
+      "id": "loop-end",
+      "type": "loop_end",
+      "position": { "x": 3900, "y": 300 },
+      "data": {
+        "stopCondition": "equals",
+        "stopValue": "true"
+      }
+    },
+    {
+      "id": "extract-final-result",
+      "type": "logic_block",
+      "position": { "x": 2750, "y": 0 },
+      "data": {
+        "code": "return input.result || \"Task completed\";"
+      }
+    },
+    {
+      "id": "output-result",
+      "type": "macro_output",
+      "position": { "x": 4150, "y": 50 },
+      "data": {
+        "name": "result",
+        "outputType": "text"
+      }
+    },
+    {
+      "id": "output-history",
+      "type": "macro_output",
+      "position": { "x": 4150, "y": 250 },
+      "data": {
+        "name": "history",
+        "outputType": "text"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-session-navigate",
+      "source": "browser-session",
+      "sourceHandle": "session",
+      "target": "initial-navigate",
+      "targetHandle": "session"
+    },
+    {
+      "id": "e-url-navigate",
+      "source": "input-url",
+      "sourceHandle": "value",
+      "target": "initial-navigate",
+      "targetHandle": "selector"
+    },
+    {
+      "id": "e-maxiter-loop",
+      "source": "input-max-iterations",
+      "sourceHandle": "value",
+      "target": "loop-start",
+      "targetHandle": "count"
+    },
+    {
+      "id": "e-initvalue-history",
+      "source": "init-history-value",
+      "sourceHandle": "output",
+      "target": "init-history",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-session-gethtml",
+      "source": "browser-session",
+      "sourceHandle": "session",
+      "target": "get-page-html",
+      "targetHandle": "session"
+    },
+    {
+      "id": "e-gethtml-extract",
+      "source": "get-page-html",
+      "sourceHandle": "result",
+      "target": "extract-text",
+      "targetHandle": "content"
+    },
+    {
+      "id": "e-goal-prompt",
+      "source": "input-goal",
+      "sourceHandle": "value",
+      "target": "ai-prompt",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-extract-prompt",
+      "source": "extract-text",
+      "sourceHandle": "result",
+      "target": "ai-prompt",
+      "targetHandle": "input2"
+    },
+    {
+      "id": "e-history-prompt",
+      "source": "read-history",
+      "sourceHandle": "value",
+      "target": "ai-prompt",
+      "targetHandle": "input3"
+    },
+    {
+      "id": "e-prompt-ai",
+      "source": "ai-prompt",
+      "sourceHandle": "result",
+      "target": "ai-decide",
+      "targetHandle": "prompt"
+    },
+    {
+      "id": "e-ai-parse",
+      "source": "ai-decide",
+      "sourceHandle": "response",
+      "target": "parse-response",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-extractisdone",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "extract-isdone",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-extractisdone-checkdone",
+      "source": "extract-isdone",
+      "sourceHandle": "output",
+      "target": "check-done",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-finalresult",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "extract-final-result",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-action",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "extract-action",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-selector",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "extract-selector",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-value",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "extract-value",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-action-execute",
+      "source": "extract-action",
+      "sourceHandle": "output",
+      "target": "execute-action",
+      "targetHandle": "action"
+    },
+    {
+      "id": "e-selector-execute",
+      "source": "extract-selector",
+      "sourceHandle": "output",
+      "target": "execute-action",
+      "targetHandle": "selector"
+    },
+    {
+      "id": "e-value-execute",
+      "source": "extract-value",
+      "sourceHandle": "output",
+      "target": "execute-action",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-session-execute",
+      "source": "browser-session",
+      "sourceHandle": "session",
+      "target": "execute-action",
+      "targetHandle": "session"
+    },
+    {
+      "id": "e-execute-updatehistory",
+      "source": "execute-action",
+      "sourceHandle": "result",
+      "target": "update-history",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-parse-updatehistory",
+      "source": "parse-response",
+      "sourceHandle": "output",
+      "target": "update-history",
+      "targetHandle": "input2"
+    },
+    {
+      "id": "e-readhistory-updatehistory",
+      "source": "read-history",
+      "sourceHandle": "value",
+      "target": "update-history",
+      "targetHandle": "input3"
+    },
+    {
+      "id": "e-updatehistory-save",
+      "source": "update-history",
+      "sourceHandle": "output",
+      "target": "save-history",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-loop-loopend",
+      "source": "loop-start",
+      "sourceHandle": "loop",
+      "target": "loop-end",
+      "targetHandle": "loop"
+    },
+    {
+      "id": "e-save-loopend",
+      "source": "save-history",
+      "sourceHandle": "value",
+      "target": "loop-end",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-final-output",
+      "source": "extract-final-result",
+      "sourceHandle": "output",
+      "target": "output-result",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-loopend-output",
+      "source": "loop-end",
+      "sourceHandle": "results",
+      "target": "output-history",
+      "targetHandle": "value"
+    }
+  ]
+}

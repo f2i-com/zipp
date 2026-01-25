@@ -1,0 +1,135 @@
+{
+  "id": "browser_control",
+  "name": "Browser Control",
+  "description": "Control a browser for automation. Supports dynamic inputs for AI-driven agents.",
+  "doc": "Automate browser interactions programmatically.\n\nActions:\n• goto - navigate to URL\n• click - click element by CSS selector\n• type - enter text into input field\n• scroll - scroll the page\n• screenshot - capture page image\n• wait - wait for element to appear\n• get_html - get page HTML content\n• evaluate - run custom JavaScript\n\nAI Agent Support:\nAll properties can be overridden by inputs, allowing AI models to dynamically control the browser based on page content.\n\nTip: Chain multiple Browser Control nodes for complex automation sequences.",
+  "icon": "cursor",
+  "color": "purple",
+  "tags": [
+    "browser",
+    "automation",
+    "click",
+    "type",
+    "screenshot",
+    "agent"
+  ],
+  "inputs": [
+    {
+      "id": "session",
+      "name": "Session",
+      "type": "object",
+      "position": "left",
+      "description": "Browser session"
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "type": "string",
+      "position": "left",
+      "description": "Dynamic action (overrides property): goto, click, type, scroll, screenshot, wait, get_html, evaluate",
+      "optional": true
+    },
+    {
+      "id": "selector",
+      "name": "Selector",
+      "type": "string",
+      "position": "left",
+      "description": "Dynamic selector/URL (overrides property)",
+      "optional": true
+    },
+    {
+      "id": "value",
+      "name": "Value",
+      "type": "string",
+      "position": "left",
+      "description": "Dynamic value for type action (overrides property)",
+      "optional": true
+    }
+  ],
+  "outputs": [
+    {
+      "id": "result",
+      "name": "Result",
+      "type": "any",
+      "position": "right",
+      "description": "Action result (HTML, screenshot data, etc.)"
+    }
+  ],
+  "properties": [
+    {
+      "id": "action",
+      "name": "Action",
+      "type": "select",
+      "default": "goto",
+      "description": "Action to perform (can be overridden by input)",
+      "options": [
+        {
+          "value": "goto",
+          "label": "Go to URL"
+        },
+        {
+          "value": "click",
+          "label": "Click Element"
+        },
+        {
+          "value": "type",
+          "label": "Type Text"
+        },
+        {
+          "value": "scroll",
+          "label": "Scroll Page"
+        },
+        {
+          "value": "screenshot",
+          "label": "Screenshot"
+        },
+        {
+          "value": "wait",
+          "label": "Wait for Element"
+        },
+        {
+          "value": "get_html",
+          "label": "Get Page HTML"
+        },
+        {
+          "value": "evaluate",
+          "label": "Run JavaScript"
+        }
+      ]
+    },
+    {
+      "id": "selector",
+      "name": "Selector",
+      "type": "string",
+      "default": "",
+      "description": "CSS selector or URL (can be overridden by input)"
+    },
+    {
+      "id": "value",
+      "name": "Value",
+      "type": "string",
+      "default": "",
+      "description": "Text to type or script to run (can be overridden by input)",
+      "advanced": true
+    },
+    {
+      "id": "timeout",
+      "name": "Timeout",
+      "type": "number",
+      "default": 30000,
+      "min": 1000,
+      "max": 120000,
+      "description": "Timeout in milliseconds",
+      "advanced": true
+    }
+  ],
+  "compiler": {
+    "template": "{{await}}Browser.control({{input.session}}, {{input.action}} || {{prop.action.raw}}, {{input.selector}} || {{prop.selector}}, {{input.value}} || {{prop.value}}, {{prop.timeout}}, \"{{nodeId}}\")",
+    "async": true,
+    "abortable": true,
+    "statusTracking": true
+  },
+  "ui": {
+    "width": 300
+  }
+}

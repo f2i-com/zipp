@@ -1,0 +1,687 @@
+{
+  "id": "workflow-music-video-generator",
+  "name": "Music Video Generator",
+  "description": "Complete AI music video pipeline: theme -> lyrics -> music generation -> speech-to-text segmentation -> scene images -> animated videos -> final music video with synced audio.",
+  "tags": [
+    "video",
+    "music",
+    "ai",
+    "heartmula",
+    "lyrics",
+    "animation",
+    "complete"
+  ],
+  "createdAt": "2026-01-19T08:00:00.000Z",
+  "updatedAt": "2026-01-19T08:00:00.000Z",
+  "nodes": [
+    {
+      "id": "input-prompt",
+      "type": "input_text",
+      "position": { "x": 50, "y": 100 },
+      "data": {
+        "label": "Music Video Idea",
+        "value": "A dreamy love song about two people dancing under the stars at night"
+      }
+    },
+    {
+      "id": "input-duration",
+      "type": "input_text",
+      "position": { "x": 50, "y": 200 },
+      "data": {
+        "label": "Duration (seconds)",
+        "value": "60"
+      }
+    },
+    {
+      "id": "input-reference-image",
+      "type": "input_file",
+      "position": { "x": 50, "y": 300 },
+      "data": {
+        "label": "Reference Image (Optional)",
+        "filePath": ""
+      }
+    },
+
+    {
+      "id": "expand-prompt-template",
+      "type": "template",
+      "position": { "x": 200, "y": 100 },
+      "data": {
+        "template": "Based on this music video idea, create a detailed creative brief.\n\nIDEA: {{idea}}\nDURATION: {{duration}} seconds\n\nAnalyze the idea and generate:\n1. Song theme - the emotional core and story of the song\n2. Music genre/style - specific musical elements (instruments, tempo, mood)\n3. Visual style - cinematography, colors, lighting, aesthetic\n4. Number of main characters (1-4) and brief description of each\n\nOutput as JSON:\n{\n  \"theme\": \"detailed song theme and story\",\n  \"genre\": \"music style tags like: pop, romantic, piano, soft vocals\",\n  \"visualStyle\": \"visual aesthetic like: cinematic, fantasy, vibrant colors\",\n  \"numCharacters\": 2,\n  \"characterIdeas\": [\"brief character 1 idea\", \"brief character 2 idea\"]\n}",
+        "inputCount": 2,
+        "inputNames": ["idea", "duration"]
+      }
+    },
+    {
+      "id": "ai-expand-prompt",
+      "type": "ai_llm",
+      "position": { "x": 400, "y": 100 },
+      "data": {
+        "systemPrompt": "You are a creative director for music videos. Analyze the user's idea and create a cohesive creative brief. Output valid JSON only. Be creative but keep the brief focused and achievable.",
+        "temperature": 0.8,
+        "maxTokens": 0,
+        "imageInputCount": 1,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 512
+      }
+    },
+    {
+      "id": "parse-config",
+      "type": "logic_block",
+      "position": { "x": 600, "y": 100 },
+      "data": {
+        "code": "// Parse AI config and store in workflow_context\nlet text = input;\nif (typeof text === 'object') text = text.text || text.content || JSON.stringify(text);\ntext = String(text);\n\ntry {\n  text = text.replace(/<think[^>]*>[\\s\\S]*?<\\/think>/gi, '').trim();\n  text = text.replace(/```json\\s*/gi, '').replace(/```\\s*/gi, '');\n  let start = text.indexOf('{');\n  let end = text.lastIndexOf('}');\n  if (start >= 0 && end > start) text = text.substring(start, end + 1);\n  \n  let config = JSON.parse(text);\n  \n  workflow_context['theme'] = config.theme || 'a music video';\n  workflow_context['genre'] = config.genre || 'pop, cinematic';\n  workflow_context['visualStyle'] = config.visualStyle || 'cinematic, vibrant';\n  workflow_context['numCharacters'] = config.numCharacters || 2;\n  workflow_context['characterIdeas'] = config.characterIdeas || [];\n  \n  console.log('[parse-config] Theme:', workflow_context['theme']);\n  console.log('[parse-config] Genre:', workflow_context['genre']);\n  console.log('[parse-config] Style:', workflow_context['visualStyle']);\n  console.log('[parse-config] Characters:', workflow_context['numCharacters']);\n  \n  return config;\n} catch (e) {\n  console.log('[parse-config] Parse error, using defaults:', e.message);\n  workflow_context['theme'] = 'a music video';\n  workflow_context['genre'] = 'pop, cinematic';\n  workflow_context['visualStyle'] = 'cinematic, vibrant colors';\n  workflow_context['numCharacters'] = 2;\n  workflow_context['characterIdeas'] = [];\n  return { theme: workflow_context['theme'], genre: workflow_context['genre'] };\n}"
+      }
+    },
+
+    {
+      "id": "get-theme",
+      "type": "logic_block",
+      "position": { "x": 750, "y": 50 },
+      "data": {
+        "code": "return workflow_context['theme'] || 'a music video';"
+      }
+    },
+    {
+      "id": "get-genre",
+      "type": "logic_block",
+      "position": { "x": 750, "y": 150 },
+      "data": {
+        "code": "return workflow_context['genre'] || 'pop, cinematic';"
+      }
+    },
+    {
+      "id": "get-visual-style",
+      "type": "logic_block",
+      "position": { "x": 750, "y": 250 },
+      "data": {
+        "code": "return workflow_context['visualStyle'] || 'cinematic, vibrant';"
+      }
+    },
+    {
+      "id": "get-num-characters",
+      "type": "logic_block",
+      "position": { "x": 750, "y": 350 },
+      "data": {
+        "code": "return String(workflow_context['numCharacters'] || 2);"
+      }
+    },
+
+    {
+      "id": "lyrics-prompt",
+      "type": "template",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "template": "Create song lyrics for a music video about: {{theme}}\n\nMusic style: {{genre}}\n\nRULES:\n1. Write lyrics with clear structure: [verse], [chorus], [bridge]\n2. Keep it concise - about 60-90 seconds worth of lyrics\n3. Each section should be 2-4 lines\n4. Make lyrics visual and evocative for a music video\n5. Include emotional moments that translate well visually\n\nOutput ONLY the lyrics with section markers, no explanations:\n\n[verse]\nFirst verse lyrics here...\n\n[chorus]\nCatchy chorus lyrics...\n\n[verse]\nSecond verse...\n\n[chorus]\nRepeat chorus...\n\n[outro]\nEnding lines...",
+        "inputCount": 2,
+        "inputNames": ["theme", "genre"]
+      }
+    },
+    {
+      "id": "ai-lyrics",
+      "type": "ai_llm",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "systemPrompt": "You are a professional songwriter. Write evocative, visual lyrics perfect for music videos. Output only the lyrics with section markers like [verse], [chorus], [bridge], [outro]. No explanations.",
+        "temperature": 0.8,
+        "maxTokens": 0
+      }
+    },
+    {
+      "id": "store-lyrics",
+      "type": "logic_block",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "code": "// Store lyrics for later use\nlet lyrics = input;\nif (typeof lyrics === 'object') {\n  lyrics = lyrics.text || lyrics.content || JSON.stringify(lyrics);\n}\nlyrics = String(lyrics || '');\nconsole.log('[store-lyrics] Lyrics:', lyrics.substring(0, 200));\nworkflow_context['lyrics'] = lyrics;\nreturn lyrics;"
+      }
+    },
+
+    {
+      "id": "music-gen",
+      "type": "music_gen",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "service": "heartmula",
+        "apiUrl": "http://127.0.0.1:8767/generate",
+        "duration": 240,
+        "temperature": 1.0,
+        "topk": 50,
+        "cfgScale": 1.5,
+        "seed": -1,
+        "filename": "music_video_song"
+      }
+    },
+
+    {
+      "id": "store-music-path",
+      "type": "logic_block",
+      "position": { "x": 1650, "y": 200 },
+      "data": {
+        "code": "// Store music path from music_gen output\nlet path = input;\nconsole.log('[store-music-path] Music path:', path);\nworkflow_context['musicPath'] = path;\nreturn path;"
+      }
+    },
+
+    {
+      "id": "speech-to-text",
+      "type": "speech_to_text",
+      "position": { "x": 1700, "y": 100 },
+      "data": {
+        "apiUrl": "http://127.0.0.1:8770/transcribe",
+        "language": "",
+        "enableWordTimestamps": true,
+        "enableDiarization": false
+      }
+    },
+
+    {
+      "id": "process-segments",
+      "type": "logic_block",
+      "position": { "x": 1900, "y": 100 },
+      "data": {
+        "inputCount": 2,
+        "code": "// Process STT segments and create scene data with VARIABLE durations (up to 10s)\n// Scenes sync with natural speech/lyric boundaries\n// FIXED: Properly subdivide long gaps into multiple scenes\nlet sttResult = input;\nlet duration = parseFloat(input2) || 60;\n\nconsole.log('[process-segments] STT result type:', typeof sttResult);\nconsole.log('[process-segments] Duration:', duration);\n\nlet segments = [];\nlet fullText = '';\n\nif (sttResult) {\n  if (typeof sttResult === 'object') {\n    segments = sttResult.segments || sttResult || [];\n    fullText = sttResult.text || '';\n  } else if (Array.isArray(sttResult)) {\n    segments = sttResult;\n  } else {\n    fullText = String(sttResult);\n  }\n}\n\nconsole.log('[process-segments] Got', segments.length, 'STT segments');\n\n// Config: min/max scene duration\nlet minSceneDuration = 3;\nlet maxSceneDuration = 10;\nlet pauseThreshold = 0.8; // seconds of silence to trigger scene break\n\nlet scenes = [];\n\n// Get lyrics for fallback text\nlet lyrics = workflow_context['lyrics'] || fullText || '';\nlyrics = String(lyrics);\nlet rawParts = lyrics.split(/\\[(verse|chorus|bridge|outro)\\]/i);\nlet lyricParts = [];\nfor (let i = 0; i < rawParts.length; i++) {\n  let p = rawParts[i];\n  if (p && typeof p === 'string') {\n    let trimmed = p.trim();\n    let isLabel = (trimmed === 'verse' || trimmed === 'chorus' || trimmed === 'bridge' || trimmed === 'outro');\n    if (trimmed && !isLabel) {\n      lyricParts.push(trimmed);\n    }\n  }\n}\nif (lyricParts.length === 0) lyricParts = ['Music plays...'];\n\n// Helper: add filler scenes to cover a gap period\nfunction addFillerScenes(fromTime, toTime, scenesArray) {\n  let gapDur = toTime - fromTime;\n  if (gapDur <= 0) return fromTime;\n  let numScenes = Math.ceil(gapDur / maxSceneDuration);\n  let sceneDur = gapDur / numScenes;\n  for (let j = 0; j < numScenes; j++) {\n    let sStart = fromTime + (j * sceneDur);\n    let sEnd = Math.min(fromTime + ((j + 1) * sceneDur), toTime);\n    let partIdx = Math.floor(scenesArray.length * lyricParts.length / Math.max(1, (scenesArray.length + numScenes)));\n    scenesArray.push({\n      text: lyricParts[partIdx % lyricParts.length] || 'Music continues...',\n      start: sStart,\n      end: sEnd,\n      duration: sEnd - sStart\n    });\n  }\n  return toTime;\n}\n\nif (Array.isArray(segments) && segments.length > 0) {\n  // Sort segments by start time\n  segments.sort((a, b) => (a.start || 0) - (b.start || 0));\n  \n  let currentScene = { text: '', start: 0, segments: [] };\n  let timeTracker = 0; // Track where we are in the timeline\n  \n  for (let i = 0; i < segments.length; i++) {\n    let seg = segments[i];\n    let segStart = seg.start || 0;\n    let segEnd = seg.end || segStart + 1;\n    let segText = seg.text || '';\n    \n    // If this segment starts after our tracker, there may be a gap\n    if (segStart > timeTracker && currentScene.segments.length === 0) {\n      // No current scene content - add filler scenes for the intro gap\n      timeTracker = addFillerScenes(timeTracker, segStart, scenes);\n      currentScene.start = timeTracker;\n    }\n    \n    // Calculate current scene duration with this segment\n    let currentDur = currentScene.segments.length > 0 \n      ? (currentScene.segments[currentScene.segments.length - 1].end - currentScene.start) \n      : 0;\n    let prevEnd = currentScene.segments.length > 0 \n      ? currentScene.segments[currentScene.segments.length - 1].end \n      : currentScene.start;\n    let gap = segStart - prevEnd;\n    let potentialDur = segEnd - currentScene.start;\n    \n    // Decide if we should break\n    let shouldBreak = false;\n    \n    // Break if: significant pause AND scene is at least min duration\n    if (gap >= pauseThreshold && currentDur >= minSceneDuration) {\n      shouldBreak = true;\n    }\n    // Break if: adding this segment would exceed max duration\n    if (potentialDur > maxSceneDuration && currentScene.segments.length > 0) {\n      shouldBreak = true;\n    }\n    \n    if (shouldBreak) {\n      // Finalize current scene at the last segment's end (not the gap)\n      let sceneEnd = prevEnd;\n      if (currentScene.text.trim()) {\n        scenes.push({\n          text: currentScene.text.trim(),\n          start: currentScene.start,\n          end: sceneEnd,\n          duration: sceneEnd - currentScene.start\n        });\n      }\n      timeTracker = sceneEnd;\n      \n      // If there's a gap before this segment, add filler scenes\n      if (segStart > timeTracker) {\n        timeTracker = addFillerScenes(timeTracker, segStart, scenes);\n      }\n      \n      // Start new scene\n      currentScene = { text: '', start: timeTracker, segments: [] };\n    }\n    \n    // Add segment to current scene\n    currentScene.text += ' ' + segText;\n    currentScene.segments.push(seg);\n    timeTracker = Math.max(timeTracker, segEnd);\n  }\n  \n  // Finalize last scene with segments\n  if (currentScene.segments.length > 0) {\n    let lastSeg = currentScene.segments[currentScene.segments.length - 1];\n    let sceneEnd = lastSeg.end || timeTracker;\n    // Ensure scene doesn't exceed max duration\n    if (sceneEnd - currentScene.start > maxSceneDuration) {\n      sceneEnd = currentScene.start + maxSceneDuration;\n    }\n    scenes.push({\n      text: currentScene.text.trim(),\n      start: currentScene.start,\n      end: sceneEnd,\n      duration: sceneEnd - currentScene.start\n    });\n    timeTracker = sceneEnd;\n  }\n  \n  // Add filler scenes for any remaining time (instrumental outro)\n  if (duration > timeTracker + minSceneDuration) {\n    addFillerScenes(timeTracker, duration, scenes);\n  } else if (duration > timeTracker) {\n    // Extend last scene to fill small gap\n    if (scenes.length > 0) {\n      let last = scenes[scenes.length - 1];\n      last.end = duration;\n      last.duration = last.end - last.start;\n    }\n  }\n} else {\n  // Fallback: no STT segments, create scenes from lyrics with variable duration\n  let numScenes = Math.ceil(duration / maxSceneDuration);\n  let sceneDur = duration / numScenes;\n  for (let i = 0; i < numScenes; i++) {\n    let start = i * sceneDur;\n    let end = Math.min((i + 1) * sceneDur, duration);\n    let partIdx = Math.floor(i * lyricParts.length / numScenes);\n    scenes.push({\n      text: lyricParts[partIdx] || 'Music continues...',\n      start: start,\n      end: end,\n      duration: end - start\n    });\n  }\n}\n\n// Final pass: ensure all scenes are within max duration (split if needed)\nlet finalScenes = [];\nfor (let i = 0; i < scenes.length; i++) {\n  let sc = scenes[i];\n  if (sc.duration > maxSceneDuration) {\n    // Split this scene\n    let numParts = Math.ceil(sc.duration / maxSceneDuration);\n    let partDur = sc.duration / numParts;\n    for (let j = 0; j < numParts; j++) {\n      finalScenes.push({\n        text: sc.text,\n        start: sc.start + (j * partDur),\n        end: sc.start + ((j + 1) * partDur),\n        duration: partDur\n      });\n    }\n  } else {\n    finalScenes.push(sc);\n  }\n}\nscenes = finalScenes;\n\n// Log scene info\nlet totalDur = 0;\nfor (let i = 0; i < scenes.length; i++) {\n  console.log('[process-segments] Scene', i, ':', scenes[i].start.toFixed(1), '-', scenes[i].end.toFixed(1), 's (', scenes[i].duration.toFixed(1), 's) -', scenes[i].text.substring(0, 40));\n  totalDur += scenes[i].duration;\n}\n\nconsole.log('[process-segments] Created', scenes.length, 'scenes, total duration:', totalDur.toFixed(1), 's (music:', duration.toFixed(1), 's)');\nworkflow_context['scenes'] = scenes;\nworkflow_context['numScenes'] = scenes.length;\nworkflow_context['musicDuration'] = duration;\n\nreturn scenes;"
+      }
+    },
+
+    {
+      "id": "scene-planning-prompt",
+      "type": "template",
+      "position": { "x": 2100, "y": 50 },
+      "data": {
+        "template": "Create a music video storyboard for these lyrics:\n\n{{lyrics}}\n\nNUMBER OF CHARACTERS: {{numCharacters}}\nVISUAL STYLE: {{style}}\nNUMBER OF SCENES: {{numScenes}}\n\nFor each scene, I need:\n1. DISTINCT main characters with detailed visual descriptions\n2. Scene setting and mood\n3. Character actions/poses\n\nRULES:\n- Create exactly {{numCharacters}} unique characters with detailed appearances\n- Create exactly {{numScenes}} scenes (scenes have variable duration 3-10 seconds, synced to lyrics)\n- Each scene should have 1-2 characters max\n- Describe character clothing, colors, features in detail\n- Make scenes visually match the lyrics mood and timing\n- Keep image prompts concise but descriptive\n\nOutput JSON:\n{\n  \"characters\": [\n    { \"name\": \"Name\", \"description\": \"detailed visual description\" }\n  ],\n  \"scenes\": [\n    {\n      \"number\": 1,\n      \"lyrics_segment\": \"the lyrics for this part\",\n      \"setting\": \"scene location/environment\",\n      \"mood\": \"emotional tone\",\n      \"charactersPresent\": [\"Character Name\"],\n      \"action\": \"what characters are doing\",\n      \"image_prompt\": \"[FULL character descriptions], [action], [setting], {{style}}\"\n    }\n  ]\n}",
+        "inputCount": 4,
+        "inputNames": ["lyrics", "numCharacters", "style", "numScenes"]
+      }
+    },
+    {
+      "id": "get-num-scenes",
+      "type": "logic_block",
+      "position": { "x": 1950, "y": 0 },
+      "data": {
+        "code": "// Get number of scenes from workflow context\nlet numScenes = workflow_context['numScenes'] || Math.ceil((workflow_context['musicDuration'] || 60) / 10);\nconsole.log('[get-num-scenes] Returning:', numScenes);\nreturn String(numScenes);"
+      }
+    },
+    {
+      "id": "ai-scene-planning",
+      "type": "ai_llm",
+      "position": { "x": 2350, "y": 50 },
+      "data": {
+        "systemPrompt": "You are a music video director. Create detailed visual storyboards with consistent characters. Output valid JSON only. Each character needs a complete visual description that can be copy-pasted into image generation prompts. Keep image_prompt fields concise (under 100 words each).",
+        "temperature": 0.7,
+        "maxTokens": 0,
+        "imageInputCount": 1,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 768
+      }
+    },
+
+    {
+      "id": "parse-storyboard",
+      "type": "logic_block",
+      "position": { "x": 2550, "y": 50 },
+      "data": {
+        "code": "// Parse storyboard JSON\nconsole.log('[parse-storyboard] === START ===');\nlet text = input;\nif (typeof text === 'object') {\n  text = text.text || text.content || JSON.stringify(text);\n}\ntext = String(text);\n\ntry {\n  text = text.replace(/<think[^>]*>[\\s\\S]*?<\\/think[^>]*>/gi, '');\n  text = text.replace(/```json\\s*/gi, '').replace(/```\\s*/gi, '');\n  \n  let startIdx = text.indexOf('{');\n  let endIdx = text.lastIndexOf('}');\n  if (startIdx >= 0 && endIdx > startIdx) {\n    text = text.substring(startIdx, endIdx + 1);\n  }\n  \n  let storyboard = JSON.parse(text);\n  \n  let characters = [];\n  if (storyboard.characters) {\n    for (let char of storyboard.characters) {\n      characters.push({ name: char.name, description: char.description });\n    }\n  }\n  \n  let scenePrompts = [];\n  let timeSegments = workflow_context['scenes'] || [];\n  \n  if (storyboard.scenes) {\n    for (let i = 0; i < storyboard.scenes.length; i++) {\n      let scene = storyboard.scenes[i];\n      let timeSeg = timeSegments[i] || { start: i * 10, end: (i + 1) * 10, text: '' };\n      \n      scenePrompts.push({\n        number: scene.number || i + 1,\n        image_prompt: scene.image_prompt || scene.imagePrompt || 'cinematic scene',\n        setting: scene.setting || '',\n        action: scene.action || '',\n        lyrics: scene.lyrics_segment || timeSeg.text || '',\n        start: timeSeg.start,\n        end: timeSeg.end,\n        duration: (timeSeg.end - timeSeg.start) || 10\n      });\n    }\n  }\n  \n  workflow_context['characters'] = characters;\n  workflow_context['scenePrompts'] = scenePrompts;\n  \n  console.log('[parse-storyboard] Got', characters.length, 'characters,', scenePrompts.length, 'scenes');\n  \n  return { characters: characters, scenes: scenePrompts };\n} catch (e) {\n  console.log('[parse-storyboard] ERROR:', e.message);\n  return { characters: [{ name: 'Singer', description: 'stylish singer' }], scenes: [{ number: 1, image_prompt: 'music video scene', duration: 10 }] };\n}"
+      }
+    },
+
+    {
+      "id": "extract-characters",
+      "type": "logic_block",
+      "position": { "x": 2700, "y": 0 },
+      "data": {
+        "code": "// Extract characters for loop\nlet chars = workflow_context['characters'] || [];\nconsole.log('[extract-characters] Returning', chars.length, 'characters');\nif (chars.length === 0) {\n  chars = [{ name: 'Singer', description: 'a stylish young singer with flowing hair, wearing a sparkly outfit' }];\n}\nreturn chars;"
+      }
+    },
+
+    {
+      "id": "character-loop-start",
+      "type": "loop_start",
+      "position": { "x": 2850, "y": 0 },
+      "data": { "loopMode": "foreach" }
+    },
+    {
+      "id": "char-name",
+      "type": "logic_block",
+      "position": { "x": 2850, "y": -100 },
+      "data": {
+        "code": "let char = input;\nif (typeof char === 'string') try { char = JSON.parse(char); } catch(e) {}\nreturn char && char.name || 'Character';"
+      }
+    },
+    {
+      "id": "char-desc",
+      "type": "logic_block",
+      "position": { "x": 2850, "y": 100 },
+      "data": {
+        "code": "let char = input;\nif (typeof char === 'string') try { char = JSON.parse(char); } catch(e) {}\nreturn char && char.description || 'a character';"
+      }
+    },
+    {
+      "id": "char-prompt-template",
+      "type": "template",
+      "position": { "x": 3000, "y": 0 },
+      "data": {
+        "template": "Character portrait: {{name}} - {{description}}\n\nFull body, centered, simple background, high quality, {{style}}",
+        "inputCount": 3,
+        "inputNames": ["name", "description", "style"]
+      }
+    },
+    {
+      "id": "char-image-gen",
+      "type": "image_gen",
+      "position": { "x": 3200, "y": 0 },
+      "data": {
+        "size": "1024x1024",
+        "quality": "high",
+        "imageInputCount": 1,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Optional Input Image"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image", "label": "Reference Image", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8"]
+      }
+    },
+    {
+      "id": "store-char-image",
+      "type": "logic_block",
+      "position": { "x": 3350, "y": 0 },
+      "data": {
+        "code": "// Store character image\nlet img = input;\nconsole.log('[store-char-image] Storing char', loop_index);\nif (!workflow_context['characterImages']) workflow_context['characterImages'] = {};\nworkflow_context['characterImages']['char_' + loop_index] = img;\nreturn img;"
+      }
+    },
+    {
+      "id": "character-loop-end",
+      "type": "loop_end",
+      "position": { "x": 3500, "y": 0 },
+      "data": {}
+    },
+
+    {
+      "id": "extract-scene-prompts",
+      "type": "logic_block",
+      "position": { "x": 2700, "y": 200 },
+      "data": {
+        "inputCount": 2,
+        "code": "// Extract scenes for loop (from process-segments, not storyboard)\n// input = storyboard result (used for characters only)\n// input2 = character images array (from character-loop-end, used as sync point)\nlet scenes = workflow_context['scenes'] || [];\nconsole.log('[extract-scene-prompts] Returning', scenes.length, 'scenes from process-segments, char images ready:', !!input2);\nif (scenes.length === 0) {\n  // Fallback: create scenes based on duration (up to 10s each)\n  let dur = workflow_context['musicDuration'] || 60;\n  let numScenes = Math.ceil(dur / 10);\n  let sceneDur = dur / numScenes;\n  for (let i = 0; i < numScenes; i++) {\n    let start = i * sceneDur;\n    let end = Math.min((i + 1) * sceneDur, dur);\n    scenes.push({ text: 'music playing', start: start, end: end, duration: end - start });\n  }\n}\nreturn scenes;"
+      }
+    },
+
+    {
+      "id": "image-loop-start",
+      "type": "loop_start",
+      "position": { "x": 2850, "y": 250 },
+      "data": { "loopMode": "foreach" }
+    },
+    {
+      "id": "get-scene-text",
+      "type": "logic_block",
+      "position": { "x": 2900, "y": 350 },
+      "data": {
+        "code": "// Get scene text (STT lyrics for this segment)\nlet scene = input;\nif (typeof scene === 'string') try { scene = JSON.parse(scene); } catch(e) {}\nlet text = (scene && scene.text) || 'music playing';\ntext = String(text);\nconsole.log('[get-scene-text] Scene', loop_index, ':', text.substring(0, 50));\nreturn text;"
+      }
+    },
+    {
+      "id": "get-scene-context",
+      "type": "logic_block",
+      "position": { "x": 2900, "y": 500 },
+      "data": {
+        "code": "// Get character descriptions for scene prompt\nlet chars = workflow_context['characters'] || [];\nlet charDesc = '';\nfor (let i = 0; i < chars.length; i++) {\n  let c = chars[i];\n  if (c && c.name && c.description) {\n    charDesc += c.name + ': ' + c.description + '; ';\n  }\n}\nif (!charDesc) charDesc = 'stylish singer performing';\ncharDesc = String(charDesc);\nconsole.log('[get-scene-context] Characters:', charDesc.substring(0, 100));\nreturn charDesc;"
+      }
+    },
+    {
+      "id": "get-scene-duration",
+      "type": "logic_block",
+      "position": { "x": 2900, "y": 650 },
+      "data": {
+        "code": "let scene = input;\nif (typeof scene === 'string') try { scene = JSON.parse(scene); } catch(e) {}\nscene = scene || {};\nlet dur = scene.duration || (scene.end - scene.start) || 10;\nconsole.log('[get-scene-duration] Scene', loop_index, 'duration:', dur);\nreturn dur;"
+      }
+    },
+    {
+      "id": "image-ai-template",
+      "type": "template",
+      "position": { "x": 3050, "y": 400 },
+      "data": {
+        "template": "Create a single image prompt for a music video scene.\n\nLYRICS BEING SUNG: {{lyrics}}\nCHARACTERS: {{characters}}\nVISUAL STYLE: {{style}}\n\nRules:\n- Describe a cinematic scene showing the characters\n- Match the mood of the lyrics\n- Include character appearance details\n- Keep it under 80 words\n- Output ONLY the image prompt, no explanation\n\nImage prompt:",
+        "inputCount": 3,
+        "inputNames": ["lyrics", "characters", "style"]
+      }
+    },
+    {
+      "id": "ai-image-prompt",
+      "type": "ai_llm",
+      "position": { "x": 3200, "y": 400 },
+      "data": {
+        "systemPrompt": "You are a music video director. Output ONLY the image generation prompt, nothing else. No thinking, no explanation, just the prompt.",
+        "temperature": 0.7,
+        "maxTokens": 0
+      }
+    },
+    {
+      "id": "extract-image-prompt",
+      "type": "logic_block",
+      "position": { "x": 3350, "y": 400 },
+      "data": {
+        "code": "// Extract image prompt from AI response\nlet text = input;\nif (typeof text === 'object') text = text.text || text.content || JSON.stringify(text);\ntext = String(text).trim();\ntext = text.replace(/<think[^>]*>[\\s\\S]*?<\\/think>/gi, '').trim();\ntext = text.replace(/^```[\\s\\S]*?```$/gm, '').trim();\ntext = text.replace(/^Image prompt:\\s*/i, '').trim();\nconsole.log('[extract-image-prompt] Prompt:', text.substring(0, 100));\nreturn text || 'cinematic music video scene, vibrant colors';"
+      }
+    },
+    {
+      "id": "get-char-reference",
+      "type": "logic_block",
+      "position": { "x": 3350, "y": 300 },
+      "data": {
+        "code": "// Get first character image as style reference\nlet charImgs = workflow_context['characterImages'] || {};\nlet ref = charImgs['char_0'] || null;\nconsole.log('[get-char-reference] Has reference:', !!ref);\nreturn ref;"
+      }
+    },
+    {
+      "id": "scene-image-gen",
+      "type": "image_gen",
+      "position": { "x": 3500, "y": 350 },
+      "data": {
+        "size": "1280x720",
+        "quality": "high",
+        "imageInputCount": 1,
+        "maxImageDimension": 768,
+        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Optional Input Image"}},"9":{"inputs":{"width":1280,"height":720,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
+        "comfyWorkflowName": "Qwen Rapid AIO - Scenes",
+        "comfyPrimaryPromptNodeId": "3",
+        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image", "label": "Character Reference", "allowBypass": true}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["8"]
+      }
+    },
+    {
+      "id": "video-prompt-template",
+      "type": "template",
+      "position": { "x": 3650, "y": 450 },
+      "data": {
+        "template": "Create a video animation prompt for LTX-2 based on this image and scene.\n\nIMAGE DESCRIPTION (what was generated): {{imageDescription}}\nLYRICS/MOOD: {{lyrics}}\nVISUAL STYLE: {{style}}\n\nLTX-2 PROMPTING RULES:\n- Write as a single flowing paragraph (4-8 sentences)\n- Use present tense for all actions\n- Include: shot type, scene setting, character actions, camera movement\n- Describe motion naturally from start to end\n- Include ambient audio description if relevant\n- Be specific about lighting and atmosphere\n\nOutput ONLY the video prompt, no explanation:\n\nVideo prompt:",
+        "inputCount": 3,
+        "inputNames": ["imageDescription", "lyrics", "style"]
+      }
+    },
+    {
+      "id": "ai-video-prompt",
+      "type": "ai_llm",
+      "position": { "x": 3800, "y": 450 },
+      "data": {
+        "systemPrompt": "You are a cinematographer creating prompts for LTX-2 video generation. Output ONLY the video prompt as a single flowing paragraph. Use present tense. Describe the shot, action, camera movement, and atmosphere. No thinking tags, no explanation.",
+        "temperature": 0.7,
+        "maxTokens": 0,
+        "imageInputCount": 1,
+        "imageFormat": "base64_inline",
+        "maxImageDimension": 512
+      }
+    },
+    {
+      "id": "extract-video-prompt",
+      "type": "logic_block",
+      "position": { "x": 3950, "y": 450 },
+      "data": {
+        "code": "// Extract video prompt from AI response\nlet text = input;\nif (typeof text === 'object') text = text.text || text.content || JSON.stringify(text);\ntext = String(text).trim();\ntext = text.replace(/<think[^>]*>[\\s\\S]*?<\\/think>/gi, '').trim();\ntext = text.replace(/^```[\\s\\S]*?```$/gm, '').trim();\ntext = text.replace(/^Video prompt:\\s*/i, '').trim();\nconsole.log('[extract-video-prompt] Prompt:', text.substring(0, 100));\nreturn text || 'Cinematic shot of a music video scene, camera slowly pans across the frame, soft lighting creates atmosphere.';"
+      }
+    },
+    {
+      "id": "store-scene-data",
+      "type": "logic_block",
+      "position": { "x": 4100, "y": 400 },
+      "data": {
+        "inputCount": 4,
+        "code": "// Store scene data: image, video prompt, duration\nlet image = input;\nlet videoPrompt = input2;\nlet duration = input3 || 10;\nlet imagePrompt = input4 || '';\nconsole.log('[store-scene-data] Scene', loop_index, '- duration:', duration);\nif (!workflow_context['sceneData']) workflow_context['sceneData'] = [];\nworkflow_context['sceneData'].push({ image: image, videoPrompt: videoPrompt, duration: duration, imagePrompt: imagePrompt });\nreturn { image: image, videoPrompt: videoPrompt, duration: duration };"
+      }
+    },
+    {
+      "id": "image-loop-end",
+      "type": "loop_end",
+      "position": { "x": 4250, "y": 400 },
+      "data": {}
+    },
+
+    {
+      "id": "extract-scene-data",
+      "type": "logic_block",
+      "position": { "x": 4400, "y": 400 },
+      "data": {
+        "code": "// Extract scene data array for video loop\nlet data = workflow_context['sceneData'] || [];\nconsole.log('[extract-scene-data] Got', data.length, 'scenes for video generation');\nreturn data;"
+      }
+    },
+    {
+      "id": "video-loop-start",
+      "type": "loop_start",
+      "position": { "x": 4550, "y": 400 },
+      "data": { "loopMode": "foreach" }
+    },
+    {
+      "id": "get-video-image",
+      "type": "logic_block",
+      "position": { "x": 4600, "y": 300 },
+      "data": {
+        "code": "// Get image from scene data\nlet data = input;\nif (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}\ndata = data || {};\nconsole.log('[get-video-image] Scene', loop_index);\nreturn data.image || null;"
+      }
+    },
+    {
+      "id": "get-video-prompt",
+      "type": "logic_block",
+      "position": { "x": 4600, "y": 400 },
+      "data": {
+        "code": "// Get video prompt from scene data\nlet data = input;\nif (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}\ndata = data || {};\nconsole.log('[get-video-prompt] Scene', loop_index);\nreturn data.videoPrompt || 'cinematic music video scene';"
+      }
+    },
+    {
+      "id": "get-video-duration",
+      "type": "logic_block",
+      "position": { "x": 4600, "y": 500 },
+      "data": {
+        "code": "// Get duration from scene data\nlet data = input;\nif (typeof data === 'string') try { data = JSON.parse(data); } catch(e) {}\ndata = data || {};\nlet dur = data.duration || 10;\nconsole.log('[get-video-duration] Scene', loop_index, 'duration:', dur);\nreturn dur;"
+      }
+    },
+    {
+      "id": "calc-video-frames",
+      "type": "logic_block",
+      "position": { "x": 4600, "y": 600 },
+      "data": {
+        "code": "// Calculate frame count from duration (25 fps)\nlet duration = parseFloat(input) || 10;\nlet frames = Math.round(duration * 25);\n// Ensure minimum 25 frames (1 second) and reasonable max\nframes = Math.max(25, Math.min(frames, 375)); // 1-15 seconds\nconsole.log('[calc-video-frames] Scene', loop_index, ':', duration, 's =', frames, 'frames');\nreturn frames;"
+      }
+    },
+    {
+      "id": "scene-video-gen",
+      "type": "video_gen",
+      "position": { "x": 4750, "y": 350 },
+      "data": {
+        "comfyWorkflow": {"75":{"inputs":{"filename_prefix":"video/LTX_2.0_i2v","format":"auto","codec":"auto","video":["92:97",0]},"class_type":"SaveVideo","_meta":{"title":"Save Video"}},"98":{"inputs":{"image":"snow_bike_jump_crew.png"},"class_type":"LoadImage","_meta":{"title":"Load Image"}},"102":{"inputs":{"resize_type":"scale dimensions","resize_type.width":1280,"resize_type.height":720,"resize_type.crop":"center","scale_method":"lanczos","input":["98",0]},"class_type":"ResizeImageMaskNode","_meta":{"title":"Resize Image/Mask"}},"92:8":{"inputs":{"sampler_name":"euler"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:60":{"inputs":{"text_encoder":"gemma_3_12B_it.safetensors","ckpt_name":"ltx-2-19b-distilled-fp8.safetensors","device":"default"},"class_type":"LTXAVTextEncoderLoader","_meta":{"title":"LTXV Audio Text Encoder Loader"}},"92:66":{"inputs":{"sampler_name":"gradient_estimation"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:73":{"inputs":{"sigmas":"0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:81":{"inputs":{"positive":["92:22",0],"negative":["92:22",1],"latent":["92:80",0]},"class_type":"LTXVCropGuides","_meta":{"title":"LTXVCropGuides"}},"92:82":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:81",0],"negative":["92:81",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:51":{"inputs":{"frames_number":["92:62",0],"frame_rate":25,"batch_size":1,"audio_vae":["92:48",0]},"class_type":"LTXVEmptyLatentAudio","_meta":{"title":"LTXV Empty Latent Audio"}},"92:22":{"inputs":{"frame_rate":25,"positive":["92:3",0],"negative":["92:112",0]},"class_type":"LTXVConditioning","_meta":{"title":"LTXVConditioning"}},"92:89":{"inputs":{"width":["92:105",0],"height":["92:105",1],"batch_size":1,"color":0},"class_type":"EmptyImage","_meta":{"title":"EmptyImage"}},"92:41":{"inputs":{"noise":["92:11",0],"guider":["92:47",0],"sampler":["92:8",0],"sigmas":["92:113",0],"latent_image":["92:56",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:67":{"inputs":{"noise_seed":0},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:97":{"inputs":{"fps":25,"images":["92:95",0],"audio":["92:96",0]},"class_type":"CreateVideo","_meta":{"title":"Create Video"}},"92:80":{"inputs":{"av_latent":["92:41",0]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:95":{"inputs":{"samples":["92:94",0],"vae":["92:1",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"92:94":{"inputs":{"av_latent":["92:70",1]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:70":{"inputs":{"noise":["92:67",0],"guider":["92:82",0],"sampler":["92:66",0],"sigmas":["92:73",0],"latent_image":["92:83",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:96":{"inputs":{"samples":["92:94",1],"audio_vae":["92:48",0]},"class_type":"LTXVAudioVAEDecode","_meta":{"title":"LTXV Audio VAE Decode"}},"92:48":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"LTXVAudioVAELoader","_meta":{"title":"LTXV Audio VAE Loader"}},"92:56":{"inputs":{"video_latent":["92:107",0],"audio_latent":["92:51",0]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:84":{"inputs":{"samples":["92:81",2],"upscale_model":["92:76",0],"vae":["92:1",2]},"class_type":"LTXVLatentUpsampler","_meta":{"title":"spatial"}},"92:90":{"inputs":{"upscale_method":"lanczos","scale_by":0.5,"image":["92:89",0]},"class_type":"ImageScaleBy","_meta":{"title":"Upscale Image By"}},"92:62":{"inputs":{"value":250},"class_type":"PrimitiveInt","_meta":{"title":"Length"}},"92:91":{"inputs":{"image":["92:90",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:105":{"inputs":{"image":["102",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:99":{"inputs":{"img_compression":33,"image":["92:106",0]},"class_type":"LTXVPreprocess","_meta":{"title":"LTXVPreprocess"}},"92:43":{"inputs":{"width":["92:91",0],"height":["92:91",1],"length":["92:62",0],"batch_size":1},"class_type":"EmptyLTXVLatentVideo","_meta":{"title":"EmptyLTXVLatentVideo"}},"92:107":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:43",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:83":{"inputs":{"video_latent":["92:108",0],"audio_latent":["92:80",1]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:108":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:84",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:3":{"inputs":{"text":"","clip":["92:60",0]},"class_type":"CLIPTextEncode","_meta":{"title":"CLIP Text Encode (Prompt)"}},"92:112":{"inputs":{"conditioning":["92:3",0]},"class_type":"ConditioningZeroOut","_meta":{"title":"ConditioningZeroOut"}},"92:11":{"inputs":{"noise_seed":10},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:113":{"inputs":{"sigmas":"1., 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:47":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:22",0],"negative":["92:22",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:106":{"inputs":{"longer_edge":1536,"images":["102",0]},"class_type":"ResizeImagesByLongerEdge","_meta":{"title":"Resize Images by Longer Edge"}},"92:76":{"inputs":{"model_name":"ltx-2-spatial-upscaler-x2-1.0.safetensors"},"class_type":"LatentUpscaleModelLoader","_meta":{"title":"Load Latent Upscale Model"}},"92:1":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
+        "comfyWorkflowName": "LTX 2.0 i2v Distilled",
+        "comfyPrimaryPromptNodeId": "92:3",
+        "comfyImageInputConfigs": [{"nodeId": "98", "inputName": "image", "handleId": "image", "label": "Start Image"}],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": ["98"]
+      }
+    },
+    {
+      "id": "store-video",
+      "type": "logic_block",
+      "position": { "x": 4900, "y": 350 },
+      "data": {
+        "inputCount": 2,
+        "code": "// Store generated video with duration\nlet video = input;\nlet duration = input2 || 10;\nconsole.log('[store-video] Video', loop_index, 'duration:', duration);\nif (!workflow_context['sceneVideos']) workflow_context['sceneVideos'] = [];\nif (!workflow_context['sceneDurations']) workflow_context['sceneDurations'] = [];\nworkflow_context['sceneVideos'].push(video);\nworkflow_context['sceneDurations'].push(duration);\nreturn video;"
+      }
+    },
+    {
+      "id": "video-loop-end",
+      "type": "loop_end",
+      "position": { "x": 5050, "y": 350 },
+      "data": {}
+    },
+
+    {
+      "id": "get-scene-durations",
+      "type": "logic_block",
+      "position": { "x": 5200, "y": 450 },
+      "data": {
+        "code": "// Get collected scene durations\nlet durations = workflow_context['sceneDurations'] || [];\nconsole.log('[get-scene-durations] Durations:', durations);\nreturn durations;"
+      }
+    },
+
+    {
+      "id": "extend-videos",
+      "type": "extend_videos",
+      "position": { "x": 5350, "y": 350 },
+      "data": {
+        "filename": "scene_extended"
+      }
+    },
+
+    {
+      "id": "append-videos",
+      "type": "video_append",
+      "position": { "x": 5550, "y": 300 },
+      "data": {
+        "filename": "music_video_raw",
+        "format": "mp4"
+      }
+    },
+
+    {
+      "id": "get-music-path",
+      "type": "logic_block",
+      "position": { "x": 5550, "y": 450 },
+      "data": {
+        "code": "// Get the generated music path\nlet musicPath = workflow_context['musicPath'];\nconsole.log('[get-music-path] Music path:', musicPath);\nreturn musicPath;"
+      }
+    },
+
+    {
+      "id": "audio-mixer",
+      "type": "audio_mixer",
+      "position": { "x": 5750, "y": 350 },
+      "data": {
+        "videoVolume": 0,
+        "audioVolume": 1.0,
+        "replaceAudio": true,
+        "filename": "music_video_final"
+      }
+    },
+
+    {
+      "id": "audio-fade-out",
+      "type": "audio_fade",
+      "position": { "x": 5850, "y": 350 },
+      "data": {
+        "fadeDuration": 10,
+        "fadeType": "exponential",
+        "fadeDirection": "out",
+        "filename": "music_video_faded"
+      }
+    },
+
+    {
+      "id": "video-save",
+      "type": "video_save",
+      "position": { "x": 6050, "y": 350 },
+      "data": {
+        "filename": "music_video_output",
+        "format": "mp4"
+      }
+    }
+  ],
+
+  "edges": [
+    { "id": "e0a", "source": "input-prompt", "target": "expand-prompt-template", "sourceHandle": "text", "targetHandle": "idea" },
+    { "id": "e0b", "source": "input-duration", "target": "expand-prompt-template", "sourceHandle": "text", "targetHandle": "duration" },
+    { "id": "e0c", "source": "expand-prompt-template", "target": "ai-expand-prompt", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e0d", "source": "input-reference-image", "target": "ai-expand-prompt", "sourceHandle": "content", "targetHandle": "image" },
+    { "id": "e0e", "source": "ai-expand-prompt", "target": "parse-config", "sourceHandle": "response", "targetHandle": "input" },
+    { "id": "e0f", "source": "parse-config", "target": "get-theme", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e0g", "source": "parse-config", "target": "get-genre", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e0h", "source": "parse-config", "target": "get-visual-style", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e0i", "source": "parse-config", "target": "get-num-characters", "sourceHandle": "default", "targetHandle": "input" },
+
+    { "id": "e1", "source": "get-theme", "target": "lyrics-prompt", "sourceHandle": "default", "targetHandle": "theme" },
+    { "id": "e2", "source": "get-genre", "target": "lyrics-prompt", "sourceHandle": "default", "targetHandle": "genre" },
+    { "id": "e3", "source": "lyrics-prompt", "target": "ai-lyrics", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e4", "source": "ai-lyrics", "target": "store-lyrics", "sourceHandle": "response", "targetHandle": "input" },
+
+    { "id": "e5", "source": "get-genre", "target": "music-gen", "sourceHandle": "default", "targetHandle": "prompt" },
+    { "id": "e6", "source": "store-lyrics", "target": "music-gen", "sourceHandle": "default", "targetHandle": "lyrics" },
+
+    { "id": "e8", "source": "music-gen", "target": "store-music-path", "sourceHandle": "path", "targetHandle": "input" },
+    { "id": "e9", "source": "music-gen", "target": "speech-to-text", "sourceHandle": "path", "targetHandle": "media" },
+
+    { "id": "e10", "source": "speech-to-text", "target": "process-segments", "sourceHandle": "segments", "targetHandle": "input" },
+    { "id": "e11", "source": "speech-to-text", "target": "process-segments", "sourceHandle": "duration", "targetHandle": "input2" },
+
+    { "id": "e12", "source": "store-lyrics", "target": "scene-planning-prompt", "sourceHandle": "default", "targetHandle": "lyrics" },
+    { "id": "e13", "source": "get-num-characters", "target": "scene-planning-prompt", "sourceHandle": "default", "targetHandle": "numCharacters" },
+    { "id": "e14", "source": "get-visual-style", "target": "scene-planning-prompt", "sourceHandle": "default", "targetHandle": "style" },
+    { "id": "e15", "source": "process-segments", "target": "get-num-scenes", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e16", "source": "get-num-scenes", "target": "scene-planning-prompt", "sourceHandle": "default", "targetHandle": "numScenes" },
+
+    { "id": "e17", "source": "scene-planning-prompt", "target": "ai-scene-planning", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e18", "source": "input-reference-image", "target": "ai-scene-planning", "sourceHandle": "content", "targetHandle": "image" },
+    { "id": "e19", "source": "ai-scene-planning", "target": "parse-storyboard", "sourceHandle": "response", "targetHandle": "input" },
+
+    { "id": "e20", "source": "parse-storyboard", "target": "extract-characters", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e21", "source": "extract-characters", "target": "character-loop-start", "sourceHandle": "default", "targetHandle": "array" },
+    { "id": "e22", "source": "character-loop-start", "target": "char-name", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e23", "source": "character-loop-start", "target": "char-desc", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e24", "source": "char-name", "target": "char-prompt-template", "sourceHandle": "default", "targetHandle": "name" },
+    { "id": "e25", "source": "char-desc", "target": "char-prompt-template", "sourceHandle": "default", "targetHandle": "description" },
+    { "id": "e26", "source": "get-visual-style", "target": "char-prompt-template", "sourceHandle": "default", "targetHandle": "style" },
+    { "id": "e27", "source": "char-prompt-template", "target": "char-image-gen", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e28", "source": "input-reference-image", "target": "char-image-gen", "sourceHandle": "content", "targetHandle": "image" },
+    { "id": "e29", "source": "char-image-gen", "target": "store-char-image", "sourceHandle": "image", "targetHandle": "input" },
+    { "id": "e30", "source": "store-char-image", "target": "character-loop-end", "sourceHandle": "default", "targetHandle": "input" },
+
+    { "id": "e31", "source": "parse-storyboard", "target": "extract-scene-prompts", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e32", "source": "character-loop-end", "target": "extract-scene-prompts", "sourceHandle": "results", "targetHandle": "input2" },
+
+    { "id": "e33", "source": "extract-scene-prompts", "target": "image-loop-start", "sourceHandle": "default", "targetHandle": "array" },
+    { "id": "e34", "source": "image-loop-start", "target": "get-scene-text", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e35", "source": "image-loop-start", "target": "get-scene-duration", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e35b", "source": "image-loop-start", "target": "get-char-reference", "sourceHandle": "index", "targetHandle": "input" },
+    { "id": "e35c", "source": "image-loop-start", "target": "get-scene-context", "sourceHandle": "index", "targetHandle": "input" },
+    { "id": "e35d", "source": "get-scene-text", "target": "image-ai-template", "sourceHandle": "default", "targetHandle": "lyrics" },
+    { "id": "e35e", "source": "get-scene-context", "target": "image-ai-template", "sourceHandle": "default", "targetHandle": "characters" },
+    { "id": "e35f", "source": "get-visual-style", "target": "image-ai-template", "sourceHandle": "default", "targetHandle": "style" },
+    { "id": "e35g", "source": "image-ai-template", "target": "ai-image-prompt", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e35h", "source": "ai-image-prompt", "target": "extract-image-prompt", "sourceHandle": "response", "targetHandle": "input" },
+    { "id": "e36", "source": "extract-image-prompt", "target": "scene-image-gen", "sourceHandle": "default", "targetHandle": "prompt" },
+    { "id": "e37", "source": "get-char-reference", "target": "scene-image-gen", "sourceHandle": "default", "targetHandle": "image" },
+
+    { "id": "e60", "source": "extract-image-prompt", "target": "video-prompt-template", "sourceHandle": "default", "targetHandle": "imageDescription" },
+    { "id": "e61", "source": "get-scene-text", "target": "video-prompt-template", "sourceHandle": "default", "targetHandle": "lyrics" },
+    { "id": "e62", "source": "get-visual-style", "target": "video-prompt-template", "sourceHandle": "default", "targetHandle": "style" },
+    { "id": "e63", "source": "video-prompt-template", "target": "ai-video-prompt", "sourceHandle": "result", "targetHandle": "prompt" },
+    { "id": "e64", "source": "scene-image-gen", "target": "ai-video-prompt", "sourceHandle": "image", "targetHandle": "image" },
+    { "id": "e65", "source": "ai-video-prompt", "target": "extract-video-prompt", "sourceHandle": "response", "targetHandle": "input" },
+
+    { "id": "e66", "source": "scene-image-gen", "target": "store-scene-data", "sourceHandle": "image", "targetHandle": "input" },
+    { "id": "e67", "source": "extract-video-prompt", "target": "store-scene-data", "sourceHandle": "default", "targetHandle": "input2" },
+    { "id": "e68", "source": "get-scene-duration", "target": "store-scene-data", "sourceHandle": "default", "targetHandle": "input3" },
+    { "id": "e69", "source": "extract-image-prompt", "target": "store-scene-data", "sourceHandle": "default", "targetHandle": "input4" },
+    { "id": "e70", "source": "store-scene-data", "target": "image-loop-end", "sourceHandle": "default", "targetHandle": "input" },
+
+    { "id": "e71", "source": "image-loop-end", "target": "extract-scene-data", "sourceHandle": "results", "targetHandle": "input" },
+    { "id": "e72", "source": "extract-scene-data", "target": "video-loop-start", "sourceHandle": "default", "targetHandle": "array" },
+    { "id": "e73", "source": "video-loop-start", "target": "get-video-image", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e74", "source": "video-loop-start", "target": "get-video-prompt", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e75", "source": "video-loop-start", "target": "get-video-duration", "sourceHandle": "item", "targetHandle": "input" },
+    { "id": "e76", "source": "get-video-image", "target": "scene-video-gen", "sourceHandle": "default", "targetHandle": "image" },
+    { "id": "e77", "source": "get-video-prompt", "target": "scene-video-gen", "sourceHandle": "default", "targetHandle": "prompt" },
+    { "id": "e77b", "source": "get-video-duration", "target": "calc-video-frames", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e77c", "source": "calc-video-frames", "target": "scene-video-gen", "sourceHandle": "default", "targetHandle": "frameCount" },
+    { "id": "e78", "source": "scene-video-gen", "target": "store-video", "sourceHandle": "video", "targetHandle": "input" },
+    { "id": "e79", "source": "get-video-duration", "target": "store-video", "sourceHandle": "default", "targetHandle": "input2" },
+    { "id": "e80", "source": "store-video", "target": "video-loop-end", "sourceHandle": "default", "targetHandle": "input" },
+
+    { "id": "e81", "source": "video-loop-end", "target": "extend-videos", "sourceHandle": "results", "targetHandle": "videos" },
+    { "id": "e82", "source": "video-loop-end", "target": "get-scene-durations", "sourceHandle": "results", "targetHandle": "input" },
+    { "id": "e83", "source": "get-scene-durations", "target": "extend-videos", "sourceHandle": "default", "targetHandle": "durations" },
+    { "id": "e84", "source": "extend-videos", "target": "append-videos", "sourceHandle": "videos", "targetHandle": "videos" },
+
+    { "id": "e85", "source": "store-music-path", "target": "get-music-path", "sourceHandle": "default", "targetHandle": "input" },
+    { "id": "e86", "source": "append-videos", "target": "audio-mixer", "sourceHandle": "video", "targetHandle": "video" },
+    { "id": "e87", "source": "get-music-path", "target": "audio-mixer", "sourceHandle": "default", "targetHandle": "audio" },
+    { "id": "e88", "source": "audio-mixer", "target": "audio-fade-out", "sourceHandle": "video", "targetHandle": "video" },
+    { "id": "e89", "source": "audio-fade-out", "target": "video-save", "sourceHandle": "video", "targetHandle": "video" }
+  ]
+}

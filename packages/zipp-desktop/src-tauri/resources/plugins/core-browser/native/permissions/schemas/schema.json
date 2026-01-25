@@ -1,0 +1,468 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PermissionFile",
+  "description": "Permission file that can define a default permission, a set of permissions or a list of inlined permissions.",
+  "type": "object",
+  "properties": {
+    "default": {
+      "description": "The default permission set for the plugin",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DefaultPermission"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "set": {
+      "description": "A list of permissions sets defined",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PermissionSet"
+      }
+    },
+    "permission": {
+      "description": "A list of inlined permissions",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Permission"
+      }
+    }
+  },
+  "definitions": {
+    "DefaultPermission": {
+      "description": "The default permission set of the plugin.\n\nWorks similarly to a permission with the \"default\" identifier.",
+      "type": "object",
+      "required": [
+        "permissions"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PermissionSet": {
+      "description": "A set of direct permissions grouped together under a new name.",
+      "type": "object",
+      "required": [
+        "description",
+        "identifier",
+        "permissions"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does.",
+          "type": "string"
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PermissionKind"
+          }
+        }
+      }
+    },
+    "Permission": {
+      "description": "Descriptions of explicit privileges of commands.\n\nIt can enable commands to be accessible in the frontend of the application.\n\nIf the scope is defined it can be used to fine grain control the access of individual or multiple commands.",
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri internal convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commands": {
+          "description": "Allowed or denied commands when using this permission.",
+          "default": {
+            "allow": [],
+            "deny": []
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/Commands"
+            }
+          ]
+        },
+        "scope": {
+          "description": "Allowed or denied scoped when using this permission.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Scopes"
+            }
+          ]
+        },
+        "platforms": {
+          "description": "Target platforms this permission applies. By default all platforms are affected by this permission.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Target"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "description": "Allowed and denied commands inside a permission.\n\nIf two commands clash inside of `allow` and `deny`, it should be denied by default.",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Allowed command.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "description": "Denied command, which takes priority.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Scopes": {
+      "description": "An argument for fine grained behavior control of Tauri commands.\n\nIt can be of any serde serializable type and is used to allow or prevent certain actions inside a Tauri command. The configured scope is passed to the command and will be enforced by the command implementation.\n\n## Example\n\n```json { \"allow\": [{ \"path\": \"$HOME/**\" }], \"deny\": [{ \"path\": \"$HOME/secret.txt\" }] } ```",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Data that defines what is allowed by the scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        "deny": {
+          "description": "Data that defines what is denied by the scope. This should be prioritized by validation logic.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      }
+    },
+    "Value": {
+      "description": "All supported ACL values.",
+      "anyOf": [
+        {
+          "description": "Represents a null JSON value.",
+          "type": "null"
+        },
+        {
+          "description": "Represents a [`bool`].",
+          "type": "boolean"
+        },
+        {
+          "description": "Represents a valid ACL [`Number`].",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Number"
+            }
+          ]
+        },
+        {
+          "description": "Represents a [`String`].",
+          "type": "string"
+        },
+        {
+          "description": "Represents a list of other [`Value`]s.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        {
+          "description": "Represents a map of [`String`] keys to [`Value`]s.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      ]
+    },
+    "Number": {
+      "description": "A valid ACL number.",
+      "anyOf": [
+        {
+          "description": "Represents an [`i64`].",
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "description": "Represents a [`f64`].",
+          "type": "number",
+          "format": "double"
+        }
+      ]
+    },
+    "Target": {
+      "description": "Platform target.",
+      "oneOf": [
+        {
+          "description": "MacOS.",
+          "type": "string",
+          "enum": [
+            "macOS"
+          ]
+        },
+        {
+          "description": "Windows.",
+          "type": "string",
+          "enum": [
+            "windows"
+          ]
+        },
+        {
+          "description": "Linux.",
+          "type": "string",
+          "enum": [
+            "linux"
+          ]
+        },
+        {
+          "description": "Android.",
+          "type": "string",
+          "enum": [
+            "android"
+          ]
+        },
+        {
+          "description": "iOS.",
+          "type": "string",
+          "enum": [
+            "iOS"
+          ]
+        }
+      ]
+    },
+    "PermissionKind": {
+      "type": "string",
+      "oneOf": [
+        {
+          "description": "Allow performing webview actions",
+          "type": "string",
+          "const": "allow-webview-action",
+          "markdownDescription": "Allow performing webview actions"
+        },
+        {
+          "description": "Allow closing webview sessions",
+          "type": "string",
+          "const": "allow-webview-close",
+          "markdownDescription": "Allow closing webview sessions"
+        },
+        {
+          "description": "Allow creating webview sessions",
+          "type": "string",
+          "const": "allow-webview-create",
+          "markdownDescription": "Allow creating webview sessions"
+        },
+        {
+          "description": "Allow evaluating JavaScript in webview",
+          "type": "string",
+          "const": "allow-webview-evaluate",
+          "markdownDescription": "Allow evaluating JavaScript in webview"
+        },
+        {
+          "description": "Allow getting webview HTML content",
+          "type": "string",
+          "const": "allow-webview-get-html",
+          "markdownDescription": "Allow getting webview HTML content"
+        },
+        {
+          "description": "Allow webview HTML callbacks",
+          "type": "string",
+          "const": "allow-webview-html-callback",
+          "markdownDescription": "Allow webview HTML callbacks"
+        },
+        {
+          "description": "Allow navigating webview to URLs",
+          "type": "string",
+          "const": "allow-webview-navigate",
+          "markdownDescription": "Allow navigating webview to URLs"
+        },
+        {
+          "description": "Allow webview screenshot callbacks",
+          "type": "string",
+          "const": "allow-webview-screenshot-callback",
+          "markdownDescription": "Allow webview screenshot callbacks"
+        },
+        {
+          "description": "Allow taking webview screenshots",
+          "type": "string",
+          "const": "allow-webview-screenshot",
+          "markdownDescription": "Allow taking webview screenshots"
+        },
+        {
+          "description": "Enables the webview_action command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-action",
+          "markdownDescription": "Enables the webview_action command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_action command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-action",
+          "markdownDescription": "Denies the webview_action command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_close command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-close",
+          "markdownDescription": "Enables the webview_close command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_close command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-close",
+          "markdownDescription": "Denies the webview_close command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_create command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-create",
+          "markdownDescription": "Enables the webview_create command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_create command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-create",
+          "markdownDescription": "Denies the webview_create command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_evaluate command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-evaluate",
+          "markdownDescription": "Enables the webview_evaluate command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_evaluate command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-evaluate",
+          "markdownDescription": "Denies the webview_evaluate command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_get_html command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-get-html",
+          "markdownDescription": "Enables the webview_get_html command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_get_html command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-get-html",
+          "markdownDescription": "Denies the webview_get_html command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_html_callback command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-html-callback",
+          "markdownDescription": "Enables the webview_html_callback command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_html_callback command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-html-callback",
+          "markdownDescription": "Denies the webview_html_callback command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_navigate command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-navigate",
+          "markdownDescription": "Enables the webview_navigate command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_navigate command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-navigate",
+          "markdownDescription": "Denies the webview_navigate command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_screenshot command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-screenshot",
+          "markdownDescription": "Enables the webview_screenshot command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_screenshot command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-screenshot",
+          "markdownDescription": "Denies the webview_screenshot command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the webview_screenshot_callback command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-webview-screenshot-callback",
+          "markdownDescription": "Enables the webview_screenshot_callback command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the webview_screenshot_callback command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-webview-screenshot-callback",
+          "markdownDescription": "Denies the webview_screenshot_callback command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the Zipp Browser plugin\n#### This default permission set includes:\n\n- `allow-webview-create`\n- `allow-webview-navigate`\n- `allow-webview-evaluate`\n- `allow-webview-action`\n- `allow-webview-html-callback`\n- `allow-webview-screenshot`\n- `allow-webview-screenshot-callback`\n- `allow-webview-close`\n- `allow-webview-get-html`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Default permissions for the Zipp Browser plugin\n#### This default permission set includes:\n\n- `allow-webview-create`\n- `allow-webview-navigate`\n- `allow-webview-evaluate`\n- `allow-webview-action`\n- `allow-webview-html-callback`\n- `allow-webview-screenshot`\n- `allow-webview-screenshot-callback`\n- `allow-webview-close`\n- `allow-webview-get-html`"
+        }
+      ]
+    }
+  }
+}

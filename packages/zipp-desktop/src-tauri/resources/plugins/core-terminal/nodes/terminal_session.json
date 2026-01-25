@@ -1,0 +1,69 @@
+{
+  "id": "terminal_session",
+  "name": "Terminal Session",
+  "description": "Create a new terminal/shell session for automation",
+  "icon": "terminal",
+  "color": "green",
+  "tags": ["terminal", "shell", "automation", "process"],
+  "inputs": [],
+  "outputs": [
+    {
+      "id": "session",
+      "name": "Session",
+      "type": "object",
+      "position": "right",
+      "description": "Terminal session object for use with other terminal nodes"
+    }
+  ],
+  "properties": [
+    {
+      "id": "shell",
+      "name": "Shell",
+      "type": "select",
+      "default": "auto",
+      "description": "Shell to use for the terminal",
+      "options": [
+        { "value": "auto", "label": "Auto-detect" },
+        { "value": "powershell", "label": "PowerShell" },
+        { "value": "cmd", "label": "Command Prompt" },
+        { "value": "bash", "label": "Bash" },
+        { "value": "sh", "label": "sh" },
+        { "value": "zsh", "label": "Zsh" }
+      ]
+    },
+    {
+      "id": "workingDir",
+      "name": "Working Directory",
+      "type": "string",
+      "default": "",
+      "description": "Initial working directory (empty = current directory)"
+    },
+    {
+      "id": "showWindow",
+      "name": "Show Window",
+      "type": "boolean",
+      "default": false,
+      "description": "Show a popup window to view the terminal during execution"
+    },
+    {
+      "id": "title",
+      "name": "Window Title",
+      "type": "string",
+      "default": "",
+      "description": "Custom title for the popup window"
+    }
+  ],
+  "compiler": {
+    "template": "{{await}}Terminal.createSession({{json shell}}, {{json workingDir}}, {{showWindow}}, {{json title}}, '{{nodeId}}')",
+    "async": true,
+    "imports": []
+  },
+  "runtime": {
+    "streaming": false
+  },
+  "ui": {
+    "width": 200,
+    "resizable": false
+  },
+  "doc": "# Terminal Session\n\nCreates a new terminal session for automation. The session runs a shell process that can be controlled using keyboard simulation.\n\n## Properties\n\n- **Shell**: The shell to use (auto-detect, PowerShell, cmd, bash, etc.)\n- **Working Directory**: Starting directory for the shell\n- **Show Window**: Enable to see the terminal during execution\n\n## Output\n\nOutputs a session object that can be connected to Terminal AI Control or Terminal Run Command nodes."
+}

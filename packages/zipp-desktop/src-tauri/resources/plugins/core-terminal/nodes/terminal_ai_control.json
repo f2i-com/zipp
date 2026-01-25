@@ -1,0 +1,211 @@
+{
+  "id": "terminal_ai_control",
+  "name": "Terminal AI",
+  "description": "AI-driven terminal automation - analyzes screen and types commands",
+  "icon": "brain",
+  "color": "purple",
+  "tags": ["terminal", "ai", "automation", "vision", "computer-use"],
+  "inputs": [
+    {
+      "id": "session",
+      "name": "Session",
+      "type": "object",
+      "position": "left",
+      "required": false,
+      "description": "Optional: Use existing session. If not connected, creates new terminal."
+    },
+    {
+      "id": "task",
+      "name": "Task",
+      "type": "string",
+      "position": "left",
+      "required": false,
+      "description": "Dynamic task description (overrides property if connected)"
+    },
+    {
+      "id": "contextImage",
+      "name": "Context Image",
+      "type": "image",
+      "position": "left",
+      "required": false,
+      "description": "Optional image for additional context (e.g., reference screenshot)"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "sessionOut",
+      "name": "Session",
+      "type": "object",
+      "position": "right",
+      "varSuffix": "_session",
+      "description": "Pass-through session for chaining multiple AI controls"
+    },
+    {
+      "id": "result",
+      "name": "Result",
+      "type": "string",
+      "position": "right",
+      "description": "Final result from the AI"
+    },
+    {
+      "id": "screenshot",
+      "name": "Screenshot",
+      "type": "image",
+      "position": "right",
+      "description": "Final screenshot (can be fed to next AI control)"
+    }
+  ],
+  "properties": [
+    {
+      "id": "taskDescription",
+      "name": "Task Description",
+      "type": "textarea",
+      "default": "",
+      "description": "Describe what the AI should accomplish in the terminal",
+      "rows": 4
+    },
+    {
+      "id": "shell",
+      "name": "Shell",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        { "value": "auto", "label": "Auto-detect" },
+        { "value": "powershell", "label": "PowerShell" },
+        { "value": "cmd", "label": "Command Prompt" },
+        { "value": "bash", "label": "Bash" },
+        { "value": "zsh", "label": "Zsh" }
+      ],
+      "description": "Shell to use (when no session connected)"
+    },
+    {
+      "id": "workingDir",
+      "name": "Working Directory",
+      "type": "string",
+      "default": "",
+      "description": "Starting directory (when no session connected)"
+    },
+    {
+      "id": "showWindow",
+      "name": "Show Window",
+      "type": "boolean",
+      "default": true,
+      "description": "Show terminal window during execution"
+    },
+    {
+      "id": "provider",
+      "name": "AI Provider",
+      "type": "select",
+      "default": "openai",
+      "options": [
+        { "value": "openai", "label": "OpenAI" },
+        { "value": "anthropic", "label": "Anthropic" },
+        { "value": "google", "label": "Google AI" },
+        { "value": "openrouter", "label": "OpenRouter" },
+        { "value": "groq", "label": "Groq" },
+        { "value": "ollama", "label": "Ollama (Local)" },
+        { "value": "lmstudio", "label": "LM Studio (Local)" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "description": "AI Provider for vision analysis"
+    },
+    {
+      "id": "model",
+      "name": "Model",
+      "type": "string",
+      "default": "",
+      "placeholder": "gpt-4o (default) or claude-3.5-sonnet",
+      "description": "Vision-capable model (leave empty for provider default)"
+    },
+    {
+      "id": "apiKeyConstant",
+      "name": "API Key Constant",
+      "type": "string",
+      "default": "",
+      "placeholder": "e.g. OPENAI_API_KEY",
+      "description": "Name of the constant containing the API key"
+    },
+    {
+      "id": "apiKey",
+      "name": "API Key",
+      "type": "secret",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "API key for authentication"
+    },
+    {
+      "id": "endpoint",
+      "name": "API Endpoint",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "Custom API endpoint (for self-hosted models)",
+      "advanced": true
+    },
+    {
+      "id": "format",
+      "name": "API Format",
+      "type": "select",
+      "default": "openai",
+      "options": [
+        { "value": "openai", "label": "OpenAI" },
+        { "value": "anthropic", "label": "Anthropic" },
+        { "value": "ollama", "label": "Ollama" },
+        { "value": "lmstudio", "label": "LM Studio" }
+      ],
+      "description": "API format to use",
+      "advanced": true
+    },
+    {
+      "id": "systemPrompt",
+      "name": "System Prompt",
+      "type": "textarea",
+      "default": "You are an AI assistant controlling a terminal. Analyze the screenshot and determine what to type or what keys to press to accomplish the task. Respond with JSON containing your observation, reasoning, and action.",
+      "description": "Custom system prompt for the AI",
+      "rows": 4,
+      "advanced": true
+    },
+    {
+      "id": "screenshotDelayMs",
+      "name": "Screenshot Delay (ms)",
+      "type": "number",
+      "default": 500,
+      "min": 100,
+      "max": 5000,
+      "description": "Delay after actions before taking a screenshot"
+    },
+    {
+      "id": "maxIterations",
+      "name": "Max Iterations",
+      "type": "number",
+      "default": 20,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum number of AI iterations before stopping"
+    },
+    {
+      "id": "maxTokens",
+      "name": "Max Tokens",
+      "type": "number",
+      "default": 1000,
+      "min": 100,
+      "max": 8000,
+      "description": "Maximum tokens in AI response",
+      "advanced": true
+    }
+  ],
+  "compiler": {
+    "template": "{{outputVar}} = await Terminal.aiControl({{session}}, {{#if task}}{{task}}{{else}}{{json taskDescription}}{{/if}}, { shell: {{json shell}}, workingDir: {{json workingDir}}, showWindow: {{showWindow}}, systemPrompt: {{json systemPrompt}}, screenshotDelayMs: {{screenshotDelayMs}}, maxIterations: {{maxIterations}}, provider: {{json provider}}, model: {{json model}}, apiKey: {{json apiKey}}, apiKeyConstant: {{json apiKeyConstant}}, endpoint: {{json endpoint}}, format: {{json format}}, maxTokens: {{maxTokens}}, contextImage: {{contextImage}} }, '{{nodeId}}'); let {{outputVar}}_session = {{outputVar}}.session; let {{outputVar}}_result = {{outputVar}}.result; let {{outputVar}}_screenshot = {{outputVar}}.screenshot",
+    "async": true,
+    "imports": []
+  },
+  "runtime": {
+    "streaming": true
+  },
+  "ui": {
+    "width": 340,
+    "resizable": true,
+    "minWidth": 280
+  },
+  "doc": "# Terminal AI\n\nAI-driven terminal automation. Just describe a task and the AI will:\n1. Take screenshots of the terminal\n2. Analyze what it sees\n3. Type commands and press keys\n4. Repeat until the task is done\n\n**Self-contained**: Creates its own terminal, or use an existing session.\n\n**Chainable**: Connect the session output to another Terminal AI to run multiple tasks.\n\n**Requires vision model** (GPT-4o, Claude 3.5, Gemini, etc.)"
+}

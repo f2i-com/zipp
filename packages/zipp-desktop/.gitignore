@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+target/
+
+# IDE
+.idea/
+.vscode/
+
+# Tauri
+src-tauri/target/

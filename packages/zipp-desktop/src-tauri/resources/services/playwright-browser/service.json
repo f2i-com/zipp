@@ -1,0 +1,7 @@
+{
+  "name": "Playwright Browser",
+  "description": "Headless Chromium browser automation with Playwright",
+  "port": 8769,
+  "icon": "globe",
+  "color": "#3B82F6"
+}

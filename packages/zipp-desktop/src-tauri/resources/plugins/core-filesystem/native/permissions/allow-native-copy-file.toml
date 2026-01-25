@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-native-copy-file"
+description = "Allow native file copying"
+commands.allow = ["native_copy_file"]

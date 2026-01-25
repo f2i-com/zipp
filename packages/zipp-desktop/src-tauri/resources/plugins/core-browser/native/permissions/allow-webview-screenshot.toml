@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-screenshot"
+description = "Allow taking webview screenshots"
+commands.allow = ["webview_screenshot"]

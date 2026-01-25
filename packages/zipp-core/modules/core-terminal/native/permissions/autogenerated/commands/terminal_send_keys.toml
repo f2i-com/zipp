@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-terminal-send-keys"
+description = "Enables the terminal_send_keys command without any pre-configured scope."
+commands.allow = ["terminal_send_keys"]
+
+[[permission]]
+identifier = "deny-terminal-send-keys"
+description = "Denies the terminal_send_keys command without any pre-configured scope."
+commands.deny = ["terminal_send_keys"]

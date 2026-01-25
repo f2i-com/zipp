@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-read-file"
+description = "Allow reading file contents"
+commands.allow = ["read_file"]

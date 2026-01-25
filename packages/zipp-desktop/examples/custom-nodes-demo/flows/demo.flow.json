@@ -1,0 +1,154 @@
+{
+  "id": "demo",
+  "name": "Custom Nodes Demo",
+  "description": "Demonstrates TypeScript-based custom nodes: TS Text Formatter and TS JSON Parser",
+  "graph": {
+    "nodes": [
+      {
+        "id": "text_input",
+        "type": "input_text",
+        "position": { "x": 50, "y": 100 },
+        "data": {
+          "label": "Text to Format",
+          "value": "hello world from zipp custom nodes"
+        }
+      },
+      {
+        "id": "json_input",
+        "type": "input_text",
+        "position": { "x": 50, "y": 400 },
+        "data": {
+          "label": "JSON Data",
+          "value": "{\"user\": {\"name\": \"Alice\", \"email\": \"alice@example.com\"}, \"status\": \"active\"}"
+        }
+      },
+      {
+        "id": "formatter_upper",
+        "type": "pkg:com.zipp.custom-nodes-demo:ts_text_formatter",
+        "position": { "x": 350, "y": 50 },
+        "data": {
+          "format": "uppercase"
+        }
+      },
+      {
+        "id": "formatter_title",
+        "type": "pkg:com.zipp.custom-nodes-demo:ts_text_formatter",
+        "position": { "x": 350, "y": 200 },
+        "data": {
+          "format": "titlecase"
+        }
+      },
+      {
+        "id": "json_extract_name",
+        "type": "pkg:com.zipp.custom-nodes-demo:ts_json_parser",
+        "position": { "x": 350, "y": 350 },
+        "data": {
+          "path": "user.name"
+        }
+      },
+      {
+        "id": "json_extract_email",
+        "type": "pkg:com.zipp.custom-nodes-demo:ts_json_parser",
+        "position": { "x": 350, "y": 500 },
+        "data": {
+          "path": "user.email"
+        }
+      },
+      {
+        "id": "output_upper",
+        "type": "output",
+        "position": { "x": 650, "y": 50 },
+        "data": {
+          "label": "Uppercase Result"
+        }
+      },
+      {
+        "id": "output_title",
+        "type": "output",
+        "position": { "x": 650, "y": 200 },
+        "data": {
+          "label": "Title Case Result"
+        }
+      },
+      {
+        "id": "output_name",
+        "type": "output",
+        "position": { "x": 650, "y": 350 },
+        "data": {
+          "label": "Extracted Name"
+        }
+      },
+      {
+        "id": "output_email",
+        "type": "output",
+        "position": { "x": 650, "y": 500 },
+        "data": {
+          "label": "Extracted Email"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "text_input",
+        "sourceHandle": "text",
+        "target": "formatter_upper",
+        "targetHandle": "text"
+      },
+      {
+        "id": "e2",
+        "source": "text_input",
+        "sourceHandle": "text",
+        "target": "formatter_title",
+        "targetHandle": "text"
+      },
+      {
+        "id": "e3",
+        "source": "json_input",
+        "sourceHandle": "text",
+        "target": "json_extract_name",
+        "targetHandle": "json"
+      },
+      {
+        "id": "e4",
+        "source": "json_input",
+        "sourceHandle": "text",
+        "target": "json_extract_email",
+        "targetHandle": "json"
+      },
+      {
+        "id": "e5",
+        "source": "formatter_upper",
+        "sourceHandle": "result",
+        "target": "output_upper",
+        "targetHandle": "result"
+      },
+      {
+        "id": "e6",
+        "source": "formatter_title",
+        "sourceHandle": "result",
+        "target": "output_title",
+        "targetHandle": "result"
+      },
+      {
+        "id": "e7",
+        "source": "json_extract_name",
+        "sourceHandle": "value",
+        "target": "output_name",
+        "targetHandle": "result"
+      },
+      {
+        "id": "e8",
+        "source": "json_extract_email",
+        "sourceHandle": "value",
+        "target": "output_email",
+        "targetHandle": "result"
+      }
+    ],
+    "viewport": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1
+    }
+  }
+}

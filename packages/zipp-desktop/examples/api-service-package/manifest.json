@@ -1,0 +1,49 @@
+{
+  "formatVersion": "1.0",
+  "id": "com.example.weather-api",
+  "name": "Weather API Package",
+  "version": "1.0.0",
+  "description": "A package that includes a local weather API service and workflow",
+  "author": "ZIPP Team",
+  "license": "Apache-2.0",
+  "tags": ["example", "service", "api", "weather"],
+  "entryFlow": "flows/weather-flow.json",
+  "flows": [
+    "flows/weather-flow.json"
+  ],
+  "services": [
+    {
+      "id": "weather-api",
+      "path": "services/weather-api",
+      "name": "Weather API Service",
+      "autoStart": true,
+      "preferredPort": 8950,
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  ],
+  "assets": [
+    "assets/icon.png"
+  ],
+  "dependencies": {
+    "zippVersion": ">=0.0.1",
+    "system": [
+      {
+        "name": "python",
+        "minVersion": "3.9",
+        "optional": false,
+        "installUrl": "https://www.python.org/downloads/"
+      }
+    ]
+  },
+  "permissions": [
+    "network",
+    "filesystem:read"
+  ],
+  "isolation": {
+    "sandboxed": true,
+    "allowedPaths": ["$TEMP"],
+    "networkAccess": true
+  }
+}

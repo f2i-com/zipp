@@ -1,0 +1,14 @@
+{
+  "name": "Weather API",
+  "description": "Mock weather API service for demonstration",
+  "version": "1.0.0",
+  "runtime": "python",
+  "entrypoint": {
+    "windows": "start.bat",
+    "unix": "start.sh"
+  },
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": 5000
+  }
+}

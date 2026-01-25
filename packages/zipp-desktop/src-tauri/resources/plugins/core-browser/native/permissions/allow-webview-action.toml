@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-action"
+description = "Allow performing webview actions"
+commands.allow = ["webview_action"]

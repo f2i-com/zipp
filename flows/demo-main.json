@@ -1,0 +1,144 @@
+{
+  "version": "1.0",
+  "id": "flow-main-demo",
+  "name": "Main Demo (with Subflows)",
+  "description": "Complete demo using subflows: expands prompt, generates images in a loop",
+  "tags": [
+    "main",
+    "subflow"
+  ],
+  "createdAt": "2026-01-14T23:46:24.342Z",
+  "updatedAt": "2026-01-14T23:46:24.342Z",
+  "nodes": [
+    {
+      "id": "input-concept",
+      "type": "input_text",
+      "position": {
+        "x": 100,
+        "y": 50
+      },
+      "data": {
+        "value": "A cyberpunk street market at night with neon signs and rain"
+      }
+    },
+    {
+      "id": "loop-start",
+      "type": "loop_start",
+      "position": {
+        "x": 100,
+        "y": 250
+      },
+      "data": {
+        "iterations": 2
+      }
+    },
+    {
+      "id": "template-variation",
+      "type": "template",
+      "position": {
+        "x": 450,
+        "y": 100
+      },
+      "data": {
+        "template": "{{concept}} - variation {{i}}, unique perspective",
+        "inputCount": 2,
+        "inputNames": [
+          "concept",
+          "i"
+        ]
+      }
+    },
+    {
+      "id": "subflow-expand",
+      "type": "subflow",
+      "position": {
+        "x": 800,
+        "y": 100
+      },
+      "data": {
+        "flowId": "flow-prompt-expander",
+        "flowName": "Prompt Expander",
+        "inputCount": 1,
+        "inputMappings": []
+      }
+    },
+    {
+      "id": "subflow-generate",
+      "type": "subflow",
+      "position": {
+        "x": 1100,
+        "y": 100
+      },
+      "data": {
+        "flowId": "flow-comfyui-gen",
+        "flowName": "ComfyUI Generator",
+        "inputCount": 1,
+        "inputMappings": []
+      }
+    },
+    {
+      "id": "loop-end",
+      "type": "loop_end",
+      "position": {
+        "x": 1400,
+        "y": 100
+      },
+      "data": {}
+    },
+    {
+      "id": "output-images",
+      "type": "output",
+      "position": {
+        "x": 1650,
+        "y": 100
+      },
+      "data": {
+        "label": "generated_images"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input-concept",
+      "target": "template-variation",
+      "sourceHandle": "text",
+      "targetHandle": "input",
+      "id": "e-0-1768434384342"
+    },
+    {
+      "source": "loop-start",
+      "target": "template-variation",
+      "sourceHandle": "item",
+      "targetHandle": "input2",
+      "id": "e-1-1768434384342"
+    },
+    {
+      "source": "template-variation",
+      "target": "subflow-expand",
+      "sourceHandle": "result",
+      "targetHandle": "input_0",
+      "id": "e-2-1768434384342"
+    },
+    {
+      "source": "subflow-expand",
+      "target": "subflow-generate",
+      "sourceHandle": "output",
+      "targetHandle": "input_0",
+      "id": "e-3-1768434384342"
+    },
+    {
+      "source": "subflow-generate",
+      "target": "loop-end",
+      "sourceHandle": "output",
+      "targetHandle": "input",
+      "id": "e-4-1768434384342"
+    },
+    {
+      "source": "loop-end",
+      "target": "output-images",
+      "sourceHandle": "results",
+      "targetHandle": "result",
+      "id": "e-5-1768434384342"
+    }
+  ]
+}

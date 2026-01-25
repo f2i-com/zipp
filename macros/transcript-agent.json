@@ -1,0 +1,171 @@
+{
+  "version": "1.0",
+  "id": "macro-transcript-agent",
+  "name": "Transcript Agent",
+  "description": "Transcribe video/audio files and get AI-powered analysis including summary, key points, and chapter markers",
+  "isMacro": true,
+  "tags": [
+    "macro",
+    "audio",
+    "video",
+    "transcription",
+    "ai",
+    "summary"
+  ],
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "nodes": [
+    {
+      "id": "input-media",
+      "type": "macro_input",
+      "position": { "x": 100, "y": 150 },
+      "data": {
+        "name": "media",
+        "inputType": "any",
+        "required": true,
+        "defaultValue": ""
+      }
+    },
+    {
+      "id": "input-prompt",
+      "type": "macro_input",
+      "position": { "x": 100, "y": 350 },
+      "data": {
+        "name": "analysisPrompt",
+        "inputType": "text",
+        "required": false,
+        "defaultValue": ""
+      }
+    },
+    {
+      "id": "transcribe",
+      "type": "speech_to_text",
+      "position": { "x": 400, "y": 150 },
+      "data": {
+        "enableWordTimestamps": true,
+        "enableDiarization": false
+      }
+    },
+    {
+      "id": "format-transcript",
+      "type": "template",
+      "position": { "x": 700, "y": 50 },
+      "data": {
+        "inputCount": 2,
+        "inputNames": ["transcript", "language"],
+        "template": "Transcript:\n\n{{transcript}}\n\nDetected Language: {{language}}"
+      }
+    },
+    {
+      "id": "analysis-prompt",
+      "type": "template",
+      "position": { "x": 700, "y": 300 },
+      "data": {
+        "inputCount": 2,
+        "inputNames": ["transcript", "customPrompt"],
+        "template": "Analyze the following transcript and provide:\n\n1. **Summary** (2-3 paragraphs)\n2. **Key Points** (bullet list of 5-10 main points)\n3. **Chapter Markers** (suggested timestamps and titles for logical sections)\n4. **Notable Quotes** (3-5 impactful quotes with timestamps)\n5. **Sentiment** (overall tone and emotional content)\n\n{{customPrompt}}\n\nTranscript:\n{{transcript}}"
+      }
+    },
+    {
+      "id": "ai-analyze",
+      "type": "ai_llm",
+      "position": { "x": 1050, "y": 250 },
+      "data": {
+        "systemPrompt": "You are an expert content analyst. Analyze transcripts thoroughly and provide structured, actionable insights. Format your response clearly with markdown headers and bullet points.",
+        "temperature": 0.3
+      }
+    },
+    {
+      "id": "output-analysis",
+      "type": "macro_output",
+      "position": { "x": 1400, "y": 150 },
+      "data": {
+        "name": "analysis",
+        "outputType": "text"
+      }
+    },
+    {
+      "id": "output-transcript",
+      "type": "macro_output",
+      "position": { "x": 1400, "y": 300 },
+      "data": {
+        "name": "transcript",
+        "outputType": "text"
+      }
+    },
+    {
+      "id": "output-segments",
+      "type": "macro_output",
+      "position": { "x": 1400, "y": 450 },
+      "data": {
+        "name": "segments",
+        "outputType": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-media-transcribe",
+      "source": "input-media",
+      "sourceHandle": "value",
+      "target": "transcribe",
+      "targetHandle": "media"
+    },
+    {
+      "id": "e-transcribe-format",
+      "source": "transcribe",
+      "sourceHandle": "text",
+      "target": "format-transcript",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-transcribe-language",
+      "source": "transcribe",
+      "sourceHandle": "language",
+      "target": "format-transcript",
+      "targetHandle": "input2"
+    },
+    {
+      "id": "e-transcribe-analysis",
+      "source": "transcribe",
+      "sourceHandle": "text",
+      "target": "analysis-prompt",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-custom-analysis",
+      "source": "input-prompt",
+      "sourceHandle": "value",
+      "target": "analysis-prompt",
+      "targetHandle": "input2"
+    },
+    {
+      "id": "e-prompt-ai",
+      "source": "analysis-prompt",
+      "sourceHandle": "result",
+      "target": "ai-analyze",
+      "targetHandle": "prompt"
+    },
+    {
+      "id": "e-ai-analysis",
+      "source": "ai-analyze",
+      "sourceHandle": "response",
+      "target": "output-analysis",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-transcribe-transcript",
+      "source": "transcribe",
+      "sourceHandle": "text",
+      "target": "output-transcript",
+      "targetHandle": "value"
+    },
+    {
+      "id": "e-transcribe-segments",
+      "source": "transcribe",
+      "sourceHandle": "segments",
+      "target": "output-segments",
+      "targetHandle": "value"
+    }
+  ]
+}

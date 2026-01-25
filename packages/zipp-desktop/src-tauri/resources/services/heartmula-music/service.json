@@ -1,0 +1,8 @@
+{
+  "name": "HeartMuLa Music",
+  "description": "AI music generation with lyrics (Float8 quantized)",
+  "port": 8767,
+  "icon": "music",
+  "color": "#EC4899",
+  "startupTimeout": 180
+}

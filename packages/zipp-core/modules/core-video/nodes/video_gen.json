@@ -1,0 +1,167 @@
+{
+    "id": "video_gen",
+    "name": "Video Gen",
+    "description": "Generate videos using ComfyUI workflows.",
+    "doc": "Generate AI videos from prompts or images using ComfyUI.\n\nModes:\n• Text-to-video: Describe what you want\n• Image-to-video: Animate a source image\n\nSettings:\n• Frame Count - number of frames to generate\n• Width/Height - video dimensions\n• Frame Rate - output FPS\n\nRequirements:\n• ComfyUI server with video workflow\n• Configure workflow in the node UI\n\nTip: Use 'Free Memory' node before video generation to prevent out-of-memory errors.",
+    "icon": "video",
+    "color": "orange",
+    "tags": [
+        "video",
+        "generate",
+        "ai",
+        "comfyui"
+    ],
+    "flowplan": {
+        "stepTypes": [
+            "video_gen"
+        ],
+        "fieldMapping": {
+            "prompt": "prompt"
+        },
+        "literalInputFields": [
+            "prompt"
+        ],
+        "templateFields": [
+            "prompt"
+        ],
+        "inputHandleMapping": {
+            "prompt": "prompt"
+        }
+    },
+    "inputs": [
+        {
+            "id": "prompt",
+            "name": "Prompt",
+            "type": "string",
+            "position": "left",
+            "required": false,
+            "description": "Video generation prompt"
+        },
+        {
+            "id": "image",
+            "name": "Image",
+            "type": "image",
+            "position": "left",
+            "required": false,
+            "description": "Source image for img2vid generation"
+        },
+        {
+            "id": "frameCount",
+            "name": "Frame Count",
+            "type": "number",
+            "position": "left",
+            "required": false,
+            "description": "Number of frames (overrides workflow default)"
+        }
+    ],
+    "outputs": [
+        {
+            "id": "video",
+            "name": "Video",
+            "type": "video",
+            "position": "right",
+            "description": "Generated video URL/Path"
+        }
+    ],
+    "properties": [
+        {
+            "id": "endpoint",
+            "name": "ComfyUI Endpoint",
+            "type": "string",
+            "default": "",
+            "placeholder": "Use default (http://localhost:8188)",
+            "description": "ComfyUI server URL"
+        },
+        {
+            "id": "comfyWorkflow",
+            "name": "Workflow JSON",
+            "type": "json",
+            "default": "",
+            "hidden": true
+        },
+        {
+            "id": "comfyWorkflowName",
+            "name": "Workflow Name",
+            "type": "string",
+            "default": "",
+            "hidden": true
+        },
+        {
+            "id": "comfyPrimaryPromptNodeId",
+            "name": "Prompt Node ID",
+            "type": "string",
+            "default": "",
+            "hidden": true
+        },
+        {
+            "id": "comfyImageInputConfigs",
+            "name": "Image Input Configs",
+            "type": "json",
+            "default": [],
+            "hidden": true
+        },
+        {
+            "id": "comfySeedMode",
+            "name": "Seed Mode",
+            "type": "string",
+            "default": "random",
+            "hidden": true
+        },
+        {
+            "id": "comfyFixedSeed",
+            "name": "Fixed Seed",
+            "type": "number",
+            "default": null,
+            "hidden": true
+        },
+        {
+            "id": "comfyAllImageNodeIds",
+            "name": "All Image Node IDs",
+            "type": "json",
+            "default": [],
+            "hidden": true
+        },
+        {
+            "id": "comfyFrameCount",
+            "name": "Frame Count",
+            "type": "number",
+            "default": null,
+            "placeholder": "121",
+            "description": "Number of frames to generate (overrides workflow)"
+        },
+        {
+            "id": "comfyWidth",
+            "name": "Width",
+            "type": "number",
+            "default": null,
+            "placeholder": "1280",
+            "description": "Video width in pixels (overrides workflow)"
+        },
+        {
+            "id": "comfyHeight",
+            "name": "Height",
+            "type": "number",
+            "default": null,
+            "placeholder": "720",
+            "description": "Video height in pixels (overrides workflow)"
+        },
+        {
+            "id": "comfyFrameRate",
+            "name": "Frame Rate",
+            "type": "number",
+            "default": null,
+            "placeholder": "24",
+            "description": "Frames per second (overrides workflow)"
+        }
+    ],
+    "compiler": {
+        "customHandler": true,
+        "async": true,
+        "abortable": true,
+        "statusTracking": true
+    },
+    "ui": {
+        "width": 280,
+        "resizable": false
+    }
+}

@@ -1,0 +1,16 @@
+[default]
+description = "Default permissions for the Zipp Filesystem plugin"
+permissions = [
+    "allow-list-folder",
+    "allow-read-file",
+    "allow-write-file",
+    "allow-pick-folder",
+    "allow-pick-file",
+    "allow-native-copy-file",
+    "allow-calculate-file-chunks",
+    "allow-read-chunk-content",
+    "allow-get-downloads-path",
+    "allow-get-app-data-dir",
+    "allow-get-temp-dir",
+    "allow-run-command",
+]

@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-list-folder"
+description = "Allow listing files in a folder"
+commands.allow = ["list_folder"]

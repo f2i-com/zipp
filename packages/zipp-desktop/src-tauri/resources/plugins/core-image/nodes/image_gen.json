@@ -1,0 +1,156 @@
+{
+  "id": "image_gen",
+  "name": "Image Gen",
+  "description": "Generate images using ComfyUI, Stable Diffusion, or other image APIs.",
+  "doc": "Generate AI images from text prompts.\n\nSupported APIs:\n• OpenAI (GPT Image)\n• Google Gemini\n• ComfyUI (Stable Diffusion, FLUX, etc.)\n\nFeatures:\n• Custom dimensions (width/height)\n• Negative prompts to avoid unwanted elements\n• Image-to-image with input images\n• Input image size limits for API compatibility\n\nComfyUI Integration:\nFor advanced workflows, use ComfyUI format to run custom Stable Diffusion pipelines.\n\nTip: Set default API settings in Project Settings to avoid configuring each node.",
+  "icon": "image",
+  "color": "pink",
+  "tags": ["image", "generate", "ai", "comfyui", "stable-diffusion"],
+  "flowplan": {
+    "stepTypes": ["ai_image", "image_gen"],
+    "fieldMapping": {
+      "prompt": "prompt",
+      "image": "image"
+    },
+    "literalInputFields": ["prompt"],
+    "templateFields": ["prompt", "image"],
+    "inputHandleMapping": {
+      "prompt": "prompt"
+    },
+    "compilerOptionsMapping": {
+      "imageModel": "model",
+      "imageEndpoint": "endpoint",
+      "imageApiKeyConstant": "apiKeyConstant",
+      "imageApiFormat": "apiFormat"
+    }
+  },
+  "inputs": [
+    {
+      "id": "prompt",
+      "name": "Prompt",
+      "type": "string",
+      "position": "left",
+      "required": true,
+      "description": "Image generation prompt"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "image",
+      "name": "Image",
+      "type": "image",
+      "position": "right",
+      "description": "Generated image (base64)"
+    }
+  ],
+  "properties": [
+    {
+      "id": "endpoint",
+      "name": "API Endpoint",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "Image generation API endpoint"
+    },
+    {
+      "id": "model",
+      "name": "Model",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "Model name for image generation"
+    },
+    {
+      "id": "apiKeyConstant",
+      "name": "API Key Constant",
+      "type": "string",
+      "default": "",
+      "placeholder": "Use default from settings",
+      "description": "Name of the constant containing API key"
+    },
+    {
+      "id": "apiFormat",
+      "name": "API Format",
+      "type": "select",
+      "default": "openai",
+      "options": [
+        { "value": "openai", "label": "OpenAI" },
+        { "value": "comfyui", "label": "ComfyUI" },
+        { "value": "gemini", "label": "Google Gemini" }
+      ],
+      "description": "API format to use"
+    },
+    {
+      "id": "negativePrompt",
+      "name": "Negative Prompt",
+      "type": "textarea",
+      "default": "",
+      "description": "What to avoid in the image",
+      "rows": 2
+    },
+    {
+      "id": "width",
+      "name": "Width",
+      "type": "number",
+      "default": 1024,
+      "min": 64,
+      "max": 2048
+    },
+    {
+      "id": "height",
+      "name": "Height",
+      "type": "number",
+      "default": 1024,
+      "min": 64,
+      "max": 2048
+    },
+    {
+      "id": "steps",
+      "name": "Steps",
+      "type": "number",
+      "default": 20,
+      "min": 1,
+      "max": 150
+    },
+    {
+      "id": "imageInputCount",
+      "name": "Image Inputs",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 4,
+      "description": "Number of image inputs for img2img"
+    },
+    {
+      "id": "maxImageDimension",
+      "name": "Max Input Image Dimension",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 4096,
+      "description": "Maximum width/height for input images (0 = use default 1024px). Only applies when image inputs are connected."
+    },
+    {
+      "id": "maxImageSizeKB",
+      "name": "Max Input Image Size (KB)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 20480,
+      "description": "Maximum input image size in KB (0 = use default 200KB). Only applies when image inputs are connected."
+    }
+  ],
+  "compiler": {
+    "template": "{{await}}Image.generate({{input}}, {{prop.negativePrompt}}, {{prop.width}}, {{prop.height}}, {{prop.steps}}, \"{{nodeId}}\")",
+    "async": true,
+    "abortable": true,
+    "statusTracking": true
+  },
+  "runtime": {
+    "streaming": true
+  },
+  "ui": {
+    "width": 320,
+    "resizable": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Qwen3 TTS",
+  "description": "Text-to-speech with voice design and custom voices",
+  "category": "tts",
+  "port": 8772,
+  "icon": "mic",
+  "color": "#6366F1"
+}

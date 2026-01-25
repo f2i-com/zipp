@@ -1,0 +1,60 @@
+{
+  "id": "browser_extract",
+  "name": "Browser Extract",
+  "description": "Extract data from HTML or JSON responses.",
+  "doc": "Extract specific data from web content.\n\nExtraction Types:\n• CSS Selector - extract elements from HTML\n  Example: \".product-title\" extracts product titles\n• Regex - pattern matching on text content\n  Example: \"price: \\$([\\d.]+)\" extracts prices\n• JSON Path - navigate JSON structures\n  Example: \"$.data.items[*].name\" extracts names\n\nAttribute Options:\n• text - inner text content\n• href - link URL\n• src - image source\n• Any HTML attribute name",
+  "icon": "code",
+  "color": "cyan",
+  "tags": ["parse", "extract", "html", "json", "selector"],
+  "inputs": [
+    {
+      "id": "content",
+      "name": "Content",
+      "type": "any",
+      "position": "left",
+      "description": "HTML or JSON content"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "result",
+      "name": "Result",
+      "type": "any",
+      "position": "right",
+      "description": "Extracted data"
+    }
+  ],
+  "properties": [
+    {
+      "id": "type",
+      "name": "Type",
+      "type": "select",
+      "default": "selector",
+      "options": [
+        { "value": "selector", "label": "CSS Selector" },
+        { "value": "regex", "label": "Regex" },
+        { "value": "jsonpath", "label": "JSON Path" }
+      ]
+    },
+    {
+      "id": "pattern",
+      "name": "Pattern",
+      "type": "string",
+      "default": "",
+      "description": "Selector, regex, or JSON path"
+    },
+    {
+      "id": "attribute",
+      "name": "Attribute",
+      "type": "string",
+      "default": "text",
+      "description": "Attribute to extract (for selectors)"
+    }
+  ],
+  "compiler": {
+    "template": "Browser.extract({{input}}, {{prop.type.raw}}, {{prop.pattern}}, {{prop.attribute}})"
+  },
+  "ui": {
+    "width": 280
+  }
+}

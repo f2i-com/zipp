@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "browser-automation",
+  "description": "Capability for browser automation webview windows - minimal permissions for security",
+  "windows": ["webview_*"],
+  "remote": {
+    "urls": ["https://*", "http://*"]
+  },
+  "permissions": [
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

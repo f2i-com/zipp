@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-get-downloads-path"
+description = "Allow getting downloads directory path"
+commands.allow = ["get_downloads_path"]

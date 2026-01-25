@@ -1,0 +1,125 @@
+{
+  "version": "1.0",
+  "id": "flow-logic-demo",
+  "name": "Logic & Transform Demo",
+  "description": "Demonstrates FormLogic engine: conditions, loops, and JavaScript transforms",
+  "tags": [
+    "logic",
+    "formlogic"
+  ],
+  "createdAt": "2026-01-14T23:46:24.341Z",
+  "updatedAt": "2026-01-14T23:46:24.341Z",
+  "nodes": [
+    {
+      "id": "input-num",
+      "type": "input_text",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "data": {
+        "value": "42"
+      }
+    },
+    {
+      "id": "logic-double",
+      "type": "logic_block",
+      "position": {
+        "x": 400,
+        "y": 150
+      },
+      "data": {
+        "code": "// Double the input number\nlet num = Number.parse(input);\nlet doubled = num * 2;\nreturn doubled.toString();"
+      }
+    },
+    {
+      "id": "condition-check",
+      "type": "condition",
+      "position": {
+        "x": 750,
+        "y": 200
+      },
+      "data": {
+        "operator": "greater",
+        "compareValue": "50"
+      }
+    },
+    {
+      "id": "template-big",
+      "type": "template",
+      "position": {
+        "x": 1050,
+        "y": 80
+      },
+      "data": {
+        "template": "Result {{value}} is BIG (greater than 50)!",
+        "inputCount": 1,
+        "inputNames": [
+          "value"
+        ]
+      }
+    },
+    {
+      "id": "template-small",
+      "type": "template",
+      "position": {
+        "x": 1050,
+        "y": 320
+      },
+      "data": {
+        "template": "Result {{value}} is small (50 or less)",
+        "inputCount": 1,
+        "inputNames": [
+          "value"
+        ]
+      }
+    },
+    {
+      "id": "output-result",
+      "type": "output",
+      "position": {
+        "x": 1400,
+        "y": 200
+      },
+      "data": {
+        "label": "result"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input-num",
+      "target": "logic-double",
+      "id": "e-0-1768434384342"
+    },
+    {
+      "source": "logic-double",
+      "target": "condition-check",
+      "id": "e-1-1768434384342"
+    },
+    {
+      "source": "condition-check",
+      "target": "template-big",
+      "sourceHandle": "true",
+      "targetHandle": "value",
+      "id": "e-2-1768434384342"
+    },
+    {
+      "source": "condition-check",
+      "target": "template-small",
+      "sourceHandle": "false",
+      "targetHandle": "value",
+      "id": "e-3-1768434384342"
+    },
+    {
+      "source": "template-big",
+      "target": "output-result",
+      "id": "e-4-1768434384342"
+    },
+    {
+      "source": "template-small",
+      "target": "output-result",
+      "id": "e-5-1768434384342"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[default]
+description = "Default permissions for the Zipp Browser plugin"
+permissions = [
+    "allow-webview-create",
+    "allow-webview-navigate",
+    "allow-webview-evaluate",
+    "allow-webview-action",
+    "allow-webview-html-callback",
+    "allow-webview-screenshot",
+    "allow-webview-screenshot-callback",
+    "allow-webview-close",
+    "allow-webview-get-html",
+]

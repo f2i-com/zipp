@@ -1,0 +1,164 @@
+{
+    "id": "text_to_speech",
+    "name": "Text to Speech",
+    "description": "Convert text to speech audio using a TTS service.",
+    "doc": "Generate natural-sounding speech from text using TTS services.\n\nFeatures:\n• Voice cloning - provide reference audio to clone a voice\n• Voice description - describe the desired voice style\n• Speaker selection - use predefined speakers (Qwen3-TTS)\n• Multiple output formats (WAV, MP3)\n\nSupported Services:\n• Chatterbox TTS - Voice cloning with audio prompts\n• Qwen3 TTS - Custom voices and voice design\n• Custom URL - Any compatible TTS API\n\nAPI Response Formats:\n• JSON - expects {audio_path: \"...\"} response\n• PCM16 Stream - raw PCM audio data\n• Audio File - direct MP3/WAV download",
+    "icon": "mic",
+    "color": "teal",
+    "tags": [
+        "audio",
+        "tts",
+        "speech",
+        "voice",
+        "narration"
+    ],
+    "inputs": [
+        {
+            "id": "text",
+            "name": "Text",
+            "type": "string",
+            "position": "left",
+            "description": "Text to convert to speech"
+        },
+        {
+            "id": "descriptionInput",
+            "name": "Description",
+            "type": "string",
+            "position": "left",
+            "optional": true,
+            "description": "Voice description (overrides property if connected)"
+        },
+        {
+            "id": "audioPrompt",
+            "name": "Audio Prompt",
+            "type": "audio",
+            "position": "left",
+            "optional": true,
+            "description": "Reference audio for voice cloning (optional)"
+        }
+    ],
+    "outputs": [
+        {
+            "id": "audio",
+            "name": "Audio",
+            "type": "audio",
+            "position": "right",
+            "description": "Generated audio (media URL for playback)"
+        },
+        {
+            "id": "path",
+            "name": "Path",
+            "type": "string",
+            "position": "right",
+            "description": "File path to generated audio (for FFmpeg operations)"
+        }
+    ],
+    "properties": [
+        {
+            "id": "service",
+            "name": "TTS Service",
+            "type": "select",
+            "default": "chatterbox-tts",
+            "description": "TTS service to use",
+            "options": [
+                { "value": "chatterbox-tts", "label": "Chatterbox TTS" },
+                { "value": "qwen3-tts", "label": "Qwen3 TTS" },
+                { "value": "custom", "label": "Custom URL" }
+            ]
+        },
+        {
+            "id": "apiUrl",
+            "name": "API URL",
+            "type": "string",
+            "default": "http://127.0.0.1:8765/tts",
+            "description": "TTS API endpoint (for custom service)"
+        },
+        {
+            "id": "responseFormat",
+            "name": "Response Format",
+            "type": "select",
+            "default": "json",
+            "description": "How the API returns audio data",
+            "options": [
+                {
+                    "value": "json",
+                    "label": "JSON (with audio_path)"
+                },
+                {
+                    "value": "pcm16_stream",
+                    "label": "PCM16 Stream (raw audio)"
+                },
+                {
+                    "value": "audio_file",
+                    "label": "Audio File (MP3/WAV download)"
+                }
+            ]
+        },
+        {
+            "id": "description",
+            "name": "Voice Description",
+            "type": "string",
+            "default": "",
+            "description": "Description of desired voice style (optional)"
+        },
+        {
+            "id": "speaker",
+            "name": "Speaker",
+            "type": "string",
+            "default": "",
+            "description": "Speaker voice for Qwen3-TTS CustomVoice (e.g., Vivian, Ryan)"
+        },
+        {
+            "id": "language",
+            "name": "Language",
+            "type": "select",
+            "default": "Auto",
+            "options": [
+                { "value": "Auto", "label": "Auto Detect" },
+                { "value": "Chinese", "label": "Chinese" },
+                { "value": "English", "label": "English" },
+                { "value": "Japanese", "label": "Japanese" },
+                { "value": "Korean", "label": "Korean" },
+                { "value": "French", "label": "French" },
+                { "value": "German", "label": "German" },
+                { "value": "Spanish", "label": "Spanish" },
+                { "value": "Italian", "label": "Italian" },
+                { "value": "Portuguese", "label": "Portuguese" },
+                { "value": "Russian", "label": "Russian" }
+            ],
+            "description": "Language for TTS synthesis"
+        },
+        {
+            "id": "outputFormat",
+            "name": "Format",
+            "type": "select",
+            "default": "wav",
+            "options": [
+                {
+                    "value": "wav",
+                    "label": "WAV"
+                },
+                {
+                    "value": "mp3",
+                    "label": "MP3"
+                }
+            ]
+        },
+        {
+            "id": "filename",
+            "name": "Filename",
+            "type": "string",
+            "default": "tts_output",
+            "description": "Base filename for output"
+        }
+    ],
+    "compiler": {
+        "customHandler": true,
+        "async": true,
+        "statusTracking": true
+    },
+    "ui": {
+        "width": 300,
+        "customComponent": "TextToSpeechNode"
+    }
+}

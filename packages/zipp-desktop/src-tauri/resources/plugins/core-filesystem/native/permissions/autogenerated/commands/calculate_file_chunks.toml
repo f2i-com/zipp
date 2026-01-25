@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-calculate-file-chunks"
+description = "Enables the calculate_file_chunks command without any pre-configured scope."
+commands.allow = ["calculate_file_chunks"]
+
+[[permission]]
+identifier = "deny-calculate-file-chunks"
+description = "Denies the calculate_file_chunks command without any pre-configured scope."
+commands.deny = ["calculate_file_chunks"]

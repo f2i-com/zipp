@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-get-html"
+description = "Allow getting webview HTML content"
+commands.allow = ["webview_get_html"]

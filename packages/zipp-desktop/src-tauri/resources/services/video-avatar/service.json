@@ -1,0 +1,7 @@
+{
+  "name": "Video Avatar",
+  "description": "Audio-driven talking head generation using Ditto",
+  "port": 8768,
+  "icon": "video",
+  "color": "#8B5CF6"
+}

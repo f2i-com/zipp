@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-pick-folder"
+description = "Allow opening folder picker dialog"
+commands.allow = ["pick_folder"]

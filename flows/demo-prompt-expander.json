@@ -1,0 +1,64 @@
+{
+  "version": "1.0",
+  "id": "flow-prompt-expander",
+  "name": "Prompt Expander",
+  "description": "Utility subflow: Takes a concept and expands it into a detailed image prompt",
+  "tags": [
+    "utility",
+    "ai",
+    "subflow"
+  ],
+  "createdAt": "2026-01-14T23:46:24.340Z",
+  "updatedAt": "2026-01-14T23:46:24.340Z",
+  "nodes": [
+    {
+      "id": "input-1",
+      "type": "input_text",
+      "position": {
+        "x": 100,
+        "y": 150
+      },
+      "data": {
+        "value": "A futuristic city at sunset"
+      }
+    },
+    {
+      "id": "ai-expand",
+      "type": "ai_llm",
+      "position": {
+        "x": 450,
+        "y": 100
+      },
+      "data": {
+        "model": "qwen/qwen3-vl-8b",
+        "systemPrompt": "You are an expert at writing image generation prompts. Take the user's concept and expand it into a detailed, vivid prompt for an AI image generator. Focus on visual details like lighting, style, composition, colors, and atmosphere. Output ONLY the prompt, no explanations.",
+        "endpoint": "http://localhost:1234/v1/chat/completions",
+        "requestFormat": "openai"
+      }
+    },
+    {
+      "id": "output-1",
+      "type": "output",
+      "position": {
+        "x": 850,
+        "y": 150
+      },
+      "data": {
+        "label": "expanded_prompt"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "input-1",
+      "target": "ai-expand",
+      "targetHandle": "prompt",
+      "id": "e-0-1768434384340"
+    },
+    {
+      "source": "ai-expand",
+      "target": "output-1",
+      "id": "e-1-1768434384340"
+    }
+  ]
+}

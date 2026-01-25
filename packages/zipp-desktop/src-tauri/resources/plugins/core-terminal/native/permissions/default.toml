@@ -1,0 +1,13 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Default permissions for the Terminal plugin"
+permissions = [
+    "allow-terminal-create",
+    "allow-terminal-screenshot",
+    "allow-terminal-send-keys",
+    "allow-terminal-read-output",
+    "allow-terminal-close",
+    "allow-terminal-show-window",
+    "allow-terminal-list-sessions"
+]

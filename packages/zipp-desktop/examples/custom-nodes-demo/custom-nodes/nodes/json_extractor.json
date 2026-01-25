@@ -1,0 +1,72 @@
+{
+  "id": "json_extractor",
+  "name": "JSON Extractor",
+  "description": "Parses JSON and extracts values using dot notation paths",
+  "icon": "code",
+  "color": "amber",
+  "inputs": [
+    {
+      "id": "json",
+      "name": "JSON",
+      "type": "string",
+      "position": "left",
+      "required": true,
+      "description": "JSON string to parse"
+    },
+    {
+      "id": "path",
+      "name": "Path",
+      "type": "string",
+      "position": "left",
+      "required": false,
+      "description": "Dot notation path to extract (e.g., 'user.name')"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "output",
+      "name": "Value",
+      "type": "any",
+      "position": "right",
+      "description": "The extracted value"
+    },
+    {
+      "id": "parsed",
+      "name": "Parsed",
+      "type": "object",
+      "position": "right",
+      "description": "The full parsed JSON object"
+    },
+    {
+      "id": "valid",
+      "name": "Is Valid",
+      "type": "boolean",
+      "position": "right",
+      "description": "Whether the JSON was valid"
+    }
+  ],
+  "properties": [
+    {
+      "id": "defaultPath",
+      "name": "Default Path",
+      "type": "string",
+      "default": "",
+      "description": "Default extraction path if not provided via input"
+    },
+    {
+      "id": "fallbackValue",
+      "name": "Fallback",
+      "type": "string",
+      "default": "",
+      "description": "Value to return if path not found or JSON invalid"
+    }
+  ],
+  "compiler": {
+    "template": "// JSON Extractor: {{nodeId}}\nlet parsed_{{sanitizedId}} = null;\nlet fallback_{{sanitizedId}} = {{props.fallbackValue}};\nlet {{outputVar}} = fallback_{{sanitizedId}};\nlet valid_{{sanitizedId}} = false;\nlet jsonInput_{{sanitizedId}} = {{inputs.json}};\nif (jsonInput_{{sanitizedId}} == null) { jsonInput_{{sanitizedId}} = '{}'; }\ntry {\n  parsed_{{sanitizedId}} = JSON.parse(jsonInput_{{sanitizedId}});\n  valid_{{sanitizedId}} = true;\n  let pathInput_{{sanitizedId}} = {{inputs.path}};\n  let extractPath_{{sanitizedId}} = pathInput_{{sanitizedId}};\n  if (extractPath_{{sanitizedId}} == null || extractPath_{{sanitizedId}} == '') {\n    extractPath_{{sanitizedId}} = {{props.defaultPath}};\n  }\n  if (extractPath_{{sanitizedId}} != null && extractPath_{{sanitizedId}} != '') {\n    let keys_{{sanitizedId}} = extractPath_{{sanitizedId}}.split('.');\n    let current_{{sanitizedId}} = parsed_{{sanitizedId}};\n    let i_{{sanitizedId}} = 0;\n    while (i_{{sanitizedId}} < keys_{{sanitizedId}}.length && current_{{sanitizedId}} != null) {\n      current_{{sanitizedId}} = current_{{sanitizedId}}[keys_{{sanitizedId}}[i_{{sanitizedId}}]];\n      i_{{sanitizedId}} = i_{{sanitizedId}} + 1;\n    }\n    if (current_{{sanitizedId}} != null) {\n      {{outputVar}} = current_{{sanitizedId}};\n    }\n  } else {\n    {{outputVar}} = parsed_{{sanitizedId}};\n  }\n} catch (e) {\n  console.warn('JSON parse error: ' + e.message);\n}",
+    "outputVariable": "{{outputVar}}",
+    "additionalOutputs": {
+      "parsed": "parsed_{{sanitizedId}}",
+      "valid": "valid_{{sanitizedId}}"
+    }
+  }
+}

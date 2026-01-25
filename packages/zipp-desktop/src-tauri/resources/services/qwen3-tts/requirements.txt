@@ -1,0 +1,25 @@
+# Qwen3 TTS Server Dependencies
+# Python 3.12 recommended
+#
+# NOTE: The start.bat/start.sh scripts handle installation automatically.
+# PyTorch is installed first with the correct CUDA version, then other deps.
+# This file is for reference only.
+
+# Core TTS library (downloads models from HuggingFace on first run)
+qwen-tts
+
+# Web server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# Audio processing (PyTorch installed separately by start scripts)
+soundfile>=0.12.0
+numpy>=1.24.0
+
+# Optional: Flash Attention 2 for reduced GPU memory usage
+# Install separately with: pip install -U flash-attn --no-build-isolation
+# flash-attn

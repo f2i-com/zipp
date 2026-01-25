@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-webview-close"
+description = "Allow closing webview sessions"
+commands.allow = ["webview_close"]

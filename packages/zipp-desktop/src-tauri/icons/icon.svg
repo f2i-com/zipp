@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Background - solid indigo -->
+  <rect width="256" height="256" rx="48" fill="#6366f1"/>
+  <!-- Paper airplane -->
+  <g transform="translate(128,128) rotate(-15)">
+    <path d="M-70,10 L70,-50 L10,60 L0,10 L-70,10 Z" fill="#ffffff"/>
+    <path d="M0,10 L70,-50 L10,60 Z" fill="#e0e0ff"/>
+    <path d="M-70,10 L0,10 L-20,35 Z" fill="#c0c0ff"/>
+  </g>
+</svg>

@@ -1,0 +1,54 @@
+{
+  "id": "hello-world-flow",
+  "name": "Hello World",
+  "description": "A simple workflow that demonstrates text input and output",
+  "tags": ["example", "starter"],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z",
+  "graph": {
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "input_text",
+        "data": {
+          "label": "Name",
+          "value": "World"
+        },
+        "position": { "x": 100, "y": 200 }
+      },
+      {
+        "id": "template-1",
+        "type": "template",
+        "data": {
+          "label": "Greeting",
+          "template": "Hello, {{input}}! Welcome to ZIPP packages."
+        },
+        "position": { "x": 400, "y": 200 }
+      },
+      {
+        "id": "output-1",
+        "type": "output",
+        "data": {
+          "label": "Result"
+        },
+        "position": { "x": 700, "y": 200 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1",
+        "source": "input-1",
+        "target": "template-1",
+        "sourceHandle": "text",
+        "targetHandle": "input"
+      },
+      {
+        "id": "edge-2",
+        "source": "template-1",
+        "target": "output-1",
+        "sourceHandle": "result",
+        "targetHandle": "result"
+      }
+    ]
+  }
+}
