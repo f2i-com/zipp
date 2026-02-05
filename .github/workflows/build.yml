@@ -26,7 +26,7 @@ jobs:
             bundle_path: |
               packages/zipp-desktop/src-tauri/target/release/bundle/msi/*.msi
               packages/zipp-desktop/src-tauri/target/release/bundle/nsis/*.exe
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             artifact_name: zipp-linux-x64
             bundle_path: |
@@ -51,7 +51,7 @@ jobs:
 
       # Linux-specific dependencies for Tauri
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -76,18 +76,24 @@ jobs:
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-temp
 
-          # Copy binaries with Tauri's expected naming convention
-          $ffmpegBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Name "ffmpeg.exe" | Select-Object -First 1
-          $ffprobeBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Name "ffprobe.exe" | Select-Object -First 1
+          # Find and copy binaries with Tauri's expected naming convention
+          $ffmpegBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          $ffprobeBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
 
-          Copy-Item "ffmpeg-temp/$ffmpegBin" "$ffmpegDir/ffmpeg-x86_64-pc-windows-msvc.exe"
-          Copy-Item "ffmpeg-temp/$ffprobeBin" "$ffmpegDir/ffprobe-x86_64-pc-windows-msvc.exe"
+          Write-Host "Found ffmpeg at: $($ffmpegBin.FullName)"
+          Write-Host "Found ffprobe at: $($ffprobeBin.FullName)"
+
+          Copy-Item $ffmpegBin.FullName "$ffmpegDir/ffmpeg-x86_64-pc-windows-msvc.exe"
+          Copy-Item $ffprobeBin.FullName "$ffmpegDir/ffprobe-x86_64-pc-windows-msvc.exe"
+
+          # Verify files exist
+          Get-ChildItem $ffmpegDir
 
           # Cleanup
           Remove-Item -Recurse -Force ffmpeg.zip, ffmpeg-temp
 
       - name: Download FFmpeg (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           mkdir -p packages/zipp-desktop/src-tauri/bin
 
