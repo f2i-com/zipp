@@ -1,6 +1,7 @@
 {
-  "name": "ACE-Step Music",
-  "description": "AI music generation with lyrics",
+  "name": "ACE-Step 1.5 Music",
+  "description": "AI music generation with lyrics (turbo mode)",
+  "version": "1.5.0",
   "port": 8766,
   "icon": "music",
   "color": "#8B5CF6"

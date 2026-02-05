@@ -338,7 +338,13 @@ describe('CoreAudioRuntime', () => {
 
     it('should resolve media URL to file path', async () => {
       let resolvedPath = '';
-      global.fetch = async (_url: RequestInfo | URL, init?: RequestInit) => {
+      global.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+        const urlStr = url.toString();
+        // Handle health check requests
+        if (urlStr.includes('/health')) {
+          return new Response('{"status":"ok"}', { status: 200 });
+        }
+        // Handle transcribe requests
         const body = JSON.parse(init?.body as string);
         resolvedPath = body.audio_path;
         return new Response(
