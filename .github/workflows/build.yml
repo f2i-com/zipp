@@ -99,12 +99,12 @@ jobs:
       - name: Download FFmpeg (Windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
-        working-directory: packages/zipp-desktop/src-tauri
         run: |
           $ErrorActionPreference = "Stop"
+          $binDir = "${{ github.workspace }}\packages\zipp-desktop\src-tauri\bin"
 
-          # Create bin directory
-          New-Item -ItemType Directory -Force -Path "bin"
+          Write-Host "Creating bin directory at: $binDir"
+          New-Item -ItemType Directory -Force -Path $binDir
 
           Write-Host "Downloading FFmpeg..."
           $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
@@ -123,30 +123,30 @@ jobs:
           Write-Host "Found ffmpeg at: $($ffmpegBin.FullName)"
           Write-Host "Found ffprobe at: $($ffprobeBin.FullName)"
 
-          Copy-Item $ffmpegBin.FullName "bin/ffmpeg-x86_64-pc-windows-msvc.exe"
-          Copy-Item $ffprobeBin.FullName "bin/ffprobe-x86_64-pc-windows-msvc.exe"
+          Copy-Item $ffmpegBin.FullName "$binDir\ffmpeg-x86_64-pc-windows-msvc.exe"
+          Copy-Item $ffprobeBin.FullName "$binDir\ffprobe-x86_64-pc-windows-msvc.exe"
 
-          Write-Host "Verifying files:"
-          Get-ChildItem bin
+          Write-Host "Verifying files in $binDir :"
+          Get-ChildItem $binDir
 
-          if (-not (Test-Path "bin/ffmpeg-x86_64-pc-windows-msvc.exe")) {
+          if (-not (Test-Path "$binDir\ffmpeg-x86_64-pc-windows-msvc.exe")) {
             throw "ffmpeg binary was not copied correctly"
           }
-          if (-not (Test-Path "bin/ffprobe-x86_64-pc-windows-msvc.exe")) {
+          if (-not (Test-Path "$binDir\ffprobe-x86_64-pc-windows-msvc.exe")) {
             throw "ffprobe binary was not copied correctly"
           }
 
-          Write-Host "FFmpeg binaries installed successfully!"
+          Write-Host "FFmpeg binaries installed successfully at $binDir"
           Remove-Item -Recurse -Force ffmpeg.zip, ffmpeg-temp
 
       - name: Download FFmpeg (Linux)
         if: matrix.platform == 'ubuntu-24.04'
-        working-directory: packages/zipp-desktop/src-tauri
         run: |
           set -ex
+          BIN_DIR="${{ github.workspace }}/packages/zipp-desktop/src-tauri/bin"
 
-          # Create bin directory
-          mkdir -p bin
+          echo "Creating bin directory at: $BIN_DIR"
+          mkdir -p "$BIN_DIR"
 
           echo "Downloading FFmpeg..."
           wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
@@ -164,26 +164,33 @@ jobs:
           fi
 
           # Copy binaries
-          cp "$FFMPEG_SRC/ffmpeg" bin/ffmpeg-x86_64-unknown-linux-gnu
-          cp "$FFMPEG_SRC/ffprobe" bin/ffprobe-x86_64-unknown-linux-gnu
+          cp "$FFMPEG_SRC/ffmpeg" "$BIN_DIR/ffmpeg-x86_64-unknown-linux-gnu"
+          cp "$FFMPEG_SRC/ffprobe" "$BIN_DIR/ffprobe-x86_64-unknown-linux-gnu"
 
-          chmod +x bin/ffmpeg-x86_64-unknown-linux-gnu
-          chmod +x bin/ffprobe-x86_64-unknown-linux-gnu
+          chmod +x "$BIN_DIR/ffmpeg-x86_64-unknown-linux-gnu"
+          chmod +x "$BIN_DIR/ffprobe-x86_64-unknown-linux-gnu"
 
-          echo "Verifying files:"
-          ls -la bin/
+          echo "Verifying files in $BIN_DIR:"
+          ls -la "$BIN_DIR/"
 
-          if [ ! -f "bin/ffmpeg-x86_64-unknown-linux-gnu" ]; then
+          if [ ! -f "$BIN_DIR/ffmpeg-x86_64-unknown-linux-gnu" ]; then
             echo "ERROR: ffmpeg binary not found"
             exit 1
           fi
-          if [ ! -f "bin/ffprobe-x86_64-unknown-linux-gnu" ]; then
+          if [ ! -f "$BIN_DIR/ffprobe-x86_64-unknown-linux-gnu" ]; then
             echo "ERROR: ffprobe binary not found"
             exit 1
           fi
 
-          echo "FFmpeg binaries installed successfully!"
+          echo "FFmpeg binaries installed successfully at $BIN_DIR"
           rm -rf ffmpeg-release-amd64-static.tar.xz "$FFMPEG_SRC"
+
+      - name: Verify bin directory before Tauri build
+        shell: bash
+        run: |
+          echo "=== Workspace: ${{ github.workspace }} ==="
+          echo "=== Listing src-tauri/bin directory ==="
+          ls -la "${{ github.workspace }}/packages/zipp-desktop/src-tauri/bin/" || echo "bin directory does not exist!"
 
       - name: Build Tauri app
         working-directory: packages/zipp-desktop
