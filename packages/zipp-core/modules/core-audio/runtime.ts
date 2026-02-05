@@ -1300,14 +1300,13 @@ async function getAudioDuration(audioPath: string): Promise<number> {
             // Extract the path after /media/zipp-output/ or /media/
             const urlMatch = audioPath.match(/\/media\/zipp-output\/(.+)$/) || audioPath.match(/\/media\/(.+)$/);
             if (urlMatch) {
-                let relativePath = urlMatch[1];
-                // Normalize path separators for Windows
-                relativePath = relativePath.replace(/\//g, '\\');
-                // Determine base path based on match
+                const relativePath = urlMatch[1];
+                // Use forward slashes - works cross-platform (Windows, Linux, macOS)
+                // The Tauri filesystem plugin handles path normalization
                 if (audioPath.includes('/media/zipp-output/')) {
-                    resolvedPath = `${appDataDir}\\output\\${relativePath}`;
+                    resolvedPath = `${appDataDir}/output/${relativePath}`;
                 } else {
-                    resolvedPath = `${appDataDir}\\${relativePath}`;
+                    resolvedPath = `${appDataDir}/${relativePath}`;
                 }
             }
         }

@@ -369,7 +369,7 @@ fn get_services_dir() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "Services directory not found. Checked: {}. Run run_dev.bat to deploy services to AppData.",
+        "Services directory not found. Checked: {}. Run the dev setup script (run_dev.bat on Windows, or manually copy services to ~/.local/share/zipp/services on Linux/macOS).",
         checked_paths.join(", ")
     ))
 }

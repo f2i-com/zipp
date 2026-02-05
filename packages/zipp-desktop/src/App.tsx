@@ -5,8 +5,11 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import SplashScreen from './components/SplashScreen';
+import { JobQueueProvider } from './contexts/JobQueueContext';
+import CliWorkflowRunner from './components/CliWorkflowRunner';
 import { loadRuntimePlugins } from './dynamicModules';
 import { initMediaServerPort } from 'zipp-core';
+import { getCliRunConfig, type CliRunConfig } from './hooks/useCliRunMode';
 import { createLogger } from './utils/logger';
 
 const logger = createLogger('App');
@@ -16,6 +19,19 @@ function App() {
   const shouldSkipSplash = localStorage.getItem('skipSplash') === 'true';
   const [showSplash, setShowSplash] = useState(!shouldSkipSplash);
   const [appReady, setAppReady] = useState(false);
+  const [cliConfig, setCliConfig] = useState<CliRunConfig | null>(null);
+  const [cliChecked, setCliChecked] = useState(false);
+
+  // Check CLI run mode on startup
+  useEffect(() => {
+    getCliRunConfig().then((config) => {
+      setCliConfig(config);
+      setCliChecked(true);
+      if (config.isRunMode) {
+        logger.info('CLI run mode detected', { config });
+      }
+    });
+  }, []);
 
   const handleStart = useCallback(async (appDataPath?: string) => {
     // Initialize media server port (for dynamic port support)
@@ -38,16 +54,28 @@ function App() {
   }, []);
 
   // Auto-start when skipSplash flag is set (e.g., from API restart)
+  // Or when in CLI run mode
   useEffect(() => {
-    if (shouldSkipSplash) {
+    if (!cliChecked) return;
+
+    if (cliConfig?.isRunMode) {
+      // CLI run mode - auto-start immediately
+      logger.info('Auto-starting for CLI run mode');
+      handleStart();
+    } else if (shouldSkipSplash) {
       // Clear the flag first so it doesn't persist
       localStorage.removeItem('skipSplash');
       // Auto-start the app
       handleStart();
     }
-  }, [shouldSkipSplash, handleStart]);
+  }, [cliChecked, cliConfig?.isRunMode, shouldSkipSplash, handleStart]);
 
-  if (showSplash) {
+  // Wait for CLI check to complete
+  if (!cliChecked) {
+    return null;
+  }
+
+  if (showSplash && !cliConfig?.isRunMode) {
     return (
       <ErrorBoundary>
         <ThemeProvider>
@@ -59,6 +87,21 @@ function App() {
 
   if (!appReady) {
     return null;
+  }
+
+  // CLI run mode - minimal UI with workflow execution
+  if (cliConfig?.isRunMode) {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <ToastProvider>
+            <JobQueueProvider>
+              <CliWorkflowRunner />
+            </JobQueueProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
   }
 
   return (

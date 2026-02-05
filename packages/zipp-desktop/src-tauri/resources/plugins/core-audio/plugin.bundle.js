@@ -854,12 +854,11 @@ var __PLUGIN_EXPORTS__ = (() => {
         const appDataDir = await ctx.tauri.invoke("plugin:zipp-filesystem|get_app_data_dir");
         const urlMatch = audioPath.match(/\/media\/zipp-output\/(.+)$/) || audioPath.match(/\/media\/(.+)$/);
         if (urlMatch) {
-          let relativePath = urlMatch[1];
-          relativePath = relativePath.replace(/\//g, "\\");
+          const relativePath = urlMatch[1];
           if (audioPath.includes("/media/zipp-output/")) {
-            resolvedPath = `${appDataDir}\\output\\${relativePath}`;
+            resolvedPath = `${appDataDir}/output/${relativePath}`;
           } else {
-            resolvedPath = `${appDataDir}\\${relativePath}`;
+            resolvedPath = `${appDataDir}/${relativePath}`;
           }
         }
       }

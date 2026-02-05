@@ -46,10 +46,51 @@ pub struct CliArgs {
     /// Minimize to system tray on close instead of exiting
     #[arg(long)]
     pub tray: bool,
+
+    /// Run a workflow file and exit (hidden window mode for CLI/cron jobs)
+    /// Accepts .json workflow files or .zipp packages
+    #[arg(long, value_name = "FILE")]
+    pub run: Option<String>,
+
+    /// JSON string with input values for the workflow (used with --run)
+    #[arg(long, value_name = "JSON")]
+    pub inputs: Option<String>,
+
+    /// Output file to write workflow results as JSON (used with --run)
+    #[arg(long, value_name = "FILE")]
+    pub output: Option<String>,
 }
 
 // Global flag for tray mode
 static MINIMIZE_TO_TRAY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+// =============================================================================
+// CLI Run Mode State
+// =============================================================================
+
+/// State for CLI run mode (workflow execution from command line)
+#[derive(Debug, Clone, Default)]
+pub struct CliRunState {
+    /// Path to workflow file to run
+    pub workflow_path: Option<String>,
+    /// JSON string with input values
+    pub inputs: Option<String>,
+    /// Output file for results
+    pub output_path: Option<String>,
+    /// Whether we're in CLI run mode
+    pub is_run_mode: bool,
+}
+
+impl CliRunState {
+    pub fn from_args(args: &CliArgs) -> Self {
+        Self {
+            workflow_path: args.run.clone(),
+            inputs: args.inputs.clone(),
+            output_path: args.output.clone(),
+            is_run_mode: args.run.is_some(),
+        }
+    }
+}
 
 /// Set up the system tray icon and menu
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -130,6 +171,35 @@ use plugins::{
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+// =============================================================================
+// CLI Run Mode Commands
+// =============================================================================
+
+/// Get CLI run mode configuration (for workflow execution from command line)
+#[tauri::command]
+fn get_cli_run_config(state: tauri::State<'_, CliRunState>) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "isRunMode": state.is_run_mode,
+        "workflowPath": state.workflow_path,
+        "inputs": state.inputs,
+        "outputPath": state.output_path,
+    }))
+}
+
+/// Exit the application (used after CLI workflow execution completes)
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle, code: Option<i32>) {
+    println!("[CLI] Exiting application with code: {}", code.unwrap_or(0));
+    app.exit(code.unwrap_or(0));
+}
+
+/// Write workflow results to output file (used in CLI run mode)
+#[tauri::command]
+fn write_cli_output(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, &content)
+        .map_err(|e| format!("Failed to write output file: {}", e))
 }
 
 /// Make an HTTP request from Rust (bypasses browser security restrictions)
@@ -360,6 +430,10 @@ fn run_gui(args: CliArgs) {
         .plugin(tauri_plugin_zipp_terminal::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            // CLI run mode commands
+            get_cli_run_config,
+            exit_app,
+            write_cli_output,
             http_request,
             // Video processing commands
             get_video_info,
@@ -460,6 +534,11 @@ fn run_gui(args: CliArgs) {
             packages::read_package_nodes,
         ])
         .setup(move |app| {
+            // Initialize CLI run state (for --run mode)
+            let cli_run_state = CliRunState::from_args(&args);
+            let is_run_mode = cli_run_state.is_run_mode;
+            app.manage(cli_run_state);
+
             // Initialize Services state
             app.manage(services::ServicesState::default());
             // Initialize Packages state
@@ -474,6 +553,14 @@ fn run_gui(args: CliArgs) {
             std::thread::spawn(move || {
                 services::run_idle_monitor(app_handle);
             });
+
+            // Hide window if in CLI run mode (headless workflow execution)
+            if is_run_mode {
+                if let Some(window) = app.get_webview_window("main") {
+                    println!("[CLI] Running in hidden window mode");
+                    let _ = window.hide();
+                }
+            }
 
             // Set up system tray if tray mode is enabled
             if args.tray || MINIMIZE_TO_TRAY.load(std::sync::atomic::Ordering::SeqCst) {
