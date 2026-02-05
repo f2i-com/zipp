@@ -21,6 +21,7 @@ clap = { version = "4", features = ["derive"] }
 tauri-plugin-screenshots = "2.2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 tauri-plugin-zipp-database = { path = "../../zipp-core/modules/core-database/native" }
 tauri-plugin-zipp-filesystem = { path = "../../zipp-core/modules/core-filesystem/native" }
 tauri-plugin-zipp-browser = { path = "../../zipp-core/modules/core-browser/native" }
