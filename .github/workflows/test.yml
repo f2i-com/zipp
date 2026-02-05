@@ -128,6 +128,50 @@ jobs:
             libgbm-dev \
             libxdo-dev
 
+      # Download FFmpeg binaries (required by Tauri build script even for cargo check)
+      - name: Download FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $binDir = "${{ github.workspace }}\packages\zipp-desktop\src-tauri\bin"
+
+          Write-Host "Creating bin directory at: $binDir"
+          New-Item -ItemType Directory -Force -Path $binDir
+
+          Write-Host "Downloading FFmpeg..."
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
+
+          Write-Host "Extracting..."
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-temp
+
+          $ffmpegBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          $ffprobeBin = Get-ChildItem -Path ffmpeg-temp -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
+
+          Copy-Item $ffmpegBin.FullName "$binDir\ffmpeg-x86_64-pc-windows-msvc.exe"
+          Copy-Item $ffprobeBin.FullName "$binDir\ffprobe-x86_64-pc-windows-msvc.exe"
+
+          Write-Host "FFmpeg binaries installed"
+          Remove-Item -Recurse -Force ffmpeg.zip, ffmpeg-temp
+
+      - name: Download FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          set -ex
+          BIN_DIR="${{ github.workspace }}/packages/zipp-desktop/src-tauri/bin"
+          mkdir -p "$BIN_DIR"
+
+          wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          tar -xf ffmpeg-release-amd64-static.tar.xz
+
+          FFMPEG_SRC=$(find . -maxdepth 1 -type d -name "ffmpeg-*-amd64-static" | head -1)
+          cp "$FFMPEG_SRC/ffmpeg" "$BIN_DIR/ffmpeg-x86_64-unknown-linux-gnu"
+          cp "$FFMPEG_SRC/ffprobe" "$BIN_DIR/ffprobe-x86_64-unknown-linux-gnu"
+          chmod +x "$BIN_DIR/ffmpeg-x86_64-unknown-linux-gnu" "$BIN_DIR/ffprobe-x86_64-unknown-linux-gnu"
+
+          echo "FFmpeg binaries installed"
+          rm -rf ffmpeg-release-amd64-static.tar.xz "$FFMPEG_SRC"
+
       - name: Rust cargo check
         working-directory: packages/zipp-desktop/src-tauri
         run: cargo check
