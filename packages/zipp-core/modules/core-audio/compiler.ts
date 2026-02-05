@@ -169,8 +169,8 @@ const CoreAudioCompiler: ModuleCompiler = {
                 : 'http://127.0.0.1:8766/generate';
             const apiUrl = escapeString(String(data.apiUrl || defaultApiUrl));
 
-            // ACE-Step specific settings
-            const inferSteps = Number(data.inferSteps) || 27;
+            // ACE-Step specific settings (v1.5 turbo uses 8 steps by default)
+            const inferSteps = Number(data.inferSteps) || 8;
             const guidanceScale = Number(data.guidanceScale) || 15.0;
 
             // HeartMuLa specific settings

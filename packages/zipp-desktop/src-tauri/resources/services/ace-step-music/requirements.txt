@@ -1,4 +1,4 @@
-# ACE-Step Music Generation Server Requirements
+# ACE-Step 1.5 Music Generation Server Requirements
 
 # Web framework
 fastapi>=0.100.0
@@ -6,9 +6,25 @@ uvicorn>=0.23.0
 python-dotenv>=1.0.0
 pydantic>=2.0.0
 
+# Audio processing
+soundfile>=0.12.0
+
 # PyTorch (install separately with CUDA support if needed)
 # pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
 # For nightly (RTX 5090): pip install --pre torch torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 
-# ACE-Step (install from git)
-# pip install git+https://github.com/ace-step/ACE-Step.git
+# ACE-Step 1.5 (install from git - use --no-deps to avoid triton issues on Windows)
+# pip install git+https://github.com/ace-step/ACE-Step-1.5.git --no-deps
+# Then install remaining dependencies manually
+
+# Additional dependencies for ACE-Step 1.5
+accelerate>=1.12.0
+diffusers
+einops>=0.8.1
+gradio>=6.5.1
+lightning>=2.0.0
+loguru>=0.7.3
+matplotlib>=3.7.5
+transformers
+huggingface_hub
+safetensors

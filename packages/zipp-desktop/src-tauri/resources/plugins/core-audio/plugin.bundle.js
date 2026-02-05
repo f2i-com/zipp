@@ -123,28 +123,69 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     return { success: false };
   }
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 5e3) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
   async function checkServiceAvailable(apiUrl, serviceName) {
+    const baseUrl = apiUrl.replace(/\/[^/]+$/, "");
+    try {
+      const quickCheck = await fetchWithTimeout(`${baseUrl}/health`, { method: "GET" }, 3e3);
+      if (quickCheck.ok) {
+        ctx.log("info", `[Audio] Service already running at ${baseUrl}`);
+        return;
+      }
+    } catch {
+      ctx.log("info", `[Audio] Service not responding, attempting auto-start...`);
+    }
     const port = extractPortFromUrl(apiUrl);
     if (port) {
       await ensureServiceReadyByPort(port);
     }
-    const baseUrl = apiUrl.replace(/\/[^/]+$/, "");
-    try {
-      const healthCheck = await fetch(`${baseUrl}/health`, { method: "GET" });
-      if (!healthCheck.ok) {
+    const maxRetries = 60;
+    const retryDelay = 2e3;
+    ctx.log("info", `[Audio] Starting health check loop for ${baseUrl}/health`);
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        ctx.log("info", `[Audio] Health check attempt ${attempt + 1}: fetching ${baseUrl}/health`);
+        const healthCheck = await fetchWithTimeout(`${baseUrl}/health`, { method: "GET" }, 5e3);
+        ctx.log("info", `[Audio] Health check response: status=${healthCheck.status}, ok=${healthCheck.ok}`);
+        if (healthCheck.ok) {
+          ctx.log("info", `[Audio] Service ready after ${attempt + 1} health check(s)`);
+          return;
+        }
         const healthData = await healthCheck.json().catch(() => ({}));
+        ctx.log("info", `[Audio] Health data: ${JSON.stringify(healthData)}`);
         if (healthData.missing?.length) {
           throw new Error(`${serviceName} service is missing dependencies: ${healthData.missing.join(", ")}. Please install them and restart the service.`);
         }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("missing dependencies")) {
+          throw error;
+        }
+        if (ctx.abortSignal?.aborted) {
+          throw new Error("Operation aborted by user");
+        }
+        const errMsg = error instanceof Error ? error.message : String(error);
+        ctx.log("info", `[Audio] Health check attempt ${attempt + 1} failed: ${errMsg}`);
+        if (attempt > 0 && attempt % 10 === 0) {
+          ctx.log("info", `[Audio] Waiting for service to be ready (attempt ${attempt + 1}/${maxRetries})...`);
+        }
       }
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new Error(`${serviceName} service is not running. Please start it from the Services panel (gear icon > Services).`);
-      }
-      if (error instanceof Error && error.message.includes("missing dependencies")) {
-        throw error;
-      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
+    throw new Error(`${serviceName} service is not running. Please start it from the Services panel (gear icon > Services).`);
   }
   async function textToSpeech(text, apiUrl, responseFormat, description, outputFormat, filename, nodeId, audioPromptPath, speaker, language) {
     if (ctx.abortSignal?.aborted) {
@@ -368,6 +409,97 @@ var __PLUGIN_EXPORTS__ = (() => {
       throw error;
     }
   }
+  async function generateMusicAceStep15(prompt, lyrics, baseUrl, duration, settings, seed, nodeId) {
+    const hasLyrics = lyrics && lyrics.trim() !== "" && !lyrics.trim().toLowerCase().match(/^\[?(inst|instrumental)\]?$/);
+    const requestBody = {
+      prompt,
+      // This is the caption/style description
+      lyrics: lyrics || "",
+      audio_duration: duration,
+      infer_step: settings.inferSteps ?? 8,
+      // v1.5 turbo uses 8 steps by default
+      guidance_scale: settings.guidanceScale ?? 15,
+      // Enable thinking mode when lyrics are provided - this uses the 5Hz LM to generate
+      // audio codes that incorporate the vocals/lyrics
+      thinking: hasLyrics,
+      vocal_language: "en"
+      // Default to English for now
+    };
+    if (hasLyrics) {
+      ctx.log("info", `[Music Gen] Lyrics detected, enabling thinking mode for vocal generation`);
+    }
+    if (seed >= 0) {
+      requestBody.seed = seed;
+      requestBody.use_random_seed = false;
+    } else {
+      requestBody.use_random_seed = true;
+    }
+    ctx.log("info", `[Music Gen] Submitting task to ACE-Step 1.5: ${baseUrl}/release_task`);
+    const submitResponse = await fetch(`${baseUrl}/release_task`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    });
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      throw new Error(`ACE-Step task submission failed: ${submitResponse.status} ${submitResponse.statusText} - ${errorText}`);
+    }
+    const submitWrapper = await submitResponse.json();
+    const submitResult = submitWrapper.data || submitWrapper;
+    const taskId = submitResult.task_id;
+    if (!taskId) {
+      throw new Error(`ACE-Step task submission failed: No task_id returned - ${JSON.stringify(submitWrapper)}`);
+    }
+    ctx.log("info", `[Music Gen] Task submitted: ${taskId}, polling for results...`);
+    const maxAttempts = 120;
+    const initialDelay = 2e3;
+    const maxDelay = 1e4;
+    let delay = initialDelay;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (ctx.abortSignal?.aborted) {
+        ctx.log("info", "[Music Gen] Aborted by user during polling");
+        throw new Error("Operation aborted by user");
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      const queryResponse = await fetch(`${baseUrl}/query_result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id_list: [taskId] })
+      });
+      if (!queryResponse.ok) {
+        ctx.log("warn", `[Music Gen] Query failed (attempt ${attempt + 1}): ${queryResponse.status}`);
+        delay = Math.min(delay * 1.5, maxDelay);
+        continue;
+      }
+      const queryWrapper = await queryResponse.json();
+      const taskResults = queryWrapper.data || [];
+      const taskResult = taskResults.find((r) => r.task_id === taskId);
+      if (taskResult) {
+        if (taskResult.status === 1 && taskResult.result) {
+          try {
+            const audioResults = JSON.parse(taskResult.result);
+            if (audioResults.length > 0 && audioResults[0].file) {
+              let filePath = audioResults[0].file;
+              if (filePath.includes("?path=")) {
+                const pathParam = filePath.split("?path=")[1];
+                filePath = decodeURIComponent(pathParam);
+              }
+              ctx.log("info", `[Music Gen] Task completed: ${filePath}`);
+              return { audioPath: filePath };
+            }
+          } catch (parseErr) {
+            ctx.log("warn", `[Music Gen] Failed to parse result JSON: ${parseErr}`);
+          }
+        } else if (taskResult.status === 2) {
+          throw new Error("Music generation failed on server");
+        }
+      }
+      ctx.log("info", `[Music Gen] Task still processing (attempt ${attempt + 1}/${maxAttempts})...`);
+      ctx.onNodeStatus?.(nodeId, "running");
+      delay = Math.min(delay * 1.2, maxDelay);
+    }
+    throw new Error("Music generation timed out after maximum polling attempts");
+  }
   async function generateMusic(prompt, lyrics, apiUrl, duration, service, settings, seed, filename, nodeId) {
     if (ctx.abortSignal?.aborted) {
       ctx.log("info", "[Music Gen] Aborted by user before starting");
@@ -382,10 +514,22 @@ var __PLUGIN_EXPORTS__ = (() => {
         throw new Error("No prompt provided for music generation");
       }
       if (!ctx.tauri) throw new Error("Tauri not available");
+      const baseUrl = apiUrl.replace(/\/[^/]+$/, "");
       await checkServiceAvailable(apiUrl, serviceName);
-      let requestBody;
-      if (service === "heartmula") {
-        requestBody = {
+      let audioPath;
+      if (service === "ace-step") {
+        const result = await generateMusicAceStep15(
+          prompt,
+          lyrics,
+          baseUrl,
+          duration,
+          settings,
+          seed,
+          nodeId
+        );
+        audioPath = result.audioPath;
+      } else {
+        const requestBody = {
           prompt,
           lyrics: lyrics || "",
           duration,
@@ -393,47 +537,41 @@ var __PLUGIN_EXPORTS__ = (() => {
           topk: settings.topk ?? 50,
           cfg_scale: settings.cfgScale ?? 1.5
         };
-      } else {
-        requestBody = {
-          prompt,
-          lyrics: lyrics || "",
-          duration,
-          infer_steps: settings.inferSteps ?? 27,
-          guidance_scale: settings.guidanceScale ?? 15
-        };
+        if (seed >= 0) {
+          requestBody.seed = seed;
+        }
+        ctx.log("info", `[Music Gen] Sending request to ${serviceName}...`);
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Music Gen API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+        const result = await response.json();
+        if (result.success === false) {
+          throw new Error(`Music generation failed: ${result.message || "Unknown error"}`);
+        }
+        audioPath = result.audio_path;
       }
-      if (seed >= 0) {
-        requestBody.seed = seed;
-      }
-      ctx.log("info", `[Music Gen] Sending request to ${serviceName}...`);
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Music Gen API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      const result = await response.json();
-      if (result.success === false) {
-        throw new Error(`Music generation failed: ${result.message || "Unknown error"}`);
-      }
-      ctx.log("info", `[Music Gen] Generated audio: ${result.audio_path}`);
+      ctx.log("info", `[Music Gen] Generated audio: ${audioPath}`);
       const appDataDir = await ctx.tauri.invoke("plugin:zipp-filesystem|get_app_data_dir");
-      const outputPath = `${appDataDir}/output/${filename || "music"}_${Date.now()}.wav`;
+      const sourceExt = audioPath.split(".").pop() || "mp3";
+      const outputPath = `${appDataDir}/output/${filename || "music"}_${Date.now()}.${sourceExt}`;
       try {
         await ctx.tauri.invoke("plugin:zipp-filesystem|native_copy_file", {
-          source: result.audio_path,
+          source: audioPath,
           destination: outputPath,
           createDirs: true
         });
         ctx.log("info", `[Music Gen] Copied audio to ${outputPath}`);
       } catch (copyError) {
         ctx.log("warn", `[Music Gen] Copy failed, using original path: ${copyError}`);
-        const audioUrl2 = await ctx.tauri.invoke("get_media_url", { filePath: result.audio_path });
+        const audioUrl2 = await ctx.tauri.invoke("get_media_url", { filePath: audioPath });
         ctx.onNodeStatus?.(nodeId, "completed");
-        return { audio: audioUrl2, path: result.audio_path };
+        return { audio: audioUrl2, path: audioPath };
       }
       let audioUrl = outputPath;
       try {
@@ -956,7 +1094,7 @@ var __PLUGIN_EXPORTS__ = (() => {
         const durationExpr = durationInput ? `(typeof ${durationInput} === 'number' ? ${durationInput} : (parseFloat(${durationInput}) || ${durationProp}))` : String(durationProp);
         const defaultApiUrl = service === "heartmula" ? "http://127.0.0.1:8767/generate" : "http://127.0.0.1:8766/generate";
         const apiUrl = escapeString(String(data.apiUrl || defaultApiUrl));
-        const inferSteps = Number(data.inferSteps) || 27;
+        const inferSteps = Number(data.inferSteps) || 8;
         const guidanceScale = Number(data.guidanceScale) || 15;
         const temperature = Number(data.temperature) || 1;
         const topk = Number(data.topk) || 50;

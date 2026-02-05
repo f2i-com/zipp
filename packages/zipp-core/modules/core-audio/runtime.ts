@@ -124,12 +124,47 @@ async function ensureServiceReadyByPort(port: number): Promise<{ success: boolea
 }
 
 /**
+ * Helper to create a fetch with timeout (compatible with older environments)
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+}
+
+/**
  * Check if a service is running and healthy, auto-starting if needed
  * @param apiUrl The API endpoint URL (port is extracted for dynamic lookup)
  * @param serviceName Human-readable service name for error messages
  * @returns void - throws error if service is not available
  */
 async function checkServiceAvailable(apiUrl: string, serviceName: string): Promise<void> {
+    // Extract base URL (remove endpoint path like /tts, /generate, etc.)
+    const baseUrl = apiUrl.replace(/\/[^/]+$/, '');
+
+    // First, check if service is already running (quick health check)
+    try {
+        const quickCheck = await fetchWithTimeout(`${baseUrl}/health`, { method: 'GET' }, 3000);
+        if (quickCheck.ok) {
+            ctx.log('info', `[Audio] Service already running at ${baseUrl}`);
+            return;  // Service is already healthy, no need to auto-start
+        }
+    } catch {
+        // Service not responding, try to auto-start
+        ctx.log('info', `[Audio] Service not responding, attempting auto-start...`);
+    }
+
     // Extract port from URL for dynamic service lookup
     const port = extractPortFromUrl(apiUrl);
     if (port) {
@@ -137,27 +172,49 @@ async function checkServiceAvailable(apiUrl: string, serviceName: string): Promi
         await ensureServiceReadyByPort(port);
     }
 
-    // Extract base URL (remove endpoint path like /tts, /generate, etc.)
-    const baseUrl = apiUrl.replace(/\/[^/]+$/, '');
+    // Health check with retries after auto-start (service needs time to load models)
+    const maxRetries = 60;  // Up to 2 minutes of retries
+    const retryDelay = 2000;  // 2 seconds between retries
 
-    try {
-        const healthCheck = await fetch(`${baseUrl}/health`, { method: 'GET' });
-        if (!healthCheck.ok) {
+    ctx.log('info', `[Audio] Starting health check loop for ${baseUrl}/health`);
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            ctx.log('info', `[Audio] Health check attempt ${attempt + 1}: fetching ${baseUrl}/health`);
+            const healthCheck = await fetchWithTimeout(`${baseUrl}/health`, { method: 'GET' }, 5000);
+            ctx.log('info', `[Audio] Health check response: status=${healthCheck.status}, ok=${healthCheck.ok}`);
+            if (healthCheck.ok) {
+                ctx.log('info', `[Audio] Service ready after ${attempt + 1} health check(s)`);
+                return;  // Service is healthy
+            }
             const healthData = await healthCheck.json().catch(() => ({})) as { missing?: string[] };
+            ctx.log('info', `[Audio] Health data: ${JSON.stringify(healthData)}`);
             if (healthData.missing?.length) {
                 throw new Error(`${serviceName} service is missing dependencies: ${healthData.missing.join(', ')}. Please install them and restart the service.`);
             }
+        } catch (error) {
+            // Re-throw if it's our custom error about missing dependencies
+            if (error instanceof Error && error.message.includes('missing dependencies')) {
+                throw error;
+            }
+            // Check for abort
+            if (ctx.abortSignal?.aborted) {
+                throw new Error('Operation aborted by user');
+            }
+            // Log the actual error
+            const errMsg = error instanceof Error ? error.message : String(error);
+            ctx.log('info', `[Audio] Health check attempt ${attempt + 1} failed: ${errMsg}`);
+            // Log progress every 10 attempts
+            if (attempt > 0 && attempt % 10 === 0) {
+                ctx.log('info', `[Audio] Waiting for service to be ready (attempt ${attempt + 1}/${maxRetries})...`);
+            }
         }
-    } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-            throw new Error(`${serviceName} service is not running. Please start it from the Services panel (gear icon > Services).`);
-        }
-        // Re-throw if it's our custom error about missing dependencies
-        if (error instanceof Error && error.message.includes('missing dependencies')) {
-            throw error;
-        }
-        // For other errors, continue - service might be running but health endpoint unavailable
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
+
+    // All retries exhausted
+    throw new Error(`${serviceName} service is not running. Please start it from the Services panel (gear icon > Services).`);
 }
 
 // ============================================
@@ -519,6 +576,160 @@ interface MusicGenSettings {
 }
 
 /**
+ * Generate music using ACE-Step 1.5 (task-based API)
+ * ACE-Step 1.5 uses an async task-based API:
+ * - POST /release_task to submit generation task
+ * - POST /query_result to poll for results
+ */
+async function generateMusicAceStep15(
+    prompt: string,
+    lyrics: string,
+    baseUrl: string,
+    duration: number,
+    settings: MusicGenSettings,
+    seed: number,
+    nodeId: string
+): Promise<{ audioPath: string }> {
+    // Build request body for ACE-Step 1.5
+    // API expects: prompt (caption), lyrics, audio_duration, infer_step, guidance_scale, seed
+    // When lyrics are provided, enable "thinking" mode to use 5Hz LM for vocal generation
+    const hasLyrics = lyrics && lyrics.trim() !== '' &&
+        !lyrics.trim().toLowerCase().match(/^\[?(inst|instrumental)\]?$/);
+
+    const requestBody: Record<string, unknown> = {
+        prompt,  // This is the caption/style description
+        lyrics: lyrics || '',
+        audio_duration: duration,
+        infer_step: settings.inferSteps ?? 8,  // v1.5 turbo uses 8 steps by default
+        guidance_scale: settings.guidanceScale ?? 15.0,
+        // Enable thinking mode when lyrics are provided - this uses the 5Hz LM to generate
+        // audio codes that incorporate the vocals/lyrics
+        thinking: hasLyrics,
+        vocal_language: 'en',  // Default to English for now
+    };
+
+    if (hasLyrics) {
+        ctx.log('info', `[Music Gen] Lyrics detected, enabling thinking mode for vocal generation`);
+    }
+
+    // Only include seed if it's not -1 (random)
+    if (seed >= 0) {
+        requestBody.seed = seed;
+        requestBody.use_random_seed = false;
+    } else {
+        requestBody.use_random_seed = true;
+    }
+
+    ctx.log('info', `[Music Gen] Submitting task to ACE-Step 1.5: ${baseUrl}/release_task`);
+
+    // Submit the generation task
+    const submitResponse = await fetch(`${baseUrl}/release_task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!submitResponse.ok) {
+        const errorText = await submitResponse.text();
+        throw new Error(`ACE-Step task submission failed: ${submitResponse.status} ${submitResponse.statusText} - ${errorText}`);
+    }
+
+    // Response is wrapped: { data: { task_id, status, ... }, code: 200 }
+    const submitWrapper = await submitResponse.json() as {
+        data?: { task_id?: string; status?: string };
+        code?: number;
+        error?: string;
+    };
+
+    const submitResult = submitWrapper.data || submitWrapper;
+    const taskId = (submitResult as { task_id?: string }).task_id;
+
+    if (!taskId) {
+        throw new Error(`ACE-Step task submission failed: No task_id returned - ${JSON.stringify(submitWrapper)}`);
+    }
+
+    ctx.log('info', `[Music Gen] Task submitted: ${taskId}, polling for results...`);
+
+    // Poll for results with exponential backoff
+    const maxAttempts = 120;  // Max ~10 minutes of polling
+    const initialDelay = 2000;  // Start with 2 second delay
+    const maxDelay = 10000;  // Max 10 second delay
+    let delay = initialDelay;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Check for abort during polling
+        if (ctx.abortSignal?.aborted) {
+            ctx.log('info', '[Music Gen] Aborted by user during polling');
+            throw new Error('Operation aborted by user');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Query for results - API expects task_id_list (not task_ids)
+        const queryResponse = await fetch(`${baseUrl}/query_result`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_id_list: [taskId] })
+        });
+
+        if (!queryResponse.ok) {
+            ctx.log('warn', `[Music Gen] Query failed (attempt ${attempt + 1}): ${queryResponse.status}`);
+            delay = Math.min(delay * 1.5, maxDelay);
+            continue;
+        }
+
+        // Response format: { data: [{ task_id, result: "json string", status }], code: 200 }
+        const queryWrapper = await queryResponse.json() as {
+            data?: Array<{ task_id: string; result: string; status: number }>;
+            code?: number;
+            error?: string;
+        };
+
+        const taskResults = queryWrapper.data || [];
+
+        // Find our task result
+        const taskResult = taskResults.find(r => r.task_id === taskId);
+        if (taskResult) {
+            // status: 0 = pending, 1 = succeeded, 2 = failed
+            if (taskResult.status === 1 && taskResult.result) {
+                // Parse the nested JSON result
+                try {
+                    const audioResults = JSON.parse(taskResult.result) as Array<{
+                        file?: string;
+                        status?: number;
+                        metas?: { bpm?: number; keyscale?: string; duration?: number };
+                    }>;
+
+                    if (audioResults.length > 0 && audioResults[0].file) {
+                        // Extract file path from URL format: /v1/audio?path=URL_ENCODED_PATH
+                        let filePath = audioResults[0].file;
+                        if (filePath.includes('?path=')) {
+                            const pathParam = filePath.split('?path=')[1];
+                            filePath = decodeURIComponent(pathParam);
+                        }
+                        ctx.log('info', `[Music Gen] Task completed: ${filePath}`);
+                        return { audioPath: filePath };
+                    }
+                } catch (parseErr) {
+                    ctx.log('warn', `[Music Gen] Failed to parse result JSON: ${parseErr}`);
+                }
+            } else if (taskResult.status === 2) {
+                throw new Error('Music generation failed on server');
+            }
+            // Status 0 means still processing, continue polling
+        }
+
+        ctx.log('info', `[Music Gen] Task still processing (attempt ${attempt + 1}/${maxAttempts})...`);
+        ctx.onNodeStatus?.(nodeId, 'running');  // Keep status updated
+
+        // Increase delay with exponential backoff
+        delay = Math.min(delay * 1.2, maxDelay);
+    }
+
+    throw new Error('Music generation timed out after maximum polling attempts');
+}
+
+/**
  * Generate music using ACE-Step or HeartMuLa API
  */
 async function generateMusic(
@@ -550,15 +761,29 @@ async function generateMusic(
 
         if (!ctx.tauri) throw new Error('Tauri not available');
 
+        // Extract base URL (remove endpoint path like /generate)
+        const baseUrl = apiUrl.replace(/\/[^/]+$/, '');
+
         // Check if the music service is running
         await checkServiceAvailable(apiUrl, serviceName);
 
-        // Build request body based on service
-        let requestBody: Record<string, unknown>;
+        let audioPath: string;
 
-        if (service === 'heartmula') {
-            // HeartMuLa uses: prompt, lyrics, duration, temperature, topk, cfg_scale, seed
-            requestBody = {
+        // Use ACE-Step 1.5 task-based API for ace-step service
+        if (service === 'ace-step') {
+            const result = await generateMusicAceStep15(
+                prompt,
+                lyrics,
+                baseUrl,
+                duration,
+                settings,
+                seed,
+                nodeId
+            );
+            audioPath = result.audioPath;
+        } else {
+            // HeartMuLa uses synchronous API
+            const requestBody: Record<string, unknown> = {
                 prompt,
                 lyrics: lyrics || '',
                 duration,
@@ -566,57 +791,52 @@ async function generateMusic(
                 topk: settings.topk ?? 50,
                 cfg_scale: settings.cfgScale ?? 1.5,
             };
-        } else {
-            // ACE-Step uses: prompt, lyrics, duration, infer_steps, guidance_scale, seed
-            requestBody = {
-                prompt,
-                lyrics: lyrics || '',
-                duration,
-                infer_steps: settings.inferSteps ?? 27,
-                guidance_scale: settings.guidanceScale ?? 15.0,
+
+            // Only include seed if it's not -1 (random)
+            if (seed >= 0) {
+                requestBody.seed = seed;
+            }
+
+            ctx.log('info', `[Music Gen] Sending request to ${serviceName}...`);
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Music Gen API error: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+
+            const result = await response.json() as {
+                success?: boolean;
+                audio_path: string;
+                duration_seconds?: number;
+                sample_rate?: number;
+                message?: string;
             };
+
+            if (result.success === false) {
+                throw new Error(`Music generation failed: ${result.message || 'Unknown error'}`);
+            }
+
+            audioPath = result.audio_path;
         }
 
-        // Only include seed if it's not -1 (random)
-        if (seed >= 0) {
-            requestBody.seed = seed;
-        }
-
-        ctx.log('info', `[Music Gen] Sending request to ${serviceName}...`);
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Music Gen API error: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-
-        const result = await response.json() as {
-            success?: boolean;
-            audio_path: string;
-            duration_seconds?: number;
-            sample_rate?: number;
-            message?: string;
-        };
-
-        if (result.success === false) {
-            throw new Error(`Music generation failed: ${result.message || 'Unknown error'}`);
-        }
-
-        ctx.log('info', `[Music Gen] Generated audio: ${result.audio_path}`);
+        ctx.log('info', `[Music Gen] Generated audio: ${audioPath}`);
 
         // Get app data dir for output
         const appDataDir = await ctx.tauri.invoke<string>('plugin:zipp-filesystem|get_app_data_dir');
-        const outputPath = `${appDataDir}/output/${filename || 'music'}_${Date.now()}.wav`;
+        // Determine file extension from source path
+        const sourceExt = audioPath.split('.').pop() || 'mp3';
+        const outputPath = `${appDataDir}/output/${filename || 'music'}_${Date.now()}.${sourceExt}`;
 
         // Copy the file to our output directory
         try {
             await ctx.tauri.invoke('plugin:zipp-filesystem|native_copy_file', {
-                source: result.audio_path,
+                source: audioPath,
                 destination: outputPath,
                 createDirs: true
             });
@@ -624,9 +844,9 @@ async function generateMusic(
         } catch (copyError) {
             // If copy fails, use the original path directly
             ctx.log('warn', `[Music Gen] Copy failed, using original path: ${copyError}`);
-            const audioUrl = await ctx.tauri.invoke<string>('get_media_url', { filePath: result.audio_path });
+            const audioUrl = await ctx.tauri.invoke<string>('get_media_url', { filePath: audioPath });
             ctx.onNodeStatus?.(nodeId, 'completed');
-            return { audio: audioUrl, path: result.audio_path };
+            return { audio: audioUrl, path: audioPath };
         }
 
         // Get media server URL for playback
