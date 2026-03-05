@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { useNodesState, useEdgesState, type Node, type Edge, addEdge, type Connection, type EdgeChange } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import type { NodeType, LogEntry, WorkflowGraph, Flow, DatabaseRequest, DatabaseResult, ProjectSettings } from 'zipp-core';
-import { createRuntime, extractNodeOutputs, isInspectable, getModuleLoader } from 'zipp-core';
+import { createRuntime, extractNodeOutputs, getModuleLoader } from 'zipp-core';
 import * as db from '../services/database';
 import { validateWorkflow as validateWorkflowUtil } from '../utils/WorkflowValidation';
 import {
@@ -921,8 +921,8 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
         outputValue = extracted.finalValue;
 
         // Fallback: use inspect() if entries not available or no final value found
-        if (!outputValue && isInspectable(result)) {
-          const fullOutput = result.inspect();
+        if (!outputValue && typeof result === "object") {
+          const fullOutput = JSON.stringify(result);
 
           // Check if the final value looks like an array: [item1, item2, ...]
           const arrayMatch = fullOutput.match(/final:\s*\[([\s\S]*?)\]/);

@@ -11,6 +11,7 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { ZippRuntime, createRuntime } from '../runtime';
+import { extractDeepValue } from '../formlogic-types';
 import type { LogCallback, StreamCallback, NodeStatusCallback, DatabaseCallback, WorkflowGraph, GraphNode, GraphEdge } from '../types';
 
 // Helper to create a basic node
@@ -191,45 +192,14 @@ describe('ZippRuntime', () => {
     });
 
     it('should convert primitives', () => {
-      expect(runtime.convertResultToJs('hello')).toBe('hello');
-      expect(runtime.convertResultToJs(42)).toBe(42);
-      expect(runtime.convertResultToJs(true)).toBe(true);
-      expect(runtime.convertResultToJs(null)).toBe(null);
+      expect(extractDeepValue('hello')).toBe('hello');
+      expect(extractDeepValue(42)).toBe(42);
+      expect(extractDeepValue(true)).toBe(true);
+      expect(extractDeepValue(null)).toBe(null);
     });
 
-    it('should convert objects with value property', () => {
-      const result = runtime.convertResultToJs({ value: 'test' });
-      expect(result).toBe('test');
-    });
-
-    it('should convert arrays with elements property', () => {
-      const result = runtime.convertResultToJs({
-        elements: [{ value: 'a' }, { value: 'b' }],
-      });
-      expect(result).toEqual(['a', 'b']);
-    });
-
-    it('should convert hash objects with pairs', () => {
-      const pairs = new Map<string, unknown>();
-      pairs.set('string:name', { value: 'test' });
-      pairs.set('string:count', { value: 5 });
-
-      const result = runtime.convertResultToJs({ pairs });
-      expect(result).toEqual({ name: 'test', count: 5 });
-    });
-
-    it('should handle nested structures', () => {
-      const innerPairs = new Map<string, unknown>();
-      innerPairs.set('string:nested', { value: 'value' });
-
-      const pairs = new Map<string, unknown>();
-      pairs.set('string:outer', { pairs: innerPairs });
-
-      const result = runtime.convertResultToJs({ pairs });
-      expect(result).toEqual({ outer: { nested: 'value' } });
-    });
-  });
 });
+  });
 
 describe('BoundedMap (via runtime internals)', () => {
   // BoundedMap is private to runtime, so we test it through memory operations

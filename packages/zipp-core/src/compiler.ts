@@ -227,7 +227,7 @@ console.log("[Workflow] __macro_inputs__ = " + JSON.stringify(__inputs["__macro_
 console.log("[Workflow] Loops found: ${loopInfo.size}");` : ''}
 
 // JavaScript compatibility: define 'undefined' as null (FormLogic uses null instead of undefined)
-let undefined = null;
+ // let undefined = null;
 `;
 
     // Generate code for each node in order, handling loops

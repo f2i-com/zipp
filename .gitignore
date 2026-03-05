@@ -12,6 +12,7 @@ target/
 
 # FormLogic (generated/copied)
 formlogic-typescript/
+formlogic-rust/
 
 # Environment variables
 .env

@@ -101,7 +101,7 @@ export type {
 export {
   extractNodeOutputs,
   extractDeepValue,
-  isInspectable,
+  
 } from './formlogic-types';
 
 // FlowPlan DSL (AI Flow Designer)

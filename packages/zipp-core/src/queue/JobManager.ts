@@ -591,7 +591,7 @@ export class JobManager {
       runtime.setClaudeAsAI(
         true,
         job.id,
-        (request) => this._yieldForAI(job.id, request)
+        (request: any) => this._yieldForAI(job.id, request)
       );
     }
 
