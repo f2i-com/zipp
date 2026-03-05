@@ -83,6 +83,7 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo build -p formlogic-wasm --target wasm32-unknown-unknown --release
           wasm-bindgen --target web --out-dir dist-wasm ./target/wasm32-unknown-unknown/release/formlogic_wasm.wasm
+          echo '{"name":"formlogic-lang","version":"0.1.0","main":"formlogic_wasm.js","types":"formlogic_wasm.d.ts","type":"module"}' > dist-wasm/package.json
 
       - name: Install and build zipp-core
         working-directory: packages/zipp-core
