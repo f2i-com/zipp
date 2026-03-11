@@ -10,8 +10,7 @@ out/
 target/
 *.tsbuildinfo
 
-# FormLogic (generated/copied)
-formlogic-typescript/
+# FormLogic (external dependency)
 formlogic-rust/
 
 # Environment variables

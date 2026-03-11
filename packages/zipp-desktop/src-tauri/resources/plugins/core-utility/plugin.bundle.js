@@ -441,8 +441,8 @@ var __PLUGIN_EXPORTS__ = (() => {
   console.log("[Template] (${node.id}) loop context: historyStrVar=${historyStrVar}, historyValue=" + ${historyStrVar});`;
             }
             loopSubstitutions = `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{history}}").join(String(${historyStrVar} || ''));
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{index}}").join(String(${indexVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{history}}").join("" + (${historyStrVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{index}}").join("" + (${indexVar} || ''));
   _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{item}}").join(JSON.stringify(${itemVar}));`;
           }
           const checkForConditionBranch = firstInputVar && (firstInputVar.includes("_out_true") || firstInputVar.includes("_out_false"));
@@ -465,11 +465,11 @@ var __PLUGIN_EXPORTS__ = (() => {
               const cleanName = varName.replace(/\{\{|\}\}/g, "");
               if (varMap[cleanName]) {
                 code += `
-    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join(String(${varMap[cleanName]} || ''));`;
+    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join("" + (${varMap[cleanName]} || ''));`;
               }
             }
             code += `
-    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join(String(${inputVar} || ''));
+    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join("" + (${inputVar} || ''));
     ${outputVar} = _tmpl_${sanitizedId};
     console.log("[Template] output (${node.id}): " + ${outputVar}.substring(0, 100));
     workflow_context["${node.id}"] = ${outputVar};
@@ -486,11 +486,11 @@ var __PLUGIN_EXPORTS__ = (() => {
               const cleanName = varName.replace(/\{\{|\}\}/g, "");
               if (varMap[cleanName]) {
                 code += `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join(String(${varMap[cleanName]} || ''));`;
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join("" + (${varMap[cleanName]} || ''));`;
               }
             }
             code += `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join(String(${inputVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join("" + (${inputVar} || ''));
   ${letOrAssign}${outputVar} = _tmpl_${sanitizedId};
   console.log("[Template] output (${node.id}): " + ${outputVar}.substring(0, 100));
   workflow_context["${node.id}"] = ${outputVar};`;

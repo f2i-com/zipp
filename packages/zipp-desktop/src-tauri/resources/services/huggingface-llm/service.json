@@ -1,0 +1,9 @@
+{
+  "name": "HuggingFace LLM",
+  "description": "Local AI text generation and vision (any HuggingFace model)",
+  "category": "ai",
+  "port": 8774,
+  "icon": "brain",
+  "color": "#8B5CF6",
+  "startupTimeout": 300
+}

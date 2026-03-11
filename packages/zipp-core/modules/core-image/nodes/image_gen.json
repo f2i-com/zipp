@@ -1,8 +1,8 @@
 {
   "id": "image_gen",
   "name": "Image Gen",
-  "description": "Generate images using ComfyUI, Stable Diffusion, or other image APIs.",
-  "doc": "Generate AI images from text prompts.\n\nSupported APIs:\n• OpenAI (GPT Image)\n• Google Gemini\n• ComfyUI (Stable Diffusion, FLUX, etc.)\n\nFeatures:\n• Custom dimensions (width/height)\n• Negative prompts to avoid unwanted elements\n• Image-to-image with input images\n• Input image size limits for API compatibility\n\nComfyUI Integration:\nFor advanced workflows, use ComfyUI format to run custom Stable Diffusion pipelines.\n\nTip: Set default API settings in Project Settings to avoid configuring each node.",
+  "description": "Generate images using Wan2GP, ComfyUI, or other image APIs.",
+  "doc": "Generate AI images from text prompts.\n\nSupported APIs:\n• Wan2GP (Qwen Image, Flux - local)\n• OpenAI (GPT Image)\n• Google Gemini\n• ComfyUI (Stable Diffusion, FLUX, etc.)\n\nFeatures:\n• Custom dimensions (width/height)\n• Negative prompts to avoid unwanted elements\n• Image-to-image with input images\n• Input image size limits for API compatibility\n\nWan2GP Integration:\nUse Wan2GP format for local AI image generation with Qwen or Flux models.\n\nTip: Set default API settings in Project Settings to avoid configuring each node.",
   "icon": "image",
   "color": "pink",
   "tags": ["image", "generate", "ai", "comfyui", "stable-diffusion"],
@@ -76,9 +76,41 @@
       "options": [
         { "value": "openai", "label": "OpenAI" },
         { "value": "comfyui", "label": "ComfyUI" },
-        { "value": "gemini", "label": "Google Gemini" }
+        { "value": "gemini", "label": "Google Gemini" },
+        { "value": "wan2gp", "label": "Wan2GP (Qwen/Flux)" }
       ],
       "description": "API format to use"
+    },
+    {
+      "id": "wan2gpModel",
+      "name": "Wan2GP Model",
+      "type": "select",
+      "default": "qwen",
+      "options": [
+        { "value": "qwen", "label": "Qwen Image (20B)" },
+        { "value": "qwen_edit", "label": "Qwen Image Edit (20B)" },
+        { "value": "flux", "label": "Flux Dev" },
+        { "value": "flux_schnell", "label": "Flux Schnell" }
+      ],
+      "description": "Model for Wan2GP image generation",
+      "showWhen": { "apiFormat": ["wan2gp"] }
+    },
+    {
+      "id": "wan2gpVram",
+      "name": "VRAM",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        { "value": "auto", "label": "Auto" },
+        { "value": "6", "label": "6 GB (Low)" },
+        { "value": "8", "label": "8 GB" },
+        { "value": "10", "label": "10 GB" },
+        { "value": "12", "label": "12 GB" },
+        { "value": "16", "label": "16 GB" },
+        { "value": "24", "label": "24 GB+" }
+      ],
+      "description": "VRAM budget for generation",
+      "showWhen": { "apiFormat": ["wan2gp"] }
     },
     {
       "id": "negativePrompt",

@@ -1,0 +1,9 @@
+{
+  "name": "Wan2GP",
+  "description": "AI image, video, and text generation (Qwen, LTX Video, Wan2.1/2.2)",
+  "category": "ai",
+  "port": 8773,
+  "icon": "sparkles",
+  "color": "#F59E0B",
+  "startupTimeout": 300
+}

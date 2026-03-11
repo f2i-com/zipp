@@ -2,7 +2,7 @@
   "id": "ai_llm",
   "name": "AI LLM",
   "description": "Send prompts to an LLM (Language Model) and receive generated responses. Supports OpenAI-compatible APIs.",
-  "doc": "Connect to AI language models like GPT-4, Claude, Gemini, or local models via Ollama/LM Studio.\n\nSupported Providers:\n• OpenAI (GPT-4, GPT-4o, etc.)\n• Anthropic (Claude 3, Claude 3.5)\n• Google AI (Gemini Pro, Flash)\n• OpenRouter (access multiple models)\n• Groq (fast inference)\n• Ollama & LM Studio (local models)\n\nFeatures:\n• Vision support - attach images for multimodal analysis\n• Streaming responses\n• Custom system prompts\n• Configurable token limits\n\nTip: Set default API keys in Project Settings to avoid configuring each node.",
+  "doc": "Connect to AI language models like GPT-4, Claude, Gemini, or local models.\n\nSupported Providers:\n• Wan2GP (Qwen 3.5 GGUF - local)\n• OpenAI (GPT-4, GPT-4o, etc.)\n• Anthropic (Claude 3, Claude 3.5)\n• Google AI (Gemini Pro, Flash)\n• OpenRouter (access multiple models)\n• Groq (fast inference)\n• Ollama & LM Studio (local models)\n\nFeatures:\n• Vision support - attach images for multimodal analysis\n• Streaming responses\n• Custom system prompts\n• Configurable token limits\n\nTip: Set default API keys in Project Settings to avoid configuring each node.",
   "icon": "brain",
   "color": "purple",
   "tags": [
@@ -112,6 +112,10 @@
         {
           "value": "lmstudio",
           "label": "LM Studio (Local)"
+        },
+        {
+          "value": "huggingface",
+          "label": "HuggingFace LLM (Local)"
         },
         {
           "value": "custom",
@@ -276,6 +280,14 @@
       "min": 0,
       "max": 100000,
       "description": "Maximum tokens in response (0 = no limit)",
+      "advanced": true
+    },
+    {
+      "id": "enableThinking",
+      "name": "Enable Thinking",
+      "type": "boolean",
+      "default": false,
+      "description": "Enable reasoning/thinking mode for models that support it (e.g. Qwen 3.5)",
       "advanced": true
     },
     {

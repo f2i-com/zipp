@@ -301,12 +301,102 @@ pub struct ServiceOutput {
     pub lines: Vec<String>,
 }
 
+/// Find the bundled services directory (from resources, dev paths, etc.)
+fn find_bundled_services_dir() -> Option<PathBuf> {
+    // Check relative to executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            // Production: exe_dir/resources/services
+            let bundled = exe_dir.join("resources").join("services");
+            if bundled.exists() && bundled.is_dir() {
+                return Some(bundled);
+            }
+            // Dev: exe is in target/debug/, resources at ../../resources/services
+            let dev_bundled = exe_dir.join("..").join("..").join("resources").join("services");
+            if dev_bundled.exists() && dev_bundled.is_dir() {
+                return Some(dev_bundled);
+            }
+        }
+    }
+    None
+}
+
+/// Sync missing services from bundled resources to AppData services dir.
+/// Only copies services that don't already exist in the target dir.
+fn sync_bundled_services(target_dir: &Path) {
+    let bundled_dir = match find_bundled_services_dir() {
+        Some(d) => d,
+        None => return,
+    };
+
+    let entries = match std::fs::read_dir(&bundled_dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let src = entry.path();
+        if !src.is_dir() {
+            continue;
+        }
+        // Only sync if the service has a service.json (valid service)
+        if !src.join("service.json").exists() {
+            continue;
+        }
+        let name = match src.file_name() {
+            Some(n) => n.to_owned(),
+            None => continue,
+        };
+        let dest = target_dir.join(&name);
+        if dest.exists() {
+            continue; // Already installed, don't overwrite
+        }
+        // Copy the service directory
+        if let Err(e) = copy_dir_recursive(&src, &dest) {
+            eprintln!("[Services] Failed to sync service {:?}: {}", name, e);
+        } else {
+            println!("[Services] Synced new service: {:?}", name);
+        }
+    }
+}
+
+/// Recursively copy a directory
+fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dest)
+        .map_err(|e| format!("Failed to create dir {:?}: {}", dest, e))?;
+
+    let entries = std::fs::read_dir(src)
+        .map_err(|e| format!("Failed to read dir {:?}: {}", src, e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Read entry error: {}", e))?;
+        let src_path = entry.path();
+        let dest_path = dest.join(entry.file_name());
+
+        if src_path.is_dir() {
+            // Skip venv, __pycache__, .git, node_modules
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if matches!(name_str.as_ref(), "venv" | ".venv" | "__pycache__" | ".git" | "node_modules") {
+                continue;
+            }
+            copy_dir_recursive(&src_path, &dest_path)?;
+        } else {
+            std::fs::copy(&src_path, &dest_path)
+                .map_err(|e| format!("Failed to copy {:?}: {}", src_path, e))?;
+        }
+    }
+    Ok(())
+}
+
 /// Get the services directory path
 fn get_services_dir() -> Result<PathBuf, String> {
     // 1. Check AppData/Roaming/zipp/services (primary location for both dev and production)
     if let Some(app_data) = dirs::data_dir() {
         let services_path = app_data.join("zipp").join("services");
         if services_path.exists() && services_path.is_dir() {
+            // Sync any new bundled services that aren't in AppData yet
+            sync_bundled_services(&services_path);
             return Ok(services_path);
         }
     }

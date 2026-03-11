@@ -13,7 +13,7 @@ packages/
 ├── zipp-mcp-server/     # Claude MCP integration server
 └── zipp-ui-components/  # Shared React UI components
 
-formlogic-typescript/    # FormLogic expression language VM
+formlogic-rust/          # FormLogic expression language VM (Rust/WASM)
 ```
 
 ### Package Responsibilities
@@ -24,14 +24,15 @@ formlogic-typescript/    # FormLogic expression language VM
 | **zipp-core** | Workflow compilation, runtime execution, module system |
 | **zipp-mcp-server** | Exposes workflows to Claude via MCP protocol |
 | **zipp-ui-components** | Reusable React components for workflow builders |
-| **formlogic-typescript** | Sandboxed expression language for workflow execution |
+| **formlogic-rust** | Sandboxed expression language VM (Rust compiled to WASM) |
 
 ## Development Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- Rust (for Tauri)
+- Rust (for Tauri and FormLogic WASM)
+- wasm-bindgen-cli (`cargo install wasm-bindgen-cli`)
 - npm
 
 ### Installation
@@ -45,7 +46,8 @@ cd zipp
 npm install
 
 # Build dependencies in order
-cd formlogic-typescript && npm run build && cd ..
+# Build FormLogic WASM (requires Rust + wasm-bindgen-cli)
+cd ../formlogic-rust && cargo build -p formlogic-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir dist-wasm target/wasm32-unknown-unknown/release/formlogic_wasm.wasm && cd ../zipp
 cd packages/zipp-core && npm run build && cd ../..
 cd packages/zipp-ui-components && npm run build && cd ../..
 

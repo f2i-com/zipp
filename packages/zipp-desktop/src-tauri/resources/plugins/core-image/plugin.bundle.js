@@ -572,7 +572,90 @@ var __PLUGIN_EXPORTS__ = (() => {
     if (data.output?.[0]) return data.output[0];
     throw new Error("Could not find image in custom API response");
   }
-  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0) {
+  async function ensureWan2GPReady(baseUrl) {
+    const match = baseUrl.match(/:(\d+)/);
+    const port = match ? parseInt(match[1], 10) : 8773;
+    if (ctx.tauri) {
+      try {
+        const result = await ctx.tauri.invoke("ensure_service_ready_by_port", { port });
+        if (result.success && result.port) {
+          if (!result.already_running) {
+            ctx.log("info", `[ImageGen] Wan2GP service auto-started on port ${result.port}`);
+          }
+          return `http://127.0.0.1:${result.port}`;
+        } else if (result.error) {
+          ctx.log("warn", `[ImageGen] Wan2GP service failed to start: ${result.error}`);
+        }
+      } catch {
+      }
+    }
+    return baseUrl;
+  }
+  async function generateWan2GP(prompt, endpoint, model, width, height, steps, negativePrompt, imageInputs, vram) {
+    let baseUrl = endpoint || "http://127.0.0.1:8773";
+    baseUrl = await ensureWan2GPReady(baseUrl);
+    const apiUrl = `${baseUrl}/generate/image`;
+    ctx.log("info", `[ImageGen] Wan2GP request to ${apiUrl}, model=${model || "qwen"}`);
+    const body = {
+      prompt,
+      negative_prompt: negativePrompt || "",
+      width,
+      height,
+      steps,
+      model: model || "qwen",
+      seed: -1
+    };
+    if (vram && vram !== "auto") {
+      body.vram = parseInt(vram, 10);
+    }
+    if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
+      const imgSrc = extractImageSource(imageInputs[0]);
+      if (imgSrc.dataUrl) {
+        body.image_start = imgSrc.dataUrl;
+      } else if (imgSrc.url) {
+        body.image_start = imgSrc.url;
+      } else if (imgSrc.path) {
+        body.image_start = imgSrc.path;
+      }
+    }
+    const submitResponse = await ctx.secureFetch(`${baseUrl}/generate/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      purpose: "Wan2GP image generation"
+    });
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      throw new Error(`Wan2GP submit error: ${submitResponse.status} - ${errorText.substring(0, 200)}`);
+    }
+    const submitData = await submitResponse.json();
+    const jobId = submitData.job_id;
+    if (!jobId) throw new Error("Wan2GP did not return a job_id");
+    ctx.log("info", `[ImageGen] Wan2GP job submitted: ${jobId}`);
+    const pollIntervalMs = 5e3;
+    const maxPollTime = 60 * 60 * 1e3;
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxPollTime) {
+      await delay(pollIntervalMs);
+      const pollResponse = await ctx.secureFetch(`${baseUrl}/job/${jobId}`, {
+        purpose: "Wan2GP job status poll"
+      });
+      if (!pollResponse.ok) throw new Error(`Wan2GP poll error: ${pollResponse.status}`);
+      const pollData = await pollResponse.json();
+      if (pollData.status === "completed") {
+        if (pollData.image) return pollData.image;
+        if (pollData.path) return pollData.path;
+        throw new Error("Wan2GP job completed but no image in response");
+      }
+      if (pollData.status === "failed") {
+        throw new Error(`Wan2GP generation failed: ${pollData.error || "Unknown error"}`);
+      }
+      const elapsed = pollData.elapsed ? ` (${Math.round(pollData.elapsed)}s)` : "";
+      ctx.log("info", `[ImageGen] Wan2GP job ${jobId}: ${pollData.status}${elapsed}`);
+    }
+    throw new Error("Wan2GP image generation timed out after 1 hour");
+  }
+  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0, negativePrompt = "", wan2gpVram = "auto") {
     ctx.onNodeStatus?.(nodeId, "running");
     let finalPrompt = prompt;
     if (typeof input === "string" && input) {
@@ -580,6 +663,9 @@ var __PLUGIN_EXPORTS__ = (() => {
 ${input}` : input;
     }
     ctx.log("info", `[ImageGen] Generating with ${apiFormat}: "${finalPrompt.substring(0, 50)}..."`);
+    if (!endpoint && apiFormat === "wan2gp") {
+      endpoint = "http://127.0.0.1:8773";
+    }
     if (!endpoint) {
       ctx.log("info", "[ImageGen] No endpoint configured, using mock response");
       await delay(500);
@@ -599,6 +685,19 @@ ${input}` : input;
         case "gemini-flash":
         case "gemini-2-flash":
           imageUrl = await generateGemini(finalPrompt, endpoint, apiKey);
+          break;
+        case "wan2gp":
+          imageUrl = await generateWan2GP(
+            finalPrompt,
+            endpoint,
+            model,
+            width,
+            height,
+            steps,
+            negativePrompt,
+            imageInputs,
+            wan2gpVram
+          );
           break;
         case "comfyui":
           const workflowToUse = comfyWorkflow || finalPrompt;
@@ -908,12 +1007,15 @@ ${input}` : input;
           const promptInputVar = inputs.get("prompt") || inputs.get("default") || inputs.get("input") || "null";
           const projectSettings = data.projectSettings;
           const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultImageEndpoint || ""));
-          const model = escapeString(String(data.model || ""));
+          const apiFormat = escapeString(String(data.apiFormat || "openai"));
+          const model = escapeString(String(
+            apiFormat === "wan2gp" ? data.wan2gpModel || data.model || "qwen" : data.model || ""
+          ));
           const apiKeyConstant = escapeString(String(data.apiKeyConstant || projectSettings?.defaultImageApiKeyConstant || "OPENAI_API_KEY"));
           const width = Number(data.width) || 1024;
           const height = Number(data.height) || 1024;
           const steps = Number(data.steps) || 20;
-          const apiFormat = escapeString(String(data.apiFormat || "openai"));
+          const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
           let comfyWorkflowCode = "null";
           if (data.comfyWorkflow) {
             try {
@@ -1007,7 +1109,9 @@ ${input}` : input;
       ${comfyFixedSeed !== null ? comfyFixedSeed : "null"},
       ${comfyAllImageNodeIdsCode},
       ${maxImageDimension},
-      ${maxImageSizeKB}
+      ${maxImageSizeKB},
+      "${escapeString(String(data.negativePrompt || ""))}",
+      "${wan2gpVram}"
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");
@@ -1267,6 +1371,7 @@ ${input}` : input;
     { value: "gemini-3-pro", label: "Gemini 3 Pro", description: "Best quality - 4K, thinking, grounding", endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent", model: "gemini-3-pro-image-preview", apiKeyConstant: "GOOGLE_API_KEY", supportsImg2Img: true },
     { value: "gemini-flash", label: "Gemini 2.5 Flash", description: "Fast image gen - optimized for speed", endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent", model: "gemini-2.5-flash-preview-05-20", apiKeyConstant: "GOOGLE_API_KEY", supportsImg2Img: true },
     { value: "gemini-2-flash", label: "Gemini 2.0 Flash", description: "Experimental image gen with Imagen 3", endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent", model: "gemini-2.0-flash-exp", apiKeyConstant: "GOOGLE_API_KEY", supportsImg2Img: true },
+    { value: "wan2gp", label: "Wan2GP (Qwen/Flux)", description: "Local AI image gen via Wan2GP", endpoint: "http://127.0.0.1:8773", model: "qwen", isLocal: true, apiKeyConstant: "", supportsImg2Img: true },
     { value: "comfyui", label: "ComfyUI", description: "ComfyUI API - load workflow JSON file", endpoint: "http://localhost:8188", model: "", isLocal: true, apiKeyConstant: "", supportsImg2Img: true },
     { value: "custom", label: "Custom", description: "Custom API - connect Template for body, supports headers", endpoint: "", model: "", apiKeyConstant: "", supportsImg2Img: true }
   ];
@@ -1282,6 +1387,8 @@ ${input}` : input;
     const onEndpointChangeRef = (0, import_react.useRef)(data.onEndpointChange);
     const onApiFormatChangeRef = (0, import_react.useRef)(data.onApiFormatChange);
     const onModelChangeRef = (0, import_react.useRef)(data.onModelChange);
+    const onWan2gpModelChangeRef = (0, import_react.useRef)(data.onWan2gpModelChange);
+    const onWan2gpVramChangeRef = (0, import_react.useRef)(data.onWan2gpVramChange);
     const onSizeChangeRef = (0, import_react.useRef)(data.onSizeChange);
     const onQualityChangeRef = (0, import_react.useRef)(data.onQualityChange);
     const onOutputFormatChangeRef = (0, import_react.useRef)(data.onOutputFormatChange);
@@ -1305,6 +1412,8 @@ ${input}` : input;
       onEndpointChangeRef.current = data.onEndpointChange;
       onApiFormatChangeRef.current = data.onApiFormatChange;
       onModelChangeRef.current = data.onModelChange;
+      onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
+      onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
       onSizeChangeRef.current = data.onSizeChange;
       onQualityChangeRef.current = data.onQualityChange;
       onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -1408,6 +1517,7 @@ ${input}` : input;
     const defaultApiKeyConstant = data.projectSettings?.defaultImageApiKeyConstant || "";
     const apiFormat = data.apiFormat || defaultProvider;
     const isComfyUI = apiFormat === "comfyui";
+    const isWan2gp = apiFormat === "wan2gp";
     const isCustom = apiFormat === "custom";
     const selectedFormat = API_FORMATS.find((f) => f.value === apiFormat);
     const isLocal = selectedFormat?.isLocal || false;
@@ -1570,6 +1680,45 @@ ${input}` : input;
               }
             )
           ] }),
+          isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Model" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "select",
+              {
+                className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
+                value: data.wan2gpModel || "qwen",
+                onChange: (e) => onWan2gpModelChangeRef.current?.(e.target.value),
+                onMouseDown: (e) => e.stopPropagation(),
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen", children: "Qwen Image (20B)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen_edit", children: "Qwen Image Edit (20B)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux", children: "Flux Dev" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux_schnell", children: "Flux Schnell" })
+                ]
+              }
+            )
+          ] }),
+          isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "VRAM" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "select",
+              {
+                className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
+                value: data.wan2gpVram || "auto",
+                onChange: (e) => onWan2gpVramChangeRef.current?.(e.target.value),
+                onMouseDown: (e) => e.stopPropagation(),
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "auto", children: "Auto" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "6", children: "6 GB (Low)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "8", children: "8 GB" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "10", children: "10 GB" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "12", children: "12 GB" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "16", children: "16 GB" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "24", children: "24 GB+" })
+                ]
+              }
+            )
+          ] }),
           isComfyUI && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Workflow" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -1671,7 +1820,7 @@ ${input}` : input;
               }
             )
           ] }),
-          !isComfyUI && !isCustom && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          !isComfyUI && !isCustom && !isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Model" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
               "input",

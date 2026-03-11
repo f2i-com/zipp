@@ -17,6 +17,11 @@ export interface ComfyUIImageInputConfig {
 
 interface VideoGenNodeData {
     endpoint?: string;
+    apiFormat?: string;
+    wan2gpModel?: string;
+    wan2gpSteps?: number;
+    wan2gpDuration?: number;
+    wan2gpVram?: string;
     projectSettings?: ProjectSettings;
     // ComfyUI workflow (loaded from file)
     comfyWorkflow?: string;
@@ -51,6 +56,11 @@ interface VideoGenNodeData {
     _collapsed?: boolean;
 
     onEndpointChange?: (value: string) => void;
+    onApiFormatChange?: (value: string) => void;
+    onWan2gpModelChange?: (value: string) => void;
+    onWan2gpStepsChange?: (value: number) => void;
+    onWan2gpDurationChange?: (value: number) => void;
+    onWan2gpVramChange?: (value: string) => void;
     onCollapsedChange?: (value: boolean) => void;
     onComfyWorkflowChange?: (value: string) => void;
     onComfyWorkflowNameChange?: (value: string) => void;
@@ -87,6 +97,11 @@ const VideoGenIcon = (
 
 function VideoGenNode({ data }: VideoGenNodeProps) {
     const onEndpointChangeRef = useRef(data.onEndpointChange);
+    const onApiFormatChangeRef = useRef(data.onApiFormatChange);
+    const onWan2gpModelChangeRef = useRef(data.onWan2gpModelChange);
+    const onWan2gpStepsChangeRef = useRef(data.onWan2gpStepsChange);
+    const onWan2gpDurationChangeRef = useRef(data.onWan2gpDurationChange);
+    const onWan2gpVramChangeRef = useRef(data.onWan2gpVramChange);
     const onCollapsedChangeRef = useRef(data.onCollapsedChange);
     const onComfyWorkflowChangeRef = useRef(data.onComfyWorkflowChange);
     const onComfyWorkflowNameChangeRef = useRef(data.onComfyWorkflowNameChange);
@@ -101,6 +116,11 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
 
     useEffect(() => {
         onEndpointChangeRef.current = data.onEndpointChange;
+        onApiFormatChangeRef.current = data.onApiFormatChange;
+        onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
+        onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
+        onWan2gpDurationChangeRef.current = data.onWan2gpDurationChange;
+        onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
         onCollapsedChangeRef.current = data.onCollapsedChange;
         onComfyWorkflowChangeRef.current = data.onComfyWorkflowChange;
         onComfyWorkflowNameChangeRef.current = data.onComfyWorkflowNameChange;
@@ -112,6 +132,22 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
         onComfyAllImageNodeIdsChangeRef.current = data.onComfyAllImageNodeIdsChange;
         onOpenComfyWorkflowDialogRef.current = data.onOpenComfyWorkflowDialog;
     });
+
+    // Track previous apiFormat to detect changes and update endpoint accordingly
+    const prevApiFormatRef = useRef(data.apiFormat);
+    useEffect(() => {
+        const currentFormat = data.apiFormat || 'comfyui';
+        const prevFormat = prevApiFormatRef.current || 'comfyui';
+        if (currentFormat !== prevFormat) {
+            prevApiFormatRef.current = currentFormat;
+            // Update endpoint to match the selected backend
+            if (currentFormat === 'wan2gp') {
+                onEndpointChangeRef.current?.('http://127.0.0.1:8773');
+            } else {
+                onEndpointChangeRef.current?.(data.projectSettings?.defaultVideoEndpoint || 'http://localhost:8188');
+            }
+        }
+    }, [data.apiFormat, data.projectSettings?.defaultVideoEndpoint]);
 
     const handleCollapsedChange = useCallback((collapsed: boolean) => {
         onCollapsedChangeRef.current?.(collapsed);
@@ -198,22 +234,28 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
         return null;
     }, [data.comfyWorkflow, hasEmbeddedWorkflow, data.comfyuiWorkflow]);
 
+    const apiFormat = data.apiFormat || 'comfyui';
+    const isWan2gp = apiFormat === 'wan2gp';
+
     const validationIssues = useMemo(() => {
         const issues: ValidationIssue[] = [];
-        if (!data.comfyWorkflow && !hasEmbeddedWorkflow) {
+        if (!isWan2gp && !data.comfyWorkflow && !hasEmbeddedWorkflow) {
             issues.push({ field: 'Workflow', message: 'Load a workflow file' });
         }
         return issues;
-    }, [data.comfyWorkflow, hasEmbeddedWorkflow]);
+    }, [data.comfyWorkflow, hasEmbeddedWorkflow, isWan2gp]);
 
     const collapsedPreview = (
         <div className="text-slate-400">
-            <span className="text-orange-400 font-medium">ComfyUI</span>
-            {data.comfyWorkflowName && (
+            <span className="text-orange-400 font-medium">{isWan2gp ? 'Wan2GP' : 'ComfyUI'}</span>
+            {!isWan2gp && data.comfyWorkflowName && (
                 <span className="text-slate-500 ml-1 text-xs">({data.comfyWorkflowName})</span>
             )}
-            {!data.comfyWorkflowName && hasEmbeddedWorkflow && (
+            {!isWan2gp && !data.comfyWorkflowName && hasEmbeddedWorkflow && (
                 <span className="text-green-500 ml-1 text-xs">(Embedded)</span>
+            )}
+            {isWan2gp && (
+                <span className="text-slate-500 ml-1 text-xs">({data.wan2gpModel || 'wan_t2v_14b'})</span>
             )}
         </div>
     );
@@ -274,6 +316,28 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
             });
         }
 
+        // Wan2GP image inputs (start + end image)
+        if (isWan2gp) {
+            handles.push({
+                id: 'image',
+                type: 'target',
+                position: Position.Left,
+                color: '!bg-purple-400',
+                label: 'start image (opt)',
+                labelColor: 'text-purple-300',
+                size: 'sm',
+            });
+            handles.push({
+                id: 'image_end',
+                type: 'target',
+                position: Position.Left,
+                color: '!bg-purple-400',
+                label: 'end image (opt)',
+                labelColor: 'text-purple-300',
+                size: 'sm',
+            });
+        }
+
         // Frame count input (for dynamic video length control)
         handles.push({
             id: 'frameCount',
@@ -285,8 +349,21 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
             size: 'sm',
         });
 
+        // Audio input (for audio-guided generation - LTX 2.3, etc.)
+        if (isWan2gp) {
+            handles.push({
+                id: 'audio',
+                type: 'target',
+                position: Position.Left,
+                color: '!bg-teal-400',
+                label: 'audio (opt)',
+                labelColor: 'text-teal-300',
+                size: 'sm',
+            });
+        }
+
         return handles;
-    }, [data.comfyWorkflow, data.comfyPrimaryPromptNodeId, data.comfyImageInputNodeIds, data.comfyImageInputConfigs, workflowAnalysis, hasEmbeddedWorkflow, data.workflowInputs]);
+    }, [data.comfyWorkflow, data.comfyPrimaryPromptNodeId, data.comfyImageInputNodeIds, data.comfyImageInputConfigs, workflowAnalysis, hasEmbeddedWorkflow, data.workflowInputs, isWan2gp]);
 
     // Output handles
     const outputHandles = useMemo<HandleConfig[]>(() => [
@@ -309,9 +386,99 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
                 inputHandles={inputHandles}
                 outputHandles={outputHandles}
             >
-                <div>
-                    {/* ComfyUI Workflow File Picker */}
+                <div className="space-y-2">
+                    {/* Backend Selector */}
                     <div>
+                        <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Backend</label>
+                        <select
+                            className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                            value={apiFormat}
+                            onChange={(e) => onApiFormatChangeRef.current?.(e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <option value="comfyui">ComfyUI</option>
+                            <option value="wan2gp">Wan2GP (LTX/Wan/Hunyuan)</option>
+                        </select>
+                    </div>
+
+                    {/* Wan2GP Settings */}
+                    {isWan2gp && (
+                        <>
+                            <div>
+                                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Model</label>
+                                <select
+                                    className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                                    value={data.wan2gpModel || 'wan_t2v_14b'}
+                                    onChange={(e) => onWan2gpModelChangeRef.current?.(e.target.value)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                    <optgroup label="LTX Video">
+                                        <option value="ltx2_22B">LTX Video 2.3 (22B)</option>
+                                        <option value="ltx2_22B_distilled">LTX Video 2.3 Distilled (22B)</option>
+                                        <option value="ltx2_19B">LTX Video 2.0 (19B)</option>
+                                        <option value="ltx2_distilled">LTX Video 2.0 Distilled (19B)</option>
+                                    </optgroup>
+                                    <optgroup label="Wan">
+                                        <option value="wan_t2v_14b">Wan 2.1 T2V 14B</option>
+                                        <option value="wan_t2v_1_3b">Wan 2.1 T2V 1.3B (Low VRAM)</option>
+                                        <option value="wan_i2v_480p">Wan 2.1 I2V 480p</option>
+                                        <option value="wan_i2v_720p">Wan 2.1 I2V 720p</option>
+                                        <option value="wan_t2v_2_2">Wan 2.2 T2V</option>
+                                    </optgroup>
+                                    <optgroup label="Hunyuan">
+                                        <option value="hunyuan_t2v">Hunyuan Video T2V</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Duration (s)</label>
+                                    <input
+                                        type="number"
+                                        className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                                        value={data.wan2gpDuration || 5}
+                                        min={1}
+                                        max={60}
+                                        step={1}
+                                        onChange={(e) => onWan2gpDurationChangeRef.current?.(parseInt(e.target.value) || 5)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Steps</label>
+                                    <input
+                                        type="number"
+                                        className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                                        value={data.wan2gpSteps || 30}
+                                        min={1}
+                                        max={100}
+                                        onChange={(e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 30)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">VRAM</label>
+                                <select
+                                    className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                                    value={data.wan2gpVram || 'auto'}
+                                    onChange={(e) => onWan2gpVramChangeRef.current?.(e.target.value)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                    <option value="auto">Auto</option>
+                                    <option value="6">6 GB (Low)</option>
+                                    <option value="8">8 GB</option>
+                                    <option value="10">10 GB</option>
+                                    <option value="12">12 GB</option>
+                                    <option value="16">16 GB</option>
+                                    <option value="24">24 GB+</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ComfyUI Workflow File Picker */}
+                    {!isWan2gp && <div>
                         <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Workflow</label>
                         <input
                             ref={fileInputRef}
@@ -481,11 +648,11 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
                                 <p className="text-xs text-slate-600 mt-1">.json exported from ComfyUI</p>
                             </button>
                         )}
-                    </div>
+                    </div>}
 
                     {/* ComfyUI endpoint */}
-                    {(data.comfyWorkflow || hasEmbeddedWorkflow) && (
-                        <div className="mt-2">
+                    {!isWan2gp && (data.comfyWorkflow || hasEmbeddedWorkflow) && (
+                        <div>
                             <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">ComfyUI Server</label>
                             <input
                                 type="text"

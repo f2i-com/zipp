@@ -314,9 +314,12 @@ export class ZippRuntime {
   }
 
   private registerModuleInternally(name: string, methods: Record<string, (...args: any[]) => any>) {
+    const methodNames: string[] = [];
     for (const [methodName, fn] of Object.entries(methods)) {
       this.moduleFunctionHandlers[`${name}.${methodName}`] = fn;
+      methodNames.push(methodName);
     }
+    console.log(`[ZippRuntime] Registered module '${name}' with methods: ${methodNames.join(', ')}`);
   }
 
   private registerBuiltinModules(): void {
@@ -474,23 +477,24 @@ export class ZippRuntime {
     const allModules = ['Abort', 'Utility', 'Agent', ...Array.from(this.loadedRuntimeModules.values()).map(m => m.name)];
 
     for (const modName of new Set(allModules)) {
-      shimCode += `let ${modName} = {\n`;
-      
+      shimCode += `let ${modName} = {};\n`;
+
       const methods = Object.keys(this.moduleFunctionHandlers).filter(k => k.startsWith(`${modName}.`)).map(k => k.split('.')[1]);
-      
+
       for (const methodName of methods) {
-        shimCode += `  "${methodName}"(...args) {\n`;
-        shimCode += `    let jsonArgs = JSON.stringify(args);\n`;
-        shimCode += `    return { _kind: "${modName}.${methodName}", _args: [jsonArgs] };\n`;
-        shimCode += `  },\n`;
+        shimCode += `${modName}["${methodName}"] = function(...args) {\n`;
+        shimCode += `  let jsonArgs = JSON.stringify(args);\n`;
+        shimCode += `  return { _kind: "${modName}.${methodName}", _args: [jsonArgs] };\n`;
+        shimCode += `};\n`;
       }
-      shimCode += `};\n`;
     }
-    
+
     // Add a dummy console object for FormLogic
-    shimCode += `\nlet console = {\n`;
-    shimCode += `  "log"() {},\n  "warn"() {},\n  "error"() {},\n  "debug"() {}\n`;
-    shimCode += `};\n`;
+    shimCode += `\nlet console = {};\n`;
+    shimCode += `console["log"] = function() {};\n`;
+    shimCode += `console["warn"] = function() {};\n`;
+    shimCode += `console["error"] = function() {};\n`;
+    shimCode += `console["debug"] = function() {};\n`;
 
     return shimCode;
   }
@@ -545,7 +549,7 @@ function* __run_workflow() {
        ${script.replace(/await/g, 'yield')}
        __res = workflow_context;
    } catch (e) {
-       host.call("__system.finish_error", [String(e)], function(r){});
+       host.call("__system.finish_error", ["" + e], function(r){});
        return;
    }
    return __res;
@@ -565,15 +569,13 @@ function __step(val) {
                  try {
                      __gen.throw(new Error(res.__error__));
                  } catch(e) {
-                     host.call("__system.finish_error", [String(e)], function(){});
+                     host.call("__system.finish_error", ["" + e], function(){});
                  }
              } else {
                  __step(res);
              }
           });
        } else {
-          // If it yielded undefined, it might be a yield inside an empty generator.
-          // In Formlogic-rust, sometimes we yield directly without value? Just step.
           if (!item.value) {
              __step();
           } else {
@@ -581,11 +583,14 @@ function __step(val) {
           }
        }
    } catch(e) {
-       host.call("__system.finish_error", [String(e)], function(){});
+       host.call("__system.finish_error", ["" + e], function(){});
    }
 }
 __step();
 `;
+
+      // Debug logging (uncomment to diagnose VM errors):
+      // this.log('info', '[DEBUG SCRIPT]\n' + fullScript);
 
       engine.initScript(fullScript);
 

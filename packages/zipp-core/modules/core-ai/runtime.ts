@@ -346,7 +346,7 @@ function resolveApiKey(apiKeyConstant: string): string {
  * Parameters match compiler output:
  * AI.chat(systemPrompt, userPrompt, input, endpoint, model, apiKeyConstant,
  *         streaming, maxTokens, temperature, responseFormat, includeImages,
- *         visionDetail, nodeId, chunkRefs, messageHistory, maxImageDimension, maxImageSizeKB)
+ *         visionDetail, nodeId, chunkRefs, messageHistory, maxImageDimension, maxImageSizeKB, enableThinking)
  */
 async function chat(
   systemPrompt: string,
@@ -365,7 +365,8 @@ async function chat(
   chunkRefs: Array<{ documentId: string; content?: string }> = [],
   messageHistory: string | Array<{ role: string; content: string }> = '',
   maxImageDimensionOverride: number = 0,
-  maxImageSizeKBOverride: number = 0
+  maxImageSizeKBOverride: number = 0,
+  enableThinking: boolean = false
 ): Promise<string> {
   // Check for abort before starting
   if (ctx.abortSignal?.aborted) {
@@ -377,6 +378,27 @@ async function chat(
   validateEndpoint(endpoint, 'AI chat');
   validateContentLength(systemPrompt, 'System prompt');
   validateContentLength(userPrompt, 'User prompt');
+
+  // Auto-start local services (Wan2GP, Ollama, etc.) if needed
+  if (ctx.tauri && endpoint.includes('127.0.0.1')) {
+    const portMatch = endpoint.match(/:(\d+)/);
+    if (portMatch) {
+      const port = parseInt(portMatch[1], 10);
+      try {
+        const result = await ctx.tauri.invoke<{
+          success: boolean;
+          port?: number;
+          error?: string;
+          already_running: boolean;
+        }>('ensure_service_ready_by_port', { port });
+        if (result.success && result.port && result.port !== port) {
+          endpoint = endpoint.replace(`:${port}`, `:${result.port}`);
+        }
+      } catch {
+        // Service auto-start not available
+      }
+    }
+  }
 
   ctx.onNodeStatus?.(nodeId, 'running');
 
@@ -664,6 +686,10 @@ async function chat(
       if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1')) {
         body.options = { num_ctx: 32768 };
       }
+      // Pass enable_thinking for models that support reasoning mode (e.g. Qwen 3.5)
+      if (enableThinking) {
+        body.enable_thinking = true;
+      }
     }
 
     ctx.log('info', `[AI] Sending request...`);
@@ -708,17 +734,33 @@ async function chat(
       return externalResponse;
     }
 
-    const response = await ctx.secureFetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      nodeId,
-      purpose: 'AI/LLM chat request',
-    });
+    // Retry loop for 503 (service still loading) with progress logging
+    const maxRetries = 60; // Up to ~5 minutes of retrying
+    const retryDelayMs = 5000;
+    let response: Response | undefined;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (ctx.abortSignal?.aborted) {
+        return '__ABORT__';
+      }
+      response = await ctx.secureFetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        nodeId,
+        purpose: 'AI/LLM chat request',
+      });
 
-    if (!response.ok) {
+      if (response.status !== 503) break;
+
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+      ctx.log('info', `[AI] Service loading: ${errorText.substring(0, 200)} (retrying in ${retryDelayMs / 1000}s...)`);
+      ctx.onNodeStatus?.(nodeId, 'running');
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    }
+
+    if (!response || !response.ok) {
+      const errorText = response ? await response.text() : 'No response';
+      throw new Error(`HTTP ${response?.status || 0}: ${errorText.substring(0, 200)}`);
     }
 
     const responseText = await response.text();

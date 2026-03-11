@@ -780,10 +780,143 @@ async function generateCustom(
 }
 
 /**
+ * Auto-start Wan2GP service if not already running
+ */
+async function ensureWan2GPReady(baseUrl: string): Promise<string> {
+  const match = baseUrl.match(/:(\d+)/);
+  const port = match ? parseInt(match[1], 10) : 8773;
+
+  if (ctx.tauri) {
+    try {
+      const result = await ctx.tauri.invoke<{
+        success: boolean;
+        port?: number;
+        error?: string;
+        already_running: boolean;
+      }>('ensure_service_ready_by_port', { port });
+
+      if (result.success && result.port) {
+        if (!result.already_running) {
+          ctx.log('info', `[ImageGen] Wan2GP service auto-started on port ${result.port}`);
+        }
+        return `http://127.0.0.1:${result.port}`;
+      } else if (result.error) {
+        ctx.log('warn', `[ImageGen] Wan2GP service failed to start: ${result.error}`);
+      }
+    } catch {
+      // ensure_service_ready_by_port not available
+    }
+  }
+
+  return baseUrl;
+}
+
+/**
+ * Generate image using Wan2GP service
+ */
+async function generateWan2GP(
+  prompt: string,
+  endpoint: string,
+  model: string,
+  width: number,
+  height: number,
+  steps: number,
+  negativePrompt: string,
+  imageInputs?: unknown[],
+  vram?: string
+): Promise<string> {
+  // Default endpoint to local Wan2GP service, auto-start if needed
+  let baseUrl = endpoint || 'http://127.0.0.1:8773';
+  baseUrl = await ensureWan2GPReady(baseUrl);
+  const apiUrl = `${baseUrl}/generate/image`;
+
+  ctx.log('info', `[ImageGen] Wan2GP request to ${apiUrl}, model=${model || 'qwen'}`);
+
+  const body: Record<string, unknown> = {
+    prompt,
+    negative_prompt: negativePrompt || '',
+    width,
+    height,
+    steps,
+    model: model || 'qwen',
+    seed: -1,
+  };
+
+  // Pass VRAM setting if specified
+  if (vram && vram !== 'auto') {
+    body.vram = parseInt(vram, 10);
+  }
+
+  // If there's an image input, include it for img2img
+  if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
+    const imgSrc = extractImageSource(imageInputs[0]);
+    if (imgSrc.dataUrl) {
+      body.image_start = imgSrc.dataUrl;
+    } else if (imgSrc.url) {
+      body.image_start = imgSrc.url;
+    } else if (imgSrc.path) {
+      // For file paths, the runtime can read and convert to base64
+      body.image_start = imgSrc.path;
+    }
+  }
+
+  // Submit job (server returns 202 with job_id immediately)
+  const submitResponse = await ctx.secureFetch(`${baseUrl}/generate/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    purpose: 'Wan2GP image generation',
+  });
+
+  if (!submitResponse.ok) {
+    const errorText = await submitResponse.text();
+    throw new Error(`Wan2GP submit error: ${submitResponse.status} - ${errorText.substring(0, 200)}`);
+  }
+
+  const submitData = await submitResponse.json();
+  const jobId = submitData.job_id;
+  if (!jobId) throw new Error('Wan2GP did not return a job_id');
+
+  ctx.log('info', `[ImageGen] Wan2GP job submitted: ${jobId}`);
+
+  // Poll for completion (handles long model downloads without timeout)
+  const pollIntervalMs = 5000;
+  const maxPollTime = 60 * 60 * 1000; // 1 hour max
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxPollTime) {
+    await delay(pollIntervalMs);
+
+    const pollResponse = await ctx.secureFetch(`${baseUrl}/job/${jobId}`, {
+      purpose: 'Wan2GP job status poll',
+    });
+
+    if (!pollResponse.ok) throw new Error(`Wan2GP poll error: ${pollResponse.status}`);
+
+    const pollData = await pollResponse.json();
+
+    if (pollData.status === 'completed') {
+      if (pollData.image) return pollData.image;
+      if (pollData.path) return pollData.path;
+      throw new Error('Wan2GP job completed but no image in response');
+    }
+
+    if (pollData.status === 'failed') {
+      throw new Error(`Wan2GP generation failed: ${pollData.error || 'Unknown error'}`);
+    }
+
+    const elapsed = pollData.elapsed ? ` (${Math.round(pollData.elapsed)}s)` : '';
+    ctx.log('info', `[ImageGen] Wan2GP job ${jobId}: ${pollData.status}${elapsed}`);
+  }
+
+  throw new Error('Wan2GP image generation timed out after 1 hour');
+}
+
+/**
  * Main image generation function
  *
  * Parameters match compiler output:
- * Image.generate(prompt, inputVar, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension, maxImageSizeKB)
+ * Image.generate(prompt, inputVar, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension, maxImageSizeKB, negativePrompt)
  */
 async function generate(
   prompt: string,
@@ -805,7 +938,9 @@ async function generate(
   comfyFixedSeed?: number | null,
   comfyAllImageNodeIds?: string[],
   maxImageDimension: number = 0,
-  maxImageSizeKB: number = 0
+  maxImageSizeKB: number = 0,
+  negativePrompt: string = '',
+  wan2gpVram: string = 'auto'
 ): Promise<string> {
   ctx.onNodeStatus?.(nodeId, 'running');
 
@@ -816,6 +951,11 @@ async function generate(
   }
 
   ctx.log('info', `[ImageGen] Generating with ${apiFormat}: "${finalPrompt.substring(0, 50)}..."`);
+
+  // Wan2GP defaults to local service endpoint
+  if (!endpoint && apiFormat === 'wan2gp') {
+    endpoint = 'http://127.0.0.1:8773';
+  }
 
   if (!endpoint) {
     ctx.log('info', '[ImageGen] No endpoint configured, using mock response');
@@ -840,6 +980,19 @@ async function generate(
       case 'gemini-flash':
       case 'gemini-2-flash':
         imageUrl = await generateGemini(finalPrompt, endpoint, apiKey);
+        break;
+      case 'wan2gp':
+        imageUrl = await generateWan2GP(
+          finalPrompt,
+          endpoint,
+          model,
+          width,
+          height,
+          steps,
+          negativePrompt,
+          imageInputs,
+          wan2gpVram
+        );
         break;
       case 'comfyui':
         // For ComfyUI, use the stored workflow if available, otherwise use input as workflow

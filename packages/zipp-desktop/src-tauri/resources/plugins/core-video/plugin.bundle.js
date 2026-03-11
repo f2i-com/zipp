@@ -573,6 +573,118 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     return {};
   }
+  async function generateVideoWan2GP(endpoint, nodeId, prompt, model, width, height, frameCount, frameRate, imageInputs, steps, duration, imageEnd, vram, audioInput) {
+    ctx.onNodeStatus?.(nodeId, "running");
+    let baseUrl = endpoint || "http://127.0.0.1:8773";
+    const port = extractPortFromUrl(baseUrl);
+    if (port) {
+      const result = await ensureServiceReadyByPort(port);
+      if (result.success && result.port) {
+        baseUrl = `http://127.0.0.1:${result.port}`;
+      }
+    }
+    const apiUrl = `${baseUrl}/generate/video`;
+    ctx.log("info", `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || "wan_t2v_14b"}, steps=${steps || 30}, duration=${duration || 5}s`);
+    const body = {
+      prompt: prompt || "",
+      negative_prompt: "",
+      width: width || 832,
+      height: height || 480,
+      fps: frameRate || 24,
+      steps: steps || 30,
+      model: model || "wan_t2v_14b",
+      seed: -1,
+      duration: duration || 5
+    };
+    if (vram && vram !== "auto") {
+      body.vram = parseInt(vram, 10);
+    }
+    if (frameCount && frameCount > 0) {
+      body.frames = frameCount;
+    }
+    if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
+      const imgInput = imageInputs[0];
+      if (typeof imgInput === "string") {
+        body.image_start = imgInput;
+      } else if (typeof imgInput === "object" && imgInput !== null) {
+        const obj = imgInput;
+        body.image_start = obj.dataUrl || obj.path || obj.url || "";
+      }
+    }
+    if (imageEnd) {
+      if (typeof imageEnd === "string") {
+        body.image_end = imageEnd;
+      } else if (typeof imageEnd === "object" && imageEnd !== null) {
+        const obj = imageEnd;
+        body.image_end = obj.dataUrl || obj.path || obj.url || "";
+      }
+    }
+    if (audioInput) {
+      if (typeof audioInput === "string") {
+        body.audio_guide = audioInput;
+      } else if (typeof audioInput === "object" && audioInput !== null) {
+        const obj = audioInput;
+        body.audio_guide = obj.path || obj.dataUrl || obj.url || "";
+      }
+    }
+    let submitResponse;
+    const maxRetries = 30;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      submitResponse = await ctx.secureFetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        purpose: "Wan2GP video generation"
+      });
+      if (submitResponse.status !== 503) break;
+      ctx.log("info", `[VideoGen] Wan2GP not ready yet, retrying in 10s... (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise((resolve) => setTimeout(resolve, 1e4));
+    }
+    if (!submitResponse || !submitResponse.ok) {
+      const errorText = submitResponse ? await submitResponse.text() : "No response";
+      ctx.onNodeStatus?.(nodeId, "error");
+      throw new Error(`Wan2GP video submit error: ${submitResponse?.status || 0} - ${errorText.substring(0, 200)}`);
+    }
+    const submitData = await submitResponse.json();
+    const jobId = submitData.job_id;
+    if (!jobId) {
+      ctx.onNodeStatus?.(nodeId, "error");
+      throw new Error("Wan2GP did not return a job_id");
+    }
+    ctx.log("info", `[VideoGen] Wan2GP job submitted: ${jobId}`);
+    const pollIntervalMs = 5e3;
+    const maxPollTime = 60 * 60 * 1e3;
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxPollTime) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      const pollResponse = await ctx.secureFetch(`${baseUrl}/job/${jobId}`, {
+        purpose: "Wan2GP job status poll"
+      });
+      if (!pollResponse.ok) {
+        ctx.onNodeStatus?.(nodeId, "error");
+        throw new Error(`Wan2GP poll error: ${pollResponse.status}`);
+      }
+      const pollData = await pollResponse.json();
+      if (pollData.status === "completed") {
+        const videoUrl = pollData.video || pollData.path || "";
+        if (!videoUrl) {
+          ctx.onNodeStatus?.(nodeId, "error");
+          throw new Error("Wan2GP job completed but no video in response");
+        }
+        ctx.onNodeStatus?.(nodeId, "completed");
+        ctx.log("success", `[VideoGen] Video generated: ${videoUrl}`);
+        return videoUrl;
+      }
+      if (pollData.status === "failed") {
+        ctx.onNodeStatus?.(nodeId, "error");
+        throw new Error(`Wan2GP video generation failed: ${pollData.error || "Unknown error"}`);
+      }
+      const elapsed = pollData.elapsed ? ` (${Math.round(pollData.elapsed)}s)` : "";
+      ctx.log("info", `[VideoGen] Wan2GP job ${jobId}: ${pollData.status}${elapsed}`);
+    }
+    ctx.onNodeStatus?.(nodeId, "error");
+    throw new Error("Wan2GP video generation timed out after 1 hour");
+  }
   async function generate(endpoint, nodeId, prompt, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, comfyFrameCount, comfyWidth, comfyHeight, comfyFrameRate) {
     ctx.onNodeStatus?.(nodeId, "running");
     ctx.log("info", `[VideoGen] Generating video on ${endpoint}`);
@@ -1582,6 +1694,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       extractLastFrame,
       extractBatch,
       generate,
+      generateVideoWan2GP,
       generateAvatar,
       save,
       saveVideo: save,
@@ -1772,6 +1885,48 @@ var __PLUGIN_EXPORTS__ = (() => {
       if (nodeType === "video_gen") {
         const promptVar = inputs.get("prompt") || `"${escapeString(String(data.prompt || ""))}"`;
         const projectSettings = data.projectSettings;
+        const apiFormat = String(data.apiFormat || "comfyui");
+        if (apiFormat === "wan2gp") {
+          const rawEndpoint = String(data.endpoint || "");
+          const isComfyEndpoint = rawEndpoint.includes(":8188") || rawEndpoint === projectSettings?.defaultVideoEndpoint;
+          const endpoint2 = escapeString(isComfyEndpoint ? "" : rawEndpoint);
+          const wan2gpModel = escapeString(String(data.wan2gpModel || "wan_t2v_14b"));
+          const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 30;
+          const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
+          const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
+          const comfyWidth2 = data.comfyWidth != null ? Number(data.comfyWidth) : void 0;
+          const comfyHeight2 = data.comfyHeight != null ? Number(data.comfyHeight) : void 0;
+          const comfyFrameRate2 = data.comfyFrameRate != null ? Number(data.comfyFrameRate) : void 0;
+          const imageVar = inputs.get("image") || "null";
+          const imageEndVar = inputs.get("image_end") || "null";
+          const audioVar = inputs.get("audio") || "null";
+          let code3 = `
+  // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
+          code3 += `
+  ${letOrAssign}${outputVar} = await VideoFrames.generateVideoWan2GP(
+    "${endpoint2}",
+    "${node.id}",
+    ${promptVar},
+    "${wan2gpModel}",
+    ${comfyWidth2 !== void 0 ? comfyWidth2 : "undefined"},
+    ${comfyHeight2 !== void 0 ? comfyHeight2 : "undefined"},
+    undefined,
+    ${comfyFrameRate2 !== void 0 ? comfyFrameRate2 : "undefined"},
+    ${imageVar !== "null" ? `[${imageVar}]` : "null"},
+    ${wan2gpSteps},
+    ${wan2gpDuration},
+    ${imageEndVar !== "null" ? imageEndVar : "null"},
+    "${wan2gpVram}",
+    ${audioVar}
+  );
+  if (${outputVar} === "__ABORT__") {
+    console.log("[Workflow] aborted");
+    return workflow_context;
+  }
+  let ${outputVar}_video = ${outputVar};
+  workflow_context["${node.id}"] = ${outputVar};`;
+          return code3;
+        }
         const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultVideoEndpoint || ""));
         let comfyWorkflowCode = "null";
         if (data.comfyWorkflow) {
@@ -2390,6 +2545,11 @@ var __PLUGIN_EXPORTS__ = (() => {
   var VideoGenIcon = /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("svg", { className: "w-3 h-3 text-white", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" }) });
   function VideoGenNode({ data }) {
     const onEndpointChangeRef = (0, import_react3.useRef)(data.onEndpointChange);
+    const onApiFormatChangeRef = (0, import_react3.useRef)(data.onApiFormatChange);
+    const onWan2gpModelChangeRef = (0, import_react3.useRef)(data.onWan2gpModelChange);
+    const onWan2gpStepsChangeRef = (0, import_react3.useRef)(data.onWan2gpStepsChange);
+    const onWan2gpDurationChangeRef = (0, import_react3.useRef)(data.onWan2gpDurationChange);
+    const onWan2gpVramChangeRef = (0, import_react3.useRef)(data.onWan2gpVramChange);
     const onCollapsedChangeRef = (0, import_react3.useRef)(data.onCollapsedChange);
     const onComfyWorkflowChangeRef = (0, import_react3.useRef)(data.onComfyWorkflowChange);
     const onComfyWorkflowNameChangeRef = (0, import_react3.useRef)(data.onComfyWorkflowNameChange);
@@ -2403,6 +2563,11 @@ var __PLUGIN_EXPORTS__ = (() => {
     const fileInputRef = (0, import_react3.useRef)(null);
     (0, import_react3.useEffect)(() => {
       onEndpointChangeRef.current = data.onEndpointChange;
+      onApiFormatChangeRef.current = data.onApiFormatChange;
+      onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
+      onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
+      onWan2gpDurationChangeRef.current = data.onWan2gpDurationChange;
+      onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
       onCollapsedChangeRef.current = data.onCollapsedChange;
       onComfyWorkflowChangeRef.current = data.onComfyWorkflowChange;
       onComfyWorkflowNameChangeRef.current = data.onComfyWorkflowNameChange;
@@ -2414,6 +2579,19 @@ var __PLUGIN_EXPORTS__ = (() => {
       onComfyAllImageNodeIdsChangeRef.current = data.onComfyAllImageNodeIdsChange;
       onOpenComfyWorkflowDialogRef.current = data.onOpenComfyWorkflowDialog;
     });
+    const prevApiFormatRef = (0, import_react3.useRef)(data.apiFormat);
+    (0, import_react3.useEffect)(() => {
+      const currentFormat = data.apiFormat || "comfyui";
+      const prevFormat = prevApiFormatRef.current || "comfyui";
+      if (currentFormat !== prevFormat) {
+        prevApiFormatRef.current = currentFormat;
+        if (currentFormat === "wan2gp") {
+          onEndpointChangeRef.current?.("http://127.0.0.1:8773");
+        } else {
+          onEndpointChangeRef.current?.(data.projectSettings?.defaultVideoEndpoint || "http://localhost:8188");
+        }
+      }
+    }, [data.apiFormat, data.projectSettings?.defaultVideoEndpoint]);
     const handleCollapsedChange = (0, import_react3.useCallback)((collapsed) => {
       onCollapsedChangeRef.current?.(collapsed);
     }, []);
@@ -2478,21 +2656,28 @@ var __PLUGIN_EXPORTS__ = (() => {
       }
       return null;
     }, [data.comfyWorkflow, hasEmbeddedWorkflow, data.comfyuiWorkflow]);
+    const apiFormat = data.apiFormat || "comfyui";
+    const isWan2gp = apiFormat === "wan2gp";
     const validationIssues = (0, import_react3.useMemo)(() => {
       const issues = [];
-      if (!data.comfyWorkflow && !hasEmbeddedWorkflow) {
+      if (!isWan2gp && !data.comfyWorkflow && !hasEmbeddedWorkflow) {
         issues.push({ field: "Workflow", message: "Load a workflow file" });
       }
       return issues;
-    }, [data.comfyWorkflow, hasEmbeddedWorkflow]);
+    }, [data.comfyWorkflow, hasEmbeddedWorkflow, isWan2gp]);
     const collapsedPreview = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "text-slate-400", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-orange-400 font-medium", children: "ComfyUI" }),
-      data.comfyWorkflowName && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-slate-500 ml-1 text-xs", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-orange-400 font-medium", children: isWan2gp ? "Wan2GP" : "ComfyUI" }),
+      !isWan2gp && data.comfyWorkflowName && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-slate-500 ml-1 text-xs", children: [
         "(",
         data.comfyWorkflowName,
         ")"
       ] }),
-      !data.comfyWorkflowName && hasEmbeddedWorkflow && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-green-500 ml-1 text-xs", children: "(Embedded)" })
+      !isWan2gp && !data.comfyWorkflowName && hasEmbeddedWorkflow && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-green-500 ml-1 text-xs", children: "(Embedded)" }),
+      isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "text-slate-500 ml-1 text-xs", children: [
+        "(",
+        data.wan2gpModel || "wan_t2v_14b",
+        ")"
+      ] })
     ] });
     const inputHandles = (0, import_react3.useMemo)(() => {
       const handles = [];
@@ -2542,6 +2727,26 @@ var __PLUGIN_EXPORTS__ = (() => {
           size: "md"
         });
       }
+      if (isWan2gp) {
+        handles.push({
+          id: "image",
+          type: "target",
+          position: import_react4.Position.Left,
+          color: "!bg-purple-400",
+          label: "start image (opt)",
+          labelColor: "text-purple-300",
+          size: "sm"
+        });
+        handles.push({
+          id: "image_end",
+          type: "target",
+          position: import_react4.Position.Left,
+          color: "!bg-purple-400",
+          label: "end image (opt)",
+          labelColor: "text-purple-300",
+          size: "sm"
+        });
+      }
       handles.push({
         id: "frameCount",
         type: "target",
@@ -2551,8 +2756,19 @@ var __PLUGIN_EXPORTS__ = (() => {
         labelColor: "text-green-400",
         size: "sm"
       });
+      if (isWan2gp) {
+        handles.push({
+          id: "audio",
+          type: "target",
+          position: import_react4.Position.Left,
+          color: "!bg-teal-400",
+          label: "audio (opt)",
+          labelColor: "text-teal-300",
+          size: "sm"
+        });
+      }
       return handles;
-    }, [data.comfyWorkflow, data.comfyPrimaryPromptNodeId, data.comfyImageInputNodeIds, data.comfyImageInputConfigs, workflowAnalysis, hasEmbeddedWorkflow, data.workflowInputs]);
+    }, [data.comfyWorkflow, data.comfyPrimaryPromptNodeId, data.comfyImageInputNodeIds, data.comfyImageInputConfigs, workflowAnalysis, hasEmbeddedWorkflow, data.workflowInputs, isWan2gp]);
     const outputHandles = (0, import_react3.useMemo)(() => [
       { id: "video", type: "source", position: import_react4.Position.Right, color: "!bg-orange-500", size: "lg", label: "video" }
     ], []);
@@ -2571,8 +2787,108 @@ var __PLUGIN_EXPORTS__ = (() => {
         collapsedPreview,
         inputHandles,
         outputHandles,
-        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "space-y-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Backend" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+              "select",
+              {
+                className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                value: apiFormat,
+                onChange: (e) => onApiFormatChangeRef.current?.(e.target.value),
+                onMouseDown: (e) => e.stopPropagation(),
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "comfyui", children: "ComfyUI" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan2gp", children: "Wan2GP (LTX/Wan/Hunyuan)" })
+                ]
+              }
+            )
+          ] }),
+          isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Model" }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+                "select",
+                {
+                  className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                  value: data.wan2gpModel || "wan_t2v_14b",
+                  onChange: (e) => onWan2gpModelChangeRef.current?.(e.target.value),
+                  onMouseDown: (e) => e.stopPropagation(),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("optgroup", { label: "LTX Video", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B", children: "LTX Video 2.3 (22B)" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B_distilled", children: "LTX Video 2.3 Distilled (22B)" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_19B", children: "LTX Video 2.0 (19B)" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_distilled", children: "LTX Video 2.0 Distilled (19B)" })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("optgroup", { label: "Wan", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_14b", children: "Wan 2.1 T2V 14B" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_1_3b", children: "Wan 2.1 T2V 1.3B (Low VRAM)" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_i2v_480p", children: "Wan 2.1 I2V 480p" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_i2v_720p", children: "Wan 2.1 I2V 720p" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_2_2", children: "Wan 2.2 T2V" })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("optgroup", { label: "Hunyuan", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "hunyuan_t2v", children: "Hunyuan Video T2V" }) })
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Duration (s)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "input",
+                  {
+                    type: "number",
+                    className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                    value: data.wan2gpDuration || 5,
+                    min: 1,
+                    max: 60,
+                    step: 1,
+                    onChange: (e) => onWan2gpDurationChangeRef.current?.(parseInt(e.target.value) || 5),
+                    onMouseDown: (e) => e.stopPropagation()
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Steps" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "input",
+                  {
+                    type: "number",
+                    className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                    value: data.wan2gpSteps || 30,
+                    min: 1,
+                    max: 100,
+                    onChange: (e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 30),
+                    onMouseDown: (e) => e.stopPropagation()
+                  }
+                )
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "VRAM" }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+                "select",
+                {
+                  className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                  value: data.wan2gpVram || "auto",
+                  onChange: (e) => onWan2gpVramChangeRef.current?.(e.target.value),
+                  onMouseDown: (e) => e.stopPropagation(),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "auto", children: "Auto" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "6", children: "6 GB (Low)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "8", children: "8 GB" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "10", children: "10 GB" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "12", children: "12 GB" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "16", children: "16 GB" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "24", children: "24 GB+" })
+                  ]
+                }
+              )
+            ] })
+          ] }),
+          !isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Workflow" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               "input",
@@ -2721,7 +3037,7 @@ var __PLUGIN_EXPORTS__ = (() => {
               }
             )
           ] }),
-          (data.comfyWorkflow || hasEmbeddedWorkflow) && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-2", children: [
+          !isWan2gp && (data.comfyWorkflow || hasEmbeddedWorkflow) && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "ComfyUI Server" }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               "input",

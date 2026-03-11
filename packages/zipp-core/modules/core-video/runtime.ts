@@ -611,6 +611,170 @@ function extractImageSource(input: unknown): { dataUrl?: string; url?: string; p
 }
 
 /**
+ * Generate video using Wan2GP service
+ */
+async function generateVideoWan2GP(
+  endpoint: string,
+  nodeId: string,
+  prompt: string | undefined,
+  model: string,
+  width?: number,
+  height?: number,
+  frameCount?: number,
+  frameRate?: number,
+  imageInputs?: unknown[],
+  steps?: number,
+  duration?: number,
+  imageEnd?: unknown,
+  vram?: string,
+  audioInput?: unknown
+): Promise<string> {
+  ctx.onNodeStatus?.(nodeId, 'running');
+
+  let baseUrl = endpoint || 'http://127.0.0.1:8773';
+
+  // Auto-start Wan2GP service if needed
+  const port = extractPortFromUrl(baseUrl);
+  if (port) {
+    const result = await ensureServiceReadyByPort(port);
+    if (result.success && result.port) {
+      baseUrl = `http://127.0.0.1:${result.port}`;
+    }
+  }
+
+  const apiUrl = `${baseUrl}/generate/video`;
+
+  ctx.log('info', `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || 'wan_t2v_14b'}, steps=${steps || 30}, duration=${duration || 5}s`);
+
+  const body: Record<string, unknown> = {
+    prompt: prompt || '',
+    negative_prompt: '',
+    width: width || 832,
+    height: height || 480,
+    fps: frameRate || 24,
+    steps: steps || 30,
+    model: model || 'wan_t2v_14b',
+    seed: -1,
+    duration: duration || 5,
+  };
+
+  // Pass VRAM setting if specified (helps low-VRAM GPUs)
+  if (vram && vram !== 'auto') {
+    body.vram = parseInt(vram, 10);
+  }
+
+  // Only set frames if explicitly provided (otherwise server uses duration)
+  if (frameCount && frameCount > 0) {
+    body.frames = frameCount;
+  }
+
+  // If there's an image input, include for img2vid
+  if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
+    const imgInput = imageInputs[0];
+    if (typeof imgInput === 'string') {
+      body.image_start = imgInput;
+    } else if (typeof imgInput === 'object' && imgInput !== null) {
+      const obj = imgInput as Record<string, unknown>;
+      body.image_start = obj.dataUrl || obj.path || obj.url || '';
+    }
+  }
+
+  // End image (separate parameter, not from imageInputs array)
+  if (imageEnd) {
+    if (typeof imageEnd === 'string') {
+      body.image_end = imageEnd;
+    } else if (typeof imageEnd === 'object' && imageEnd !== null) {
+      const obj = imageEnd as Record<string, unknown>;
+      body.image_end = obj.dataUrl || obj.path || obj.url || '';
+    }
+  }
+
+  // Audio input for audio-guided generation (LTX 2.3, etc.)
+  if (audioInput) {
+    if (typeof audioInput === 'string') {
+      body.audio_guide = audioInput;
+    } else if (typeof audioInput === 'object' && audioInput !== null) {
+      const obj = audioInput as Record<string, unknown>;
+      body.audio_guide = obj.path || obj.dataUrl || obj.url || '';
+    }
+  }
+
+  // Submit job with retry for 503 (service still starting)
+  let submitResponse: Response | undefined;
+  const maxRetries = 30;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    submitResponse = await ctx.secureFetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      purpose: 'Wan2GP video generation',
+    });
+
+    if (submitResponse.status !== 503) break;
+
+    ctx.log('info', `[VideoGen] Wan2GP not ready yet, retrying in 10s... (attempt ${attempt + 1}/${maxRetries})`);
+    await new Promise(resolve => setTimeout(resolve, 10000));
+  }
+
+  if (!submitResponse || !submitResponse.ok) {
+    const errorText = submitResponse ? await submitResponse.text() : 'No response';
+    ctx.onNodeStatus?.(nodeId, 'error');
+    throw new Error(`Wan2GP video submit error: ${submitResponse?.status || 0} - ${errorText.substring(0, 200)}`);
+  }
+
+  const submitData = await submitResponse.json();
+  const jobId = submitData.job_id;
+  if (!jobId) {
+    ctx.onNodeStatus?.(nodeId, 'error');
+    throw new Error('Wan2GP did not return a job_id');
+  }
+
+  ctx.log('info', `[VideoGen] Wan2GP job submitted: ${jobId}`);
+
+  // Poll for completion (handles long model downloads without timeout)
+  const pollIntervalMs = 5000;
+  const maxPollTime = 60 * 60 * 1000; // 1 hour max
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxPollTime) {
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+    const pollResponse = await ctx.secureFetch(`${baseUrl}/job/${jobId}`, {
+      purpose: 'Wan2GP job status poll',
+    });
+
+    if (!pollResponse.ok) {
+      ctx.onNodeStatus?.(nodeId, 'error');
+      throw new Error(`Wan2GP poll error: ${pollResponse.status}`);
+    }
+
+    const pollData = await pollResponse.json();
+
+    if (pollData.status === 'completed') {
+      const videoUrl = pollData.video || pollData.path || '';
+      if (!videoUrl) {
+        ctx.onNodeStatus?.(nodeId, 'error');
+        throw new Error('Wan2GP job completed but no video in response');
+      }
+      ctx.onNodeStatus?.(nodeId, 'completed');
+      ctx.log('success', `[VideoGen] Video generated: ${videoUrl}`);
+      return videoUrl;
+    }
+
+    if (pollData.status === 'failed') {
+      ctx.onNodeStatus?.(nodeId, 'error');
+      throw new Error(`Wan2GP video generation failed: ${pollData.error || 'Unknown error'}`);
+    }
+
+    const elapsed = pollData.elapsed ? ` (${Math.round(pollData.elapsed)}s)` : '';
+    ctx.log('info', `[VideoGen] Wan2GP job ${jobId}: ${pollData.status}${elapsed}`);
+  }
+
+  ctx.onNodeStatus?.(nodeId, 'error');
+  throw new Error('Wan2GP video generation timed out after 1 hour');
+}
+
+/**
  * Generate video using ComfyUI
  */
 async function generate(
@@ -2061,6 +2225,7 @@ const CoreVideoRuntime: RuntimeModule = {
     extractLastFrame,
     extractBatch,
     generate,
+    generateVideoWan2GP,
     generateAvatar,
     save,
     saveVideo: save, // Alias for compatibility

@@ -207,9 +207,59 @@ const CoreVideoCompiler: ModuleCompiler = {
     if (nodeType === 'video_gen') {
       // Get prompt from connected handle or default from data
       const promptVar = inputs.get('prompt') || `"${escapeString(String(data.prompt || ''))}"`;
-      // Get endpoint - fall back to projectSettings.defaultVideoEndpoint if not set
       const projectSettings = data.projectSettings as { defaultVideoEndpoint?: string } | undefined;
+      const apiFormat = String(data.apiFormat || 'comfyui');
+
+      // Wan2GP backend - simpler path, no ComfyUI workflow needed
+      if (apiFormat === 'wan2gp') {
+        // For Wan2GP, use endpoint only if it looks like a Wan2GP URL (not a stale ComfyUI URL)
+        const rawEndpoint = String(data.endpoint || '');
+        const isComfyEndpoint = rawEndpoint.includes(':8188') || rawEndpoint === projectSettings?.defaultVideoEndpoint;
+        const endpoint = escapeString(isComfyEndpoint ? '' : rawEndpoint);
+        const wan2gpModel = escapeString(String(data.wan2gpModel || 'wan_t2v_14b'));
+        const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 30;
+        const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
+        const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
+        const comfyWidth = data.comfyWidth != null ? Number(data.comfyWidth) : undefined;
+        const comfyHeight = data.comfyHeight != null ? Number(data.comfyHeight) : undefined;
+        const comfyFrameRate = data.comfyFrameRate != null ? Number(data.comfyFrameRate) : undefined;
+
+        // Collect image inputs (start image + end image)
+        const imageVar = inputs.get('image') || 'null';
+        const imageEndVar = inputs.get('image_end') || 'null';
+        const audioVar = inputs.get('audio') || 'null';
+
+        let code = `
+  // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
+        code += `
+  ${letOrAssign}${outputVar} = await VideoFrames.generateVideoWan2GP(
+    "${endpoint}",
+    "${node.id}",
+    ${promptVar},
+    "${wan2gpModel}",
+    ${comfyWidth !== undefined ? comfyWidth : 'undefined'},
+    ${comfyHeight !== undefined ? comfyHeight : 'undefined'},
+    undefined,
+    ${comfyFrameRate !== undefined ? comfyFrameRate : 'undefined'},
+    ${imageVar !== 'null' ? `[${imageVar}]` : 'null'},
+    ${wan2gpSteps},
+    ${wan2gpDuration},
+    ${imageEndVar !== 'null' ? imageEndVar : 'null'},
+    "${wan2gpVram}",
+    ${audioVar}
+  );
+  if (${outputVar} === "__ABORT__") {
+    console.log("[Workflow] aborted");
+    return workflow_context;
+  }
+  let ${outputVar}_video = ${outputVar};
+  workflow_context["${node.id}"] = ${outputVar};`;
+        return code;
+      }
+
+      // For ComfyUI, fall back to defaultVideoEndpoint project setting
       const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultVideoEndpoint || ''));
+
       // ComfyUI workflow configuration
       let comfyWorkflowCode = 'null';
       if (data.comfyWorkflow) {

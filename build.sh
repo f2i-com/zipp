@@ -12,9 +12,19 @@ echo "  Zipp Desktop Build"
 echo "============================================"
 echo ""
 
-# Step 1: Build FormLogic
-echo "[1/5] Building FormLogic..."
-cd "$DIR/formlogic-typescript" && npm run build
+# Step 1: Build FormLogic (Rust WASM)
+echo "[1/5] Building FormLogic WASM..."
+cd "$DIR/../formlogic-rust"
+rustup target add wasm32-unknown-unknown 2>/dev/null
+cargo build -p formlogic-wasm --target wasm32-unknown-unknown --release
+wasm-bindgen --target web --out-dir dist-wasm "target/wasm32-unknown-unknown/release/formlogic_wasm.wasm"
+
+# Copy WASM artifacts to zipp packages
+echo "   Copying WASM artifacts..."
+cp "$DIR/../formlogic-rust/dist-wasm/formlogic_wasm_bg.wasm" "$DIR/packages/zipp-desktop/public/"
+cp "$DIR/../formlogic-rust/dist-wasm/"* "$DIR/packages/zipp-core/node_modules/formlogic-lang/"
+cp "$DIR/../formlogic-rust/dist-wasm/"* "$DIR/packages/zipp-desktop/node_modules/formlogic-lang/"
+rm -rf "$DIR/node_modules/.vite" 2>/dev/null || true
 
 # Step 2: Build zipp-core
 echo ""

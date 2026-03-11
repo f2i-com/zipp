@@ -12,6 +12,7 @@ const API_FORMATS: { value: ImageProvider | string; label: string; description: 
   { value: 'gemini-3-pro', label: 'Gemini 3 Pro', description: 'Best quality - 4K, thinking, grounding', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent', model: 'gemini-3-pro-image-preview', apiKeyConstant: 'GOOGLE_API_KEY', supportsImg2Img: true },
   { value: 'gemini-flash', label: 'Gemini 2.5 Flash', description: 'Fast image gen - optimized for speed', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent', model: 'gemini-2.5-flash-preview-05-20', apiKeyConstant: 'GOOGLE_API_KEY', supportsImg2Img: true },
   { value: 'gemini-2-flash', label: 'Gemini 2.0 Flash', description: 'Experimental image gen with Imagen 3', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent', model: 'gemini-2.0-flash-exp', apiKeyConstant: 'GOOGLE_API_KEY', supportsImg2Img: true },
+  { value: 'wan2gp', label: 'Wan2GP (Qwen/Flux)', description: 'Local AI image gen via Wan2GP', endpoint: 'http://127.0.0.1:8773', model: 'qwen', isLocal: true, apiKeyConstant: '', supportsImg2Img: true },
   { value: 'comfyui', label: 'ComfyUI', description: 'ComfyUI API - load workflow JSON file', endpoint: 'http://localhost:8188', model: '', isLocal: true, apiKeyConstant: '', supportsImg2Img: true },
   { value: 'custom', label: 'Custom', description: 'Custom API - connect Template for body, supports headers', endpoint: '', model: '', apiKeyConstant: '', supportsImg2Img: true },
 ];
@@ -29,6 +30,8 @@ interface ImageGenNodeData {
   endpoint?: string;
   apiFormat?: string;
   model?: string;
+  wan2gpModel?: string;
+  wan2gpVram?: string;
   size?: string;
   quality?: string;
   outputFormat?: string;
@@ -65,6 +68,8 @@ interface ImageGenNodeData {
   onEndpointChange?: (value: string) => void;
   onApiFormatChange?: (value: string) => void;
   onModelChange?: (value: string) => void;
+  onWan2gpModelChange?: (value: string) => void;
+  onWan2gpVramChange?: (value: string) => void;
   onSizeChange?: (value: string) => void;
   onQualityChange?: (value: string) => void;
   onOutputFormatChange?: (value: string) => void;
@@ -101,6 +106,8 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
   const onEndpointChangeRef = useRef(data.onEndpointChange);
   const onApiFormatChangeRef = useRef(data.onApiFormatChange);
   const onModelChangeRef = useRef(data.onModelChange);
+  const onWan2gpModelChangeRef = useRef(data.onWan2gpModelChange);
+  const onWan2gpVramChangeRef = useRef(data.onWan2gpVramChange);
   const onSizeChangeRef = useRef(data.onSizeChange);
   const onQualityChangeRef = useRef(data.onQualityChange);
   const onOutputFormatChangeRef = useRef(data.onOutputFormatChange);
@@ -125,6 +132,8 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
     onEndpointChangeRef.current = data.onEndpointChange;
     onApiFormatChangeRef.current = data.onApiFormatChange;
     onModelChangeRef.current = data.onModelChange;
+    onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
+    onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
     onSizeChangeRef.current = data.onSizeChange;
     onQualityChangeRef.current = data.onQualityChange;
     onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -251,6 +260,7 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
 
   const apiFormat = data.apiFormat || defaultProvider;
   const isComfyUI = apiFormat === 'comfyui';
+  const isWan2gp = apiFormat === 'wan2gp';
   const isCustom = apiFormat === 'custom';
   const selectedFormat = API_FORMATS.find(f => f.value === apiFormat);
   const isLocal = selectedFormat?.isLocal || false;
@@ -460,6 +470,45 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
               </select>
             </div>
 
+            {/* Wan2GP Model Selector */}
+            {isWan2gp && (
+              <div>
+                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Model</label>
+                <select
+                  className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
+                  value={data.wan2gpModel || 'qwen'}
+                  onChange={(e) => onWan2gpModelChangeRef.current?.(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <option value="qwen">Qwen Image (20B)</option>
+                  <option value="qwen_edit">Qwen Image Edit (20B)</option>
+                  <option value="flux">Flux Dev</option>
+                  <option value="flux_schnell">Flux Schnell</option>
+                </select>
+              </div>
+            )}
+
+            {/* Wan2GP VRAM Setting */}
+            {isWan2gp && (
+              <div>
+                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">VRAM</label>
+                <select
+                  className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
+                  value={data.wan2gpVram || 'auto'}
+                  onChange={(e) => onWan2gpVramChangeRef.current?.(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="6">6 GB (Low)</option>
+                  <option value="8">8 GB</option>
+                  <option value="10">10 GB</option>
+                  <option value="12">12 GB</option>
+                  <option value="16">16 GB</option>
+                  <option value="24">24 GB+</option>
+                </select>
+              </div>
+            )}
+
             {/* ComfyUI Workflow File Picker */}
             {isComfyUI && (
               <div>
@@ -590,8 +639,8 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
               </div>
             )}
 
-            {/* Model (not for ComfyUI) */}
-            {!isComfyUI && !isCustom && (
+            {/* Model (not for ComfyUI, Custom, or Wan2GP which has its own selector) */}
+            {!isComfyUI && !isCustom && !isWan2gp && (
               <div>
                 <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Model</label>
                 <input

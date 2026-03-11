@@ -93,8 +93,8 @@ const CoreUtilityCompiler: ModuleCompiler = {
 
           // Build runtime substitution code for loop variables
           loopSubstitutions = `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{history}}").join(String(${historyStrVar} || ''));
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{index}}").join(String(${indexVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{history}}").join("" + (${historyStrVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{index}}").join("" + (${indexVar} || ''));
   _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{item}}").join(JSON.stringify(${itemVar}));`;
         }
 
@@ -129,13 +129,13 @@ const CoreUtilityCompiler: ModuleCompiler = {
             const cleanName = varName.replace(/\{\{|\}\}/g, '');
             if (varMap[cleanName]) {
               code += `
-    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join(String(${varMap[cleanName]} || ''));`;
+    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join("" + (${varMap[cleanName]} || ''));`;
             }
           }
 
           // Default: replace {{input}} with the main input
           code += `
-    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join(String(${inputVar} || ''));
+    _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join("" + (${inputVar} || ''));
     ${outputVar} = _tmpl_${sanitizedId};
     console.log("[Template] output (${node.id}): " + ${outputVar}.substring(0, 100));
     workflow_context["${node.id}"] = ${outputVar};
@@ -157,13 +157,13 @@ const CoreUtilityCompiler: ModuleCompiler = {
             const cleanName = varName.replace(/\{\{|\}\}/g, '');
             if (varMap[cleanName]) {
               code += `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join(String(${varMap[cleanName]} || ''));`;
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{${cleanName}}}").join("" + (${varMap[cleanName]} || ''));`;
             }
           }
 
           // Default: replace {{input}} with the main input
           code += `
-  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join(String(${inputVar} || ''));
+  _tmpl_${sanitizedId} = _tmpl_${sanitizedId}.split("{{input}}").join("" + (${inputVar} || ''));
   ${letOrAssign}${outputVar} = _tmpl_${sanitizedId};
   console.log("[Template] output (${node.id}): " + ${outputVar}.substring(0, 100));
   workflow_context["${node.id}"] = ${outputVar};`;

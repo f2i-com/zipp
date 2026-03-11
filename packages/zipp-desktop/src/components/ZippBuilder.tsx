@@ -494,6 +494,7 @@ export default function ZippBuilder({
         onHeadersChange: handlers.onHeadersChange(node.id),
         onImageFormatChange: handlers.onImageFormatChange(node.id),
         onRequestFormatChange: handlers.onRequestFormatChange(node.id),
+        onEnableThinkingChange: handlers.onEnableThinkingChange(node.id),
         onContextLengthChange: handlers.onContextLengthChange(node.id),
         onMaxTokensChange: handlers.onMaxTokensChange(node.id),
         onCodeChange: handlers.onCodeChange(node.id),
@@ -637,6 +638,11 @@ export default function ZippBuilder({
         onComfyHeightChange: handlers.onComfyHeightChange(node.id),
         onComfyFrameRateNodeIdChange: handlers.onComfyFrameRateNodeIdChange(node.id),
         onComfyFrameRateChange: handlers.onComfyFrameRateChange(node.id),
+        // Wan2GP handlers
+        onWan2gpModelChange: handlers.onWan2gpModelChange(node.id),
+        onWan2gpStepsChange: handlers.onWan2gpStepsChange(node.id),
+        onWan2gpDurationChange: handlers.onWan2gpDurationChange(node.id),
+        onWan2gpVramChange: handlers.onWan2gpVramChange(node.id),
         // Dynamic image input count
         onImageInputCountChange: handlers.onImageInputCountChange(node.id),
         // ComfyUI workflow dialog opener (opens dialog at ZippBuilder level to escape transform context)

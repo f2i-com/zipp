@@ -124,7 +124,7 @@ packages/
 ├── zipp-mcp-server/        # Claude MCP integration server
 │   └── src/                # 50+ tools for workflow management via Claude
 ├── zipp-ui-components/     # Shared React UI component library
-└── formlogic-typescript/   # Expression language VM
+└── formlogic-rust/         # Expression language VM (Rust/WASM)
 ```
 
 ### Module System
@@ -176,7 +176,8 @@ This approach means services only consume resources when actively needed.
 ### Prerequisites
 
 - Node.js 18+
-- Rust (for Tauri)
+- Rust (for Tauri and FormLogic WASM)
+- wasm-bindgen-cli (`cargo install wasm-bindgen-cli`)
 - npm or yarn
 
 ### Installation

@@ -256,7 +256,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     if (typeof settingKey === "string") return settingKey;
     return "";
   }
-  async function chat(systemPrompt, userPrompt, input, endpoint, model, apiKeyConstant, streaming, maxTokens, temperature, responseFormat, includeImages, visionDetail, nodeId, chunkRefs = [], messageHistory = "", maxImageDimensionOverride = 0, maxImageSizeKBOverride = 0) {
+  async function chat(systemPrompt, userPrompt, input, endpoint, model, apiKeyConstant, streaming, maxTokens, temperature, responseFormat, includeImages, visionDetail, nodeId, chunkRefs = [], messageHistory = "", maxImageDimensionOverride = 0, maxImageSizeKBOverride = 0, enableThinking = false) {
     if (ctx.abortSignal?.aborted) {
       ctx.log("info", "[AI] Aborted by user before chat started");
       return "__ABORT__";
@@ -264,6 +264,19 @@ var __PLUGIN_EXPORTS__ = (() => {
     validateEndpoint(endpoint, "AI chat");
     validateContentLength(systemPrompt, "System prompt");
     validateContentLength(userPrompt, "User prompt");
+    if (ctx.tauri && endpoint.includes("127.0.0.1")) {
+      const portMatch = endpoint.match(/:(\d+)/);
+      if (portMatch) {
+        const port = parseInt(portMatch[1], 10);
+        try {
+          const result = await ctx.tauri.invoke("ensure_service_ready_by_port", { port });
+          if (result.success && result.port && result.port !== port) {
+            endpoint = endpoint.replace(`:${port}`, `:${result.port}`);
+          }
+        } catch {
+        }
+      }
+    }
     ctx.onNodeStatus?.(nodeId, "running");
     let finalPrompt = userPrompt;
     let imageInputs = [];
@@ -481,6 +494,9 @@ ${histStr}`;
         if (endpoint.includes("localhost") || endpoint.includes("127.0.0.1")) {
           body.options = { num_ctx: 32768 };
         }
+        if (enableThinking) {
+          body.enable_thinking = true;
+        }
       }
       ctx.log("info", `[AI] Sending request...`);
       if (ctx.abortSignal?.aborted) {
@@ -509,16 +525,29 @@ ${histStr}`;
         ctx.log("success", `[AI] Chat completed (via Claude-as-AI)`);
         return externalResponse;
       }
-      const response = await ctx.secureFetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        nodeId,
-        purpose: "AI/LLM chat request"
-      });
-      if (!response.ok) {
+      const maxRetries = 60;
+      const retryDelayMs = 5e3;
+      let response;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (ctx.abortSignal?.aborted) {
+          return "__ABORT__";
+        }
+        response = await ctx.secureFetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+          nodeId,
+          purpose: "AI/LLM chat request"
+        });
+        if (response.status !== 503) break;
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+        ctx.log("info", `[AI] Service loading: ${errorText.substring(0, 200)} (retrying in ${retryDelayMs / 1e3}s...)`);
+        ctx.onNodeStatus?.(nodeId, "running");
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+      if (!response || !response.ok) {
+        const errorText = response ? await response.text() : "No response";
+        throw new Error(`HTTP ${response?.status || 0}: ${errorText.substring(0, 200)}`);
       }
       const responseText = await response.text();
       const data = JSON.parse(responseText);
@@ -678,15 +707,23 @@ ${histStr}`;
         userPrompt = userPrompt.replace(/\{\{history\}\}/g, `" + ${historyStrVar} + "`);
       }
       const projectSettings = data.projectSettings;
-      const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultAIEndpoint || ""));
-      const model = escapeString(String(data.model || projectSettings?.defaultAIModel || ""));
-      const apiKeyConstant = escapeString(String(data.apiKeyConstant || data.apiKey || projectSettings?.defaultAIApiKeyConstant || "OPENAI_API_KEY"));
+      const provider = String(data.provider || "openai");
+      const hfDefaultEndpoint = "http://127.0.0.1:8774/v1/chat/completions";
+      const endpoint = escapeString(String(
+        data.endpoint || projectSettings?.defaultAIEndpoint || (provider === "huggingface" ? hfDefaultEndpoint : "")
+      ));
+      const model = escapeString(String(
+        data.model || projectSettings?.defaultAIModel || ""
+      ));
+      const defaultApiKey = provider === "huggingface" ? "" : "OPENAI_API_KEY";
+      const apiKeyConstant = escapeString(String(data.apiKeyConstant || data.apiKey || projectSettings?.defaultAIApiKeyConstant || defaultApiKey));
       const streaming = data.streaming !== false;
       const maxTokens = Number(data.maxTokens) || 0;
       const temperature = Number(data.temperature) || 0.7;
       const responseFormat = escapeString(String(data.responseFormat || "text"));
       const includeImages = data.includeImages !== false;
       const visionDetail = escapeString(String(data.visionDetail || "auto"));
+      const enableThinking = data.enableThinking === true;
       const chunkRefVar = `_chunk_refs_${sanitizedId}`;
       let code = `
   // --- Node: ${node.id} (ai_llm) ---
@@ -715,7 +752,7 @@ ${histStr}`;
     ${chunkRefVar}.push(${inputVar});
   }`;
       const hasStaticUserPrompt = userPrompt.trim().length > 0;
-      const userPromptExpr = hasStaticUserPrompt ? `"${userPrompt}" + (${inputVar} ? "\\n\\n" + String(${inputVar}) : "")` : `${inputVar} ? String(${inputVar}) : ""`;
+      const userPromptExpr = hasStaticUserPrompt ? `"${userPrompt}" + (${inputVar} ? "\\n\\n" + ("" + ${inputVar}) : "")` : `${inputVar} ? ("" + ${inputVar}) : ""`;
       const historyMessagesVar = `_history_messages_${sanitizedId}`;
       let imagesExpr;
       if (imageVars.length === 0) {
@@ -743,7 +780,10 @@ ${histStr}`;
     "${visionDetail}",
     "${node.id}",
     ${chunkRefVar},
-    ${historyMessagesVar}
+    ${historyMessagesVar},
+    0,
+    0,
+    ${enableThinking}
   );
   if (${outputVar} === "__ABORT__") {
     console.log("[Workflow] aborted");
@@ -777,6 +817,8 @@ ${histStr}`;
       onImageFormatChange: (0, import_react.useRef)(data.onImageFormatChange),
       onRequestFormatChange: (0, import_react.useRef)(data.onRequestFormatChange),
       onProviderChange: (0, import_react.useRef)(data.onProviderChange),
+      onWan2gpModelChange: (0, import_react.useRef)(data.onWan2gpModelChange),
+      onEnableThinkingChange: (0, import_react.useRef)(data.onEnableThinkingChange),
       onContextLengthChange: (0, import_react.useRef)(data.onContextLengthChange),
       onMaxTokensChange: (0, import_react.useRef)(data.onMaxTokensChange),
       onImageInputCountChange: (0, import_react.useRef)(data.onImageInputCountChange),
@@ -792,6 +834,8 @@ ${histStr}`;
       refs.onImageFormatChange.current = data.onImageFormatChange;
       refs.onRequestFormatChange.current = data.onRequestFormatChange;
       refs.onProviderChange.current = data.onProviderChange;
+      refs.onWan2gpModelChange.current = data.onWan2gpModelChange;
+      refs.onEnableThinkingChange.current = data.onEnableThinkingChange;
       refs.onContextLengthChange.current = data.onContextLengthChange;
       refs.onMaxTokensChange.current = data.onMaxTokensChange;
       refs.onImageInputCountChange.current = data.onImageInputCountChange;
@@ -807,6 +851,7 @@ ${histStr}`;
     { value: "groq", label: "Groq", endpoint: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", apiKeyConstant: "GROQ_API_KEY", requestFormat: "openai" },
     { value: "ollama", label: "Ollama (Local)", endpoint: "http://localhost:11434/v1/chat/completions", model: "llama3.2", apiKeyConstant: "", requestFormat: "openai" },
     { value: "lmstudio", label: "LM Studio (Local)", endpoint: "http://localhost:1234/v1/chat/completions", model: "local-model", apiKeyConstant: "", requestFormat: "openai" },
+    { value: "huggingface", label: "HuggingFace LLM (Local)", endpoint: "http://127.0.0.1:8774/v1/chat/completions", model: "Qwen/Qwen3.5-9B", apiKeyConstant: "", requestFormat: "openai" },
     { value: "custom", label: "Custom", endpoint: "", model: "", apiKeyConstant: "", requestFormat: "openai" }
   ];
   var IMAGE_FORMATS = [
@@ -860,6 +905,14 @@ ${histStr}`;
         if (providerConfig.apiKeyConstant && data.apiKeyConstant !== providerConfig.apiKeyConstant && callbackRefs.onApiKeyConstantChange.current) {
           callbackRefs.onApiKeyConstantChange.current(providerConfig.apiKeyConstant);
         }
+        if (providerValue === "huggingface") {
+          if (!data.imageInputCount && callbackRefs.onImageInputCountChange.current) {
+            callbackRefs.onImageInputCountChange.current(1);
+          }
+          if ((!data.imageFormat || data.imageFormat === "none") && callbackRefs.onImageFormatChange.current) {
+            callbackRefs.onImageFormatChange.current("base64_inline");
+          }
+        }
       }
     }, [data.provider, data.projectSettings?.ollamaEndpoint, data.projectSettings?.lmstudioEndpoint]);
     const handleModelChange = (0, import_react.useCallback)((e) => {
@@ -890,6 +943,9 @@ ${histStr}`;
     const handleMaxTokensChange = (0, import_react.useCallback)((e) => {
       const value = parseInt(e.target.value) || 0;
       callbackRefs.onMaxTokensChange.current?.(value);
+    }, []);
+    const handleEnableThinkingChange = (0, import_react.useCallback)((e) => {
+      callbackRefs.onEnableThinkingChange.current?.(e.target.checked);
     }, []);
     const handleProviderChange = (0, import_react.useCallback)((e) => {
       const providerValue = e.target.value;
@@ -1209,6 +1265,19 @@ ${histStr}`;
                 }
               )
             ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2 cursor-pointer", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "checkbox",
+                  className: "nodrag accent-purple-500",
+                  checked: data.enableThinking || false,
+                  onChange: handleEnableThinkingChange
+                }
+              ),
+              "Enable Thinking",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "text-slate-500 text-[10px]", children: "(Qwen 3.5, etc.)" })
+            ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Headers (JSON)" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(

@@ -585,12 +585,12 @@ export interface ProjectConstant {
 /**
  * Provider type for AI/LLM nodes
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio' | 'openrouter' | 'groq' | 'custom';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio' | 'openrouter' | 'groq' | 'huggingface' | 'custom';
 
 /**
  * Provider type for Image Generation nodes
  */
-export type ImageProvider = 'openai' | 'gemini' | 'gemini-3-pro' | 'gemini-flash' | 'gemini-2-flash' | 'comfyui' | 'custom';
+export type ImageProvider = 'openai' | 'gemini' | 'gemini-3-pro' | 'gemini-flash' | 'gemini-2-flash' | 'wan2gp' | 'comfyui' | 'custom';
 
 /**
  * Site-wide default settings for AI and Image Generation nodes

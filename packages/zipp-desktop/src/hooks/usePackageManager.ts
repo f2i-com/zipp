@@ -138,26 +138,35 @@ export function applyDefaultProviders(graph: WorkflowGraph, settings: ProjectSet
         },
       };
     }
-    // Image Gen nodes - apply default image settings
+    // Image Gen nodes - apply default image settings (respect existing backend choice)
     if (node.type === 'image_gen') {
+      const existingFormat = node.data.apiFormat as string | undefined;
+      const isWan2gp = existingFormat === 'wan2gp';
+      const isComfyui = existingFormat === 'comfyui';
+      const isLocal = isWan2gp || isComfyui;
       return {
         ...node,
         data: {
           ...node.data,
-          endpoint: settings.defaultImageEndpoint || '',
-          model: settings.defaultImageModel || '',
-          apiKeyConstant: settings.defaultImageApiKeyConstant || '',
-          apiFormat: settings.defaultImageProvider || 'openai',
+          endpoint: isWan2gp ? 'http://127.0.0.1:8773'
+            : isComfyui ? 'http://localhost:8188'
+            : (settings.defaultImageEndpoint || ''),
+          model: isLocal ? (node.data.model || '') : (settings.defaultImageModel || ''),
+          apiKeyConstant: isLocal ? '' : (settings.defaultImageApiKeyConstant || ''),
+          apiFormat: existingFormat || settings.defaultImageProvider || 'openai',
         },
       };
     }
-    // Video Gen nodes - apply default video endpoint
+    // Video Gen nodes - apply default video endpoint based on backend
     if (node.type === 'video_gen') {
+      const isWan2gp = node.data.apiFormat === 'wan2gp';
       return {
         ...node,
         data: {
           ...node.data,
-          endpoint: settings.defaultVideoEndpoint || 'http://localhost:8188',
+          endpoint: isWan2gp
+            ? 'http://127.0.0.1:8773'
+            : (settings.defaultVideoEndpoint || 'http://localhost:8188'),
         },
       };
     }

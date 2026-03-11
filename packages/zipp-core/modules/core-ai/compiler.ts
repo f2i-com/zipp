@@ -74,10 +74,19 @@ const CoreAICompiler: ModuleCompiler = {
       defaultAIModel?: string;
       defaultAIApiKeyConstant?: string;
     } | undefined;
-    const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultAIEndpoint || ''));
-    const model = escapeString(String(data.model || projectSettings?.defaultAIModel || ''));
+    const provider = String(data.provider || 'openai');
+    // HuggingFace LLM defaults to local service endpoint with OpenAI-compatible API
+    const hfDefaultEndpoint = 'http://127.0.0.1:8774/v1/chat/completions';
+    const endpoint = escapeString(String(
+      data.endpoint || projectSettings?.defaultAIEndpoint || (provider === 'huggingface' ? hfDefaultEndpoint : '')
+    ));
+    const model = escapeString(String(
+      data.model || projectSettings?.defaultAIModel || ''
+    ));
     // Check both apiKeyConstant (constant name) and apiKey (direct value)
-    const apiKeyConstant = escapeString(String(data.apiKeyConstant || data.apiKey || projectSettings?.defaultAIApiKeyConstant || 'OPENAI_API_KEY'));
+    // HuggingFace LLM doesn't need an API key (local service)
+    const defaultApiKey = provider === 'huggingface' ? '' : 'OPENAI_API_KEY';
+    const apiKeyConstant = escapeString(String(data.apiKeyConstant || data.apiKey || projectSettings?.defaultAIApiKeyConstant || defaultApiKey));
 
     const streaming = data.streaming !== false;
     const maxTokens = Number(data.maxTokens) || 0;
@@ -85,6 +94,7 @@ const CoreAICompiler: ModuleCompiler = {
     const responseFormat = escapeString(String(data.responseFormat || 'text'));
     const includeImages = data.includeImages !== false;
     const visionDetail = escapeString(String(data.visionDetail || 'auto'));
+    const enableThinking = data.enableThinking === true;
 
     // Build chunk references from connected nodes
     const chunkRefVar = `_chunk_refs_${sanitizedId}`;
@@ -131,8 +141,8 @@ const CoreAICompiler: ModuleCompiler = {
     // Otherwise, append the input to the user prompt
     const hasStaticUserPrompt = userPrompt.trim().length > 0;
     const userPromptExpr = hasStaticUserPrompt
-      ? `"${userPrompt}" + (${inputVar} ? "\\n\\n" + String(${inputVar}) : "")`
-      : `${inputVar} ? String(${inputVar}) : ""`;
+      ? `"${userPrompt}" + (${inputVar} ? "\\n\\n" + ("" + ${inputVar}) : "")`
+      : `${inputVar} ? ("" + ${inputVar}) : ""`;
 
     // Build message history from the history input
     // The history can be a string (newline-separated steps) or an array of messages
@@ -169,7 +179,10 @@ const CoreAICompiler: ModuleCompiler = {
     "${visionDetail}",
     "${node.id}",
     ${chunkRefVar},
-    ${historyMessagesVar}
+    ${historyMessagesVar},
+    0,
+    0,
+    ${enableThinking}
   );
   if (${outputVar} === "__ABORT__") {
     console.log("[Workflow] aborted");

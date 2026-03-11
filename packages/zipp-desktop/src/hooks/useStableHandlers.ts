@@ -57,6 +57,7 @@ export function useStableHandlers(updateNodeData: (id: string, data: Record<stri
     onHeadersChange: createHandler<string>('headers'),
     onImageFormatChange: createHandler<string>('imageFormat'),
     onRequestFormatChange: createHandler<string>('requestFormat'),
+    onEnableThinkingChange: createHandler<boolean>('enableThinking'),
     onContextLengthChange: createHandler<number>('contextLength'),
     onMaxTokensChange: createHandler<number>('maxTokens'),
     onCodeChange: createHandler<string>('code'),
@@ -213,6 +214,11 @@ export function useStableHandlers(updateNodeData: (id: string, data: Record<stri
     onComfyHeightChange: createHandler<number>('comfyHeight'),
     onComfyFrameRateNodeIdChange: createHandler<string>('comfyFrameRateNodeId'),
     onComfyFrameRateChange: createHandler<number>('comfyFrameRate'),
+    // Wan2GP handlers
+    onWan2gpModelChange: createHandler<string>('wan2gpModel'),
+    onWan2gpStepsChange: createHandler<number>('wan2gpSteps'),
+    onWan2gpDurationChange: createHandler<number>('wan2gpDuration'),
+    onWan2gpVramChange: createHandler<string>('wan2gpVram'),
     // Dynamic image input count
     onImageInputCountChange: createHandler<number>('imageInputCount'),
     // ComfyUI workflow dialog opener - placeholder that gets overridden per-node in nodesWithHandlers

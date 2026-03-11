@@ -365,9 +365,9 @@ const CoreBrowserCompiler: ModuleCompiler = {
   }
 
   // Override selector with separate selector input if connected
-  ${selectorInput ? `_selector_${sanitizedId} = String(${selectorInput} || "");` : ''}
+  ${selectorInput ? `_selector_${sanitizedId} = "" + (${selectorInput} || "");` : ''}
   // Override value with separate value input if connected
-  ${valueInput ? `let _value_${sanitizedId} = String(${valueInput} || "");` : `let _value_${sanitizedId} = "";`}
+  ${valueInput ? `let _value_${sanitizedId} = "" + (${valueInput} || "");` : `let _value_${sanitizedId} = "";`}
 
   console.log("[Browser] action=" + _action_${sanitizedId} + ", selector=" + _selector_${sanitizedId});
 

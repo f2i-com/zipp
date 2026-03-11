@@ -33,12 +33,16 @@ const CoreImageCompiler: ModuleCompiler = {
         // Get endpoint - fall back to projectSettings.defaultImageEndpoint if not set
         const projectSettings = data.projectSettings as { defaultImageEndpoint?: string; defaultImageApiKeyConstant?: string } | undefined;
         const endpoint = escapeString(String(data.endpoint || projectSettings?.defaultImageEndpoint || ''));
-        const model = escapeString(String(data.model || ''));
+        const apiFormat = escapeString(String(data.apiFormat || 'openai'));
+        // For wan2gp, use wan2gpModel; otherwise use generic model field
+        const model = escapeString(String(
+          apiFormat === 'wan2gp' ? (data.wan2gpModel || data.model || 'qwen') : (data.model || '')
+        ));
         const apiKeyConstant = escapeString(String(data.apiKeyConstant || projectSettings?.defaultImageApiKeyConstant || 'OPENAI_API_KEY'));
         const width = Number(data.width) || 1024;
         const height = Number(data.height) || 1024;
         const steps = Number(data.steps) || 20;
-        const apiFormat = escapeString(String(data.apiFormat || 'openai'));
+        const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
 
         // ComfyUI workflow configuration
         // For the workflow JSON, we stringify it as a raw JSON value (not a string literal)
@@ -169,7 +173,9 @@ const CoreImageCompiler: ModuleCompiler = {
       ${comfyFixedSeed !== null ? comfyFixedSeed : 'null'},
       ${comfyAllImageNodeIdsCode},
       ${maxImageDimension},
-      ${maxImageSizeKB}
+      ${maxImageSizeKB},
+      "${escapeString(String(data.negativePrompt || ''))}",
+      "${wan2gpVram}"
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");

@@ -14,6 +14,8 @@ interface AILLMNodeData {
   imageFormat?: string;
   requestFormat?: string;
   provider?: AIProvider;
+  wan2gpModel?: string;
+  enableThinking?: boolean;
   contextLength?: number;
   maxTokens?: number;
   imageInputCount?: number;
@@ -30,6 +32,8 @@ interface AILLMNodeData {
   onImageFormatChange?: (value: string) => void;
   onRequestFormatChange?: (value: string) => void;
   onProviderChange?: (value: AIProvider) => void;
+  onWan2gpModelChange?: (value: string) => void;
+  onEnableThinkingChange?: (value: boolean) => void;
   onContextLengthChange?: (value: number) => void;
   onMaxTokensChange?: (value: number) => void;
   onImageInputCountChange?: (value: number) => void;
@@ -53,6 +57,8 @@ function useCallbackRefs(data: AILLMNodeData) {
     onImageFormatChange: useRef(data.onImageFormatChange),
     onRequestFormatChange: useRef(data.onRequestFormatChange),
     onProviderChange: useRef(data.onProviderChange),
+    onWan2gpModelChange: useRef(data.onWan2gpModelChange),
+    onEnableThinkingChange: useRef(data.onEnableThinkingChange),
     onContextLengthChange: useRef(data.onContextLengthChange),
     onMaxTokensChange: useRef(data.onMaxTokensChange),
     onImageInputCountChange: useRef(data.onImageInputCountChange),
@@ -69,6 +75,8 @@ function useCallbackRefs(data: AILLMNodeData) {
     refs.onImageFormatChange.current = data.onImageFormatChange;
     refs.onRequestFormatChange.current = data.onRequestFormatChange;
     refs.onProviderChange.current = data.onProviderChange;
+    refs.onWan2gpModelChange.current = data.onWan2gpModelChange;
+    refs.onEnableThinkingChange.current = data.onEnableThinkingChange;
     refs.onContextLengthChange.current = data.onContextLengthChange;
     refs.onMaxTokensChange.current = data.onMaxTokensChange;
     refs.onImageInputCountChange.current = data.onImageInputCountChange;
@@ -87,6 +95,7 @@ const AI_PROVIDERS: { value: AIProvider; label: string; endpoint: string; model:
   { value: 'groq', label: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', apiKeyConstant: 'GROQ_API_KEY', requestFormat: 'openai' },
   { value: 'ollama', label: 'Ollama (Local)', endpoint: 'http://localhost:11434/v1/chat/completions', model: 'llama3.2', apiKeyConstant: '', requestFormat: 'openai' },
   { value: 'lmstudio', label: 'LM Studio (Local)', endpoint: 'http://localhost:1234/v1/chat/completions', model: 'local-model', apiKeyConstant: '', requestFormat: 'openai' },
+  { value: 'huggingface', label: 'HuggingFace LLM (Local)', endpoint: 'http://127.0.0.1:8774/v1/chat/completions', model: 'Qwen/Qwen3.5-9B', apiKeyConstant: '', requestFormat: 'openai' },
   { value: 'custom', label: 'Custom', endpoint: '', model: '', apiKeyConstant: '', requestFormat: 'openai' },
 ];
 
@@ -158,6 +167,15 @@ function AILLMNode({ data }: AILLMNodeProps) {
       if (providerConfig.apiKeyConstant && data.apiKeyConstant !== providerConfig.apiKeyConstant && callbackRefs.onApiKeyConstantChange.current) {
         callbackRefs.onApiKeyConstantChange.current(providerConfig.apiKeyConstant);
       }
+      // HuggingFace LLM: pre-configure for vision support (1 image input, base64 inline)
+      if (providerValue === 'huggingface') {
+        if (!data.imageInputCount && callbackRefs.onImageInputCountChange.current) {
+          callbackRefs.onImageInputCountChange.current(1);
+        }
+        if ((!data.imageFormat || data.imageFormat === 'none') && callbackRefs.onImageFormatChange.current) {
+          callbackRefs.onImageFormatChange.current('base64_inline');
+        }
+      }
     }
   }, [data.provider, data.projectSettings?.ollamaEndpoint, data.projectSettings?.lmstudioEndpoint]);
 
@@ -189,6 +207,9 @@ function AILLMNode({ data }: AILLMNodeProps) {
   const handleMaxTokensChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 0;
     callbackRefs.onMaxTokensChange.current?.(value);
+  }, []);
+  const handleEnableThinkingChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    callbackRefs.onEnableThinkingChange.current?.(e.target.checked);
   }, []);
   const handleProviderChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const providerValue = e.target.value as AIProvider;
@@ -341,6 +362,7 @@ function AILLMNode({ data }: AILLMNodeProps) {
           </div>
 
           {/* Model Input */}
+          {(
           <div>
             <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">
               Model {!isCustomProvider && <span className="text-slate-600">(override)</span>}
@@ -354,6 +376,7 @@ function AILLMNode({ data }: AILLMNodeProps) {
               onMouseDown={(e) => e.stopPropagation()}
             />
           </div>
+          )}
 
           {/* API Key from Constants */}
           <div>
@@ -528,6 +551,19 @@ function AILLMNode({ data }: AILLMNodeProps) {
               onChange={handleMaxTokensChange}
               onMouseDown={(e) => e.stopPropagation()}
             />
+          </div>
+
+          <div>
+            <label className="text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="nodrag accent-purple-500"
+                checked={data.enableThinking || false}
+                onChange={handleEnableThinkingChange}
+              />
+              Enable Thinking
+              <span className="text-slate-500 text-[10px]">(Qwen 3.5, etc.)</span>
+            </label>
           </div>
 
           <div>

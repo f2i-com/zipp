@@ -156,11 +156,16 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
         const hasEndpoint = node.data.endpoint && String(node.data.endpoint).trim();
 
         if (!hasEndpoint) {
+          // Use different defaults based on the selected backend
+          const isWan2gp = node.data.apiFormat === 'wan2gp';
+          const defaultEndpoint = isWan2gp
+            ? 'http://127.0.0.1:8773'
+            : (projectSettings.defaultVideoEndpoint || 'http://localhost:8188');
           return {
             ...node,
             data: {
               ...node.data,
-              endpoint: projectSettings.defaultVideoEndpoint || 'http://localhost:8188',
+              endpoint: defaultEndpoint,
               _hasInheritedDefaults: true,
             },
           };
