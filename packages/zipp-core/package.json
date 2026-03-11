@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "cheerio": "^1.0.0",
-    "formlogic-lang": "file:../../formlogic-rust/dist-wasm",
+    "formlogic-lang": "file:../../../formlogic-rust/dist-wasm",
     "uuid": "^13.0.0"
   },
   "peerDependencies": {

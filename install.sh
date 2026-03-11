@@ -36,19 +36,40 @@ if ! command -v cargo &> /dev/null; then
     echo "Install Rust from https://rustup.rs/ for Tauri native compilation."
 fi
 
-echo "[1/4] Installing FormLogic..."
-cd "$DIR/formlogic-typescript" && npm install
+FORMLOGIC_DIR="$DIR/../formlogic-rust"
+if [ ! -d "$FORMLOGIC_DIR" ]; then
+    echo "Error: formlogic-rust not found at $FORMLOGIC_DIR"
+    echo "Please clone formlogic-rust as a sibling of the zipp directory."
+    exit 1
+fi
+
+echo "[1/5] Building FormLogic WASM..."
+if ! command -v wasm-bindgen &> /dev/null; then
+    echo "  Installing wasm-bindgen-cli..."
+    cargo install wasm-bindgen-cli
+fi
+rustup target add wasm32-unknown-unknown 2>/dev/null
+cd "$FORMLOGIC_DIR"
+cargo build -p formlogic-wasm --target wasm32-unknown-unknown --release
+wasm-bindgen --target web --out-dir dist-wasm ./target/wasm32-unknown-unknown/release/formlogic_wasm.wasm
+if [ ! -f dist-wasm/package.json ]; then
+    echo '{"name":"formlogic-lang","version":"0.1.0","main":"formlogic_wasm.js","types":"formlogic_wasm.d.ts","type":"module"}' > dist-wasm/package.json
+fi
 
 echo ""
-echo "[2/4] Installing zipp-core..."
+echo "[2/5] Installing zipp-core..."
 cd "$DIR/packages/zipp-core" && npm install
 
 echo ""
-echo "[3/4] Installing zipp-ui-components..."
+echo "[3/5] Building zipp-core..."
+cd "$DIR/packages/zipp-core" && npm run build
+
+echo ""
+echo "[4/5] Installing zipp-ui-components..."
 cd "$DIR/packages/zipp-ui-components" && npm install
 
 echo ""
-echo "[4/4] Installing zipp-desktop..."
+echo "[5/5] Installing zipp-desktop..."
 cd "$DIR/packages/zipp-desktop" && npm install
 
 echo ""

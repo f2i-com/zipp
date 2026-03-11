@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: packages/zipp-core/package-lock.json
+          cache-dependency-path: packages/zipp-core/package.json
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -37,6 +37,17 @@ jobs:
         with:
           repository: f2i-com/formlogic-rust
           path: formlogic-rust
+
+      # package.json references ../../../formlogic-rust from packages/*/
+      # which resolves to one level above workspace (matching local dev layout)
+      - name: Symlink formlogic-rust for npm resolution (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ln -s "$GITHUB_WORKSPACE/formlogic-rust" "$GITHUB_WORKSPACE/../formlogic-rust"
+
+      - name: Symlink formlogic-rust for npm resolution (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: mklink /J "${{ github.workspace }}\..\formlogic-rust" "${{ github.workspace }}\formlogic-rust"
 
       - name: Install wasm-bindgen-cli
         uses: jetli/wasm-bindgen-action@v0.2.0
@@ -54,7 +65,7 @@ jobs:
 
       - name: Install zipp-core dependencies
         working-directory: packages/zipp-core
-        run: npm ci
+        run: npm install
 
       - name: Build zipp-core
         working-directory: packages/zipp-core
@@ -86,7 +97,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: packages/zipp-core/package-lock.json
+          cache-dependency-path: packages/zipp-core/package.json
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -96,6 +107,17 @@ jobs:
         with:
           repository: f2i-com/formlogic-rust
           path: formlogic-rust
+
+      # package.json references ../../../formlogic-rust from packages/*/
+      # which resolves to one level above workspace (matching local dev layout)
+      - name: Symlink formlogic-rust for npm resolution (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ln -s "$GITHUB_WORKSPACE/formlogic-rust" "$GITHUB_WORKSPACE/../formlogic-rust"
+
+      - name: Symlink formlogic-rust for npm resolution (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: mklink /J "${{ github.workspace }}\..\formlogic-rust" "${{ github.workspace }}\formlogic-rust"
 
       - name: Install wasm-bindgen-cli
         uses: jetli/wasm-bindgen-action@v0.2.0
@@ -113,7 +135,7 @@ jobs:
 
       - name: Install zipp-core dependencies
         working-directory: packages/zipp-core
-        run: npm ci
+        run: npm install
 
       - name: TypeScript type check
         working-directory: packages/zipp-core

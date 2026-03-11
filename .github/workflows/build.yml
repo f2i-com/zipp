@@ -71,6 +71,17 @@ jobs:
           repository: f2i-com/formlogic-rust
           path: formlogic-rust
 
+      # package.json references ../../../formlogic-rust from packages/*/
+      # which resolves to one level above workspace (matching local dev layout)
+      - name: Symlink formlogic-rust for npm resolution (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ln -s "$GITHUB_WORKSPACE/formlogic-rust" "$GITHUB_WORKSPACE/../formlogic-rust"
+
+      - name: Symlink formlogic-rust for npm resolution (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: mklink /J "${{ github.workspace }}\..\formlogic-rust" "${{ github.workspace }}\formlogic-rust"
+
       - name: Install wasm-bindgen-cli
         uses: jetli/wasm-bindgen-action@v0.2.0
         with:
