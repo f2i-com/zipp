@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -106,7 +106,7 @@ pub fn find_processes_on_port(port: u16) -> Vec<u32> {
 
 /// Get the shell command for starting a service based on platform
 #[cfg(target_os = "windows")]
-fn get_service_command(service_path: &PathBuf) -> (Command, PathBuf) {
+fn get_service_command(service_path: &Path) -> (Command, PathBuf) {
     let start_script = service_path.join("start.bat");
     let mut cmd = Command::new("cmd");
     cmd.args(["/c", start_script.to_str().unwrap()]);
@@ -114,7 +114,7 @@ fn get_service_command(service_path: &PathBuf) -> (Command, PathBuf) {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn get_service_command(service_path: &PathBuf) -> (Command, PathBuf) {
+fn get_service_command(service_path: &Path) -> (Command, PathBuf) {
     // Try start.sh first, then fall back to start.bat with bash
     let start_sh = service_path.join("start.sh");
     let start_bat = service_path.join("start.bat");
@@ -550,19 +550,17 @@ pub async fn start_service(
         let app = app_clone.clone();
         thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    // Add to buffer
-                    if let Ok(mut buf) = output.lock() {
-                        buf.push(line.clone());
-                    }
-                    // Emit event to frontend
-                    let _ = app.emit(&format!("service-output:{}", service_id), ServiceOutputLine {
-                        service_id: service_id.clone(),
-                        line,
-                        stream: "stdout".to_string(),
-                    });
+            for line in reader.lines().map_while(Result::ok) {
+                // Add to buffer
+                if let Ok(mut buf) = output.lock() {
+                    buf.push(line.clone());
                 }
+                // Emit event to frontend
+                let _ = app.emit(&format!("service-output:{}", service_id), ServiceOutputLine {
+                    service_id: service_id.clone(),
+                    line,
+                    stream: "stdout".to_string(),
+                });
             }
         });
     }
@@ -573,19 +571,17 @@ pub async fn start_service(
         let app = app_clone;
         thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    // Add to buffer (no prefix - frontend colors based on content)
-                    if let Ok(mut buf) = output.lock() {
-                        buf.push(line.clone());
-                    }
-                    // Emit event to frontend
-                    let _ = app.emit(&format!("service-output:{}", service_id), ServiceOutputLine {
-                        service_id: service_id.clone(),
-                        line,
-                        stream: "stderr".to_string(),
-                    });
+            for line in reader.lines().map_while(Result::ok) {
+                // Add to buffer (no prefix - frontend colors based on content)
+                if let Ok(mut buf) = output.lock() {
+                    buf.push(line.clone());
                 }
+                // Emit event to frontend
+                let _ = app.emit(&format!("service-output:{}", service_id), ServiceOutputLine {
+                    service_id: service_id.clone(),
+                    line,
+                    stream: "stderr".to_string(),
+                });
             }
         });
     }
@@ -780,7 +776,7 @@ pub fn get_service_port(app: AppHandle, service_id: String) -> Option<u16> {
 /// Find an available port in the package service range
 fn find_available_package_port(preferred: u16) -> Result<u16, String> {
     // Try the preferred port first if it's in the package range
-    if preferred >= PACKAGE_PORT_RANGE_START && preferred <= PACKAGE_PORT_RANGE_END {
+    if (PACKAGE_PORT_RANGE_START..=PACKAGE_PORT_RANGE_END).contains(&preferred) {
         if let Ok(listener) = TcpListener::bind(format!("127.0.0.1:{}", preferred)) {
             drop(listener);
             return Ok(preferred);
@@ -890,7 +886,7 @@ pub async fn start_package_service(
         let app_clone = app.clone();
         thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 if let Ok(mut buf) = output.lock() {
                     buf.push(line.clone());
                 }
@@ -912,7 +908,7 @@ pub async fn start_package_service(
         let app_clone = app.clone();
         thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 if let Ok(mut buf) = output.lock() {
                     buf.push(line.clone());
                 }
