@@ -27,8 +27,8 @@ if exist "%WAN2GP_PATH%\.git" (
     git pull
     cd /d "%~dp0"
 
-    echo Upgrading Wan2GP dependencies...
-    pip install -r "%WAN2GP_PATH%\requirements.txt" --upgrade
+    echo Reinstalling Wan2GP dependencies...
+    pip install -r "%WAN2GP_PATH%\requirements.txt"
 )
 
 echo Upgrading API server dependencies...

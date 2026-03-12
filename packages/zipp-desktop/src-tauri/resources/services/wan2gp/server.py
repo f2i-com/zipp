@@ -203,15 +203,36 @@ def _vram_to_profile(vram_gb: int) -> int:
         return 5                          # Very low VRAM
 
 
-def _save_base64_image(data_url: str, output_path: str) -> str:
-    """Save a base64 data URL to a file."""
-    if data_url.startswith("data:"):
-        header, b64data = data_url.split(",", 1)
+def _save_image_input(data: str, output_path: str) -> str:
+    """Save an image input to a file. Handles base64 data URLs, HTTP URLs, and file paths."""
+    if data.startswith("data:"):
+        # Base64 data URL
+        _header, b64data = data.split(",", 1)
+        img_bytes = base64.b64decode(b64data)
+        with open(output_path, "wb") as f:
+            f.write(img_bytes)
+    elif data.startswith(("http://", "https://")):
+        # HTTP URL - check if it's a local server URL we can resolve to a file
+        local_prefix = f"http://127.0.0.1:{PORT}/output/"
+        local_prefix_alt = f"http://localhost:{PORT}/output/"
+        if data.startswith(local_prefix) or data.startswith(local_prefix_alt):
+            prefix = local_prefix if data.startswith(local_prefix) else local_prefix_alt
+            filename = data[len(prefix):]
+            src = os.path.join(OUTPUT_DIR, filename)
+            if os.path.isfile(src):
+                shutil.copy2(src, output_path)
+                return output_path
+        # Download from URL
+        import urllib.request
+        urllib.request.urlretrieve(data, output_path)
+    elif os.path.isfile(data):
+        # File path
+        shutil.copy2(data, output_path)
     else:
-        b64data = data_url
-    img_bytes = base64.b64decode(b64data)
-    with open(output_path, "wb") as f:
-        f.write(img_bytes)
+        # Try as raw base64
+        img_bytes = base64.b64decode(data)
+        with open(output_path, "wb") as f:
+            f.write(img_bytes)
     return output_path
 
 
@@ -606,7 +627,7 @@ async def generate_image(req: ImageGenRequest):
     image_start_path = None
     if req.image_start:
         img_path = os.path.join(OUTPUT_DIR, f"input_{job_id}.png")
-        _save_base64_image(req.image_start, img_path)
+        _save_image_input(req.image_start, img_path)
         image_start_path = img_path
 
     logger.info(f"[{job_id}] Image job submitted: model={model_type}, resolution={resolution}, "
@@ -669,13 +690,13 @@ async def generate_video(req: VideoGenRequest):
     image_start_path = None
     if req.image_start:
         img_path = os.path.join(OUTPUT_DIR, f"input_start_{job_id}.png")
-        _save_base64_image(req.image_start, img_path)
+        _save_image_input(req.image_start, img_path)
         image_start_path = img_path
 
     image_end_path = None
     if req.image_end:
         img_path = os.path.join(OUTPUT_DIR, f"input_end_{job_id}.png")
-        _save_base64_image(req.image_end, img_path)
+        _save_image_input(req.image_end, img_path)
         image_end_path = img_path
 
     audio_guide_path = None

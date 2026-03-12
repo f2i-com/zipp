@@ -28,8 +28,8 @@ if [ -d "$WAN2GP_PATH/.git" ]; then
     git pull
     cd "$SCRIPT_DIR"
 
-    echo "Upgrading Wan2GP dependencies..."
-    pip install -r "$WAN2GP_PATH/requirements.txt" --upgrade
+    echo "Reinstalling Wan2GP dependencies..."
+    pip install -r "$WAN2GP_PATH/requirements.txt"
 fi
 
 echo "Upgrading API server dependencies..."
