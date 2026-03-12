@@ -43,7 +43,15 @@
             "type": "image",
             "position": "left",
             "required": false,
-            "description": "Source image for img2vid generation"
+            "description": "Start image for img2vid generation"
+        },
+        {
+            "id": "image_end",
+            "name": "End Image",
+            "type": "image",
+            "position": "left",
+            "required": false,
+            "description": "End image for video generation (optional)"
         },
         {
             "id": "frameCount",
@@ -87,17 +95,16 @@
             "id": "wan2gpModel",
             "name": "Wan2GP Model",
             "type": "select",
-            "default": "wan_t2v_14b",
+            "default": "ltx2_22B_distilled",
             "options": [
-                { "value": "ltx2_22B", "label": "LTX Video 2.3 (22B)" },
                 { "value": "ltx2_22B_distilled", "label": "LTX Video 2.3 Distilled (22B)" },
+                { "value": "ltx2_22B", "label": "LTX Video 2.3 (22B)" },
                 { "value": "ltx2_19B", "label": "LTX Video 2.0 (19B)" },
-                { "value": "ltx2_distilled", "label": "LTX Video 2.0 Distilled (19B)" },
-                { "value": "wan_t2v_14b", "label": "Wan 2.1 T2V 14B" },
-                { "value": "wan_t2v_1_3b", "label": "Wan 2.1 T2V 1.3B (Low VRAM)" },
-                { "value": "wan_i2v_480p", "label": "Wan 2.1 I2V 480p" },
-                { "value": "wan_i2v_720p", "label": "Wan 2.1 I2V 720p" },
-                { "value": "wan_t2v_2_2", "label": "Wan 2.2 T2V" },
+                { "value": "t2v", "label": "Wan 2.1 T2V (14B)" },
+                { "value": "t2v_1.3B", "label": "Wan 2.1 T2V (1.3B)" },
+                { "value": "i2v", "label": "Wan 2.1 I2V 480p" },
+                { "value": "i2v_720p", "label": "Wan 2.1 I2V 720p" },
+                { "value": "t2v_2_2", "label": "Wan 2.2 T2V" },
                 { "value": "hunyuan_t2v", "label": "Hunyuan Video T2V" }
             ],
             "description": "Model for Wan2GP video generation",
@@ -117,7 +124,7 @@
             "id": "wan2gpSteps",
             "name": "Steps",
             "type": "number",
-            "default": 30,
+            "default": 8,
             "min": 1,
             "max": 100,
             "description": "Number of inference steps",

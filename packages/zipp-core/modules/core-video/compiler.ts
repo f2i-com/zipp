@@ -216,8 +216,8 @@ const CoreVideoCompiler: ModuleCompiler = {
         const rawEndpoint = String(data.endpoint || '');
         const isComfyEndpoint = rawEndpoint.includes(':8188') || rawEndpoint === projectSettings?.defaultVideoEndpoint;
         const endpoint = escapeString(isComfyEndpoint ? '' : rawEndpoint);
-        const wan2gpModel = escapeString(String(data.wan2gpModel || 'wan_t2v_14b'));
-        const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 30;
+        const wan2gpModel = escapeString(String(data.wan2gpModel || 'ltx2_22B_distilled'));
+        const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 8;
         const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
         const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
         const comfyWidth = data.comfyWidth != null ? Number(data.comfyWidth) : undefined;

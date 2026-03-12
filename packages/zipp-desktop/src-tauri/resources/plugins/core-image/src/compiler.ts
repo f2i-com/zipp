@@ -39,10 +39,19 @@ const CoreImageCompiler: ModuleCompiler = {
           apiFormat === 'wan2gp' ? (data.wan2gpModel || data.model || 'qwen') : (data.model || '')
         ));
         const apiKeyConstant = escapeString(String(data.apiKeyConstant || projectSettings?.defaultImageApiKeyConstant || 'OPENAI_API_KEY'));
-        const width = Number(data.width) || 1024;
-        const height = Number(data.height) || 1024;
+        // For wan2gp, parse resolution string (e.g. "1280x720") to width/height
+        let width = Number(data.width) || 1024;
+        let height = Number(data.height) || 1024;
+        if (apiFormat === 'wan2gp' && data.wan2gpResolution) {
+          const parts = String(data.wan2gpResolution).split('x');
+          if (parts.length === 2) {
+            width = Number(parts[0]) || width;
+            height = Number(parts[1]) || height;
+          }
+        }
         const steps = Number(data.steps) || 20;
         const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
+        const wan2gpSeed = data.wan2gpRandomSeed !== false ? -1 : (Number(data.wan2gpSeed) || -1);
 
         // ComfyUI workflow configuration
         // For the workflow JSON, we stringify it as a raw JSON value (not a string literal)
@@ -175,7 +184,8 @@ const CoreImageCompiler: ModuleCompiler = {
       ${maxImageDimension},
       ${maxImageSizeKB},
       "${escapeString(String(data.negativePrompt || ''))}",
-      "${wan2gpVram}"
+      "${wan2gpVram}",
+      ${wan2gpSeed}
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");

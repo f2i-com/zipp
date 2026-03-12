@@ -79,8 +79,9 @@ const loadAutosaved = (): { nodes: Node[]; edges: Edge[] } | null => {
 const getInitialState = () => {
   const autosaved = loadAutosaved();
   if (autosaved) {
-    // Migrate old handle IDs to new semantic names
-    const migratedEdges = migrateEdgeHandles(autosaved.edges, autosaved.nodes);
+    // Migrate old handle IDs to new semantic names, and filter out any self-loop edges
+    const migratedEdges = migrateEdgeHandles(autosaved.edges, autosaved.nodes)
+      .filter(e => e.source !== e.target);
     return { nodes: autosaved.nodes, edges: migratedEdges };
   }
   return { nodes: initialNodes, edges: initialEdges };
@@ -494,6 +495,9 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
 
   // Handle edge connection with data propagation
   const onConnect = useCallback((connection: Connection) => {
+    // Prevent self-loop connections (node connecting to itself)
+    if (connection.source === connection.target) return;
+
     setEdges((eds) => addEdge({ ...connection, id: `e-${uuidv4().slice(0, 8)}` }, eds));
 
     // Propagate data from source to target node for certain node type combinations

@@ -56,32 +56,78 @@ active_subprocess = None  # Track running subprocess for cleanup
 jobs: dict = {}  # { job_id: { status, result, error, started_at, completed_at, type } }
 JOB_TTL_SECONDS = 3600  # Clean up completed/failed jobs after 1 hour
 
-# Map of model IDs to Wan2GP model families/types
-MODEL_MAP = {
-    # Image models
-    "qwen": "qwen_image_20B",
-    "qwen_image_20B": "qwen_image_20B",
-    "qwen_edit": "qwen_image_edit_plus_20B",
-    "flux": "flux_dev",
-    "flux_dev": "flux_dev",
-    "flux_schnell": "flux_schnell",
-    # Video models
-    "wan_t2v_14b": "t2v",
-    "wan_t2v_1_3b": "t2v_1.3B",
-    "wan_i2v_480p": "i2v",
-    "wan_i2v_720p": "i2v",
-    "wan_t2v_2_2": "t2v_2_2",
-    "t2v": "t2v",
-    "ltx2_22B": "ltx2_22B",
-    "ltx2_19B": "ltx2_19B",
-    "ltx2_distilled": "ltx2_22B_distilled",
-    "ltx2_22B_distilled": "ltx2_22B_distilled",
-    "hunyuan_t2v": "hunyuan_t2v",
-}
+# =============================================================================
+# MODEL CONFIG + GPU DETECTION
+# =============================================================================
+
+# Load models config
+MODELS_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.json")
+MODELS_CONFIG = {"image": [], "video": []}
+if os.path.isfile(MODELS_CONFIG_PATH):
+    with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
+        MODELS_CONFIG = json.load(f)
+    logger.info(f"Loaded {len(MODELS_CONFIG.get('image', []))} image + "
+                f"{len(MODELS_CONFIG.get('video', []))} video models from models.json")
+
+
+def _detect_gpu_sm() -> int:
+    """Detect GPU compute capability (SM version). Returns e.g. 89, 120, 0 if unknown."""
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            # e.g. "8.9" -> 89, "12.0" -> 120
+            parts = result.stdout.strip().split("\n")[0].strip().split(".")
+            return int(parts[0]) * 10 + int(parts[1]) if len(parts) == 2 else 0
+    except Exception:
+        pass
+    return 0
+
+
+GPU_SM = _detect_gpu_sm()
+logger.info(f"GPU compute capability: sm_{GPU_SM}" if GPU_SM else "GPU: not detected")
+
+
+def _detect_gpu_vram_gb() -> int:
+    """Detect GPU VRAM in GB via nvidia-smi."""
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            mb = int(result.stdout.strip().split("\n")[0].strip())
+            return mb // 1024
+    except Exception:
+        pass
+    return 0
+
+
+GPU_VRAM_GB = _detect_gpu_vram_gb()
+logger.info(f"GPU VRAM: {GPU_VRAM_GB} GB" if GPU_VRAM_GB else "GPU VRAM: not detected")
+
+
+def _resolve_model(model_id: str) -> str:
+    """Resolve a model ID to an actual model_type, handling auto-resolve for nunchaku variants."""
+    # Check models config for resolve rules
+    for category in ("image", "video"):
+        for m in MODELS_CONFIG.get(category, []):
+            if m["id"] == model_id and "resolve" in m:
+                if GPU_SM >= 120 and "sm120" in m["resolve"]:
+                    resolved = m["resolve"]["sm120"]
+                    logger.info(f"Model '{model_id}' -> '{resolved}' (sm_{GPU_SM} >= 120)")
+                    return resolved
+                resolved = m["resolve"]["default"]
+                logger.info(f"Model '{model_id}' -> '{resolved}' (default)")
+                return resolved
+    # No resolve rule - use as-is
+    return model_id
 
 # Base resolutions available in Wan2GP
 RESOLUTIONS = [
-    (1280, 720), (720, 1280), (1024, 576), (576, 1024),
+    (1024, 1024), (1280, 720), (720, 1280), (1024, 576), (576, 1024),
     (832, 624), (624, 832), (720, 720), (832, 480), (480, 832), (512, 512),
 ]
 
@@ -129,19 +175,31 @@ def find_closest_resolution(w: int, h: int) -> str:
 
 
 def _vram_to_profile(vram_gb: int) -> int:
-    """Map VRAM GB to Wan2GP profile number."""
-    if vram_gb <= 6:
-        return 1
-    elif vram_gb <= 8:
-        return 2
-    elif vram_gb <= 10:
-        return 3
-    elif vram_gb <= 12:
-        return 4
-    elif vram_gb <= 16:
-        return 5
+    """Map VRAM GB to Wan2GP mmgp profile number.
+
+    Wan2GP profiles (from wgp.py memory_profile_choices):
+      1  = HighRAM_HighVRAM   (64GB RAM, 24GB VRAM) - fastest
+      2  = HighRAM_LowVRAM    (64GB RAM, 12GB VRAM)
+      3  = LowRAM_HighVRAM    (32GB RAM, 24GB VRAM)
+      4  = LowRAM_LowVRAM     (32GB RAM, 12GB VRAM) - recommended default
+      5  = VeryLowRAM_LowVRAM (24GB RAM, 10GB VRAM) - failsafe/slowest
+
+    We pick the most aggressive profile that fits the user's VRAM.
+    For RAM we assume >=32GB (common for AI workloads); users with 64GB+
+    and high VRAM get profile 1.
+    """
+    import psutil
+    ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+    high_ram = ram_gb >= 56  # ~64GB threshold (allow some OS overhead)
+
+    if vram_gb >= 24:
+        return 1 if high_ram else 3       # HighVRAM
+    elif vram_gb >= 12:
+        return 2 if high_ram else 4       # LowVRAM
+    elif vram_gb >= 10:
+        return 5                          # Failsafe
     else:
-        return 5  # Profile 5 is max (16GB+), 6 causes "Unknown profile" crash
+        return 5                          # Very low VRAM
 
 
 def _save_base64_image(data_url: str, output_path: str) -> str:
@@ -226,6 +284,16 @@ def _run_generation_subprocess(
     job_dir = os.path.join(OUTPUT_DIR, f"job_{job_id}")
     os.makedirs(job_dir, exist_ok=True)
 
+    # Use model's recommended steps if client sent the generic default (30)
+    effective_steps = steps
+    if steps == 30:
+        # Check models.json for model-specific default_steps
+        for category in ("image", "video"):
+            for m in MODELS_CONFIG.get(category, []):
+                if m["id"] == model_type and "default_steps" in m:
+                    effective_steps = m["default_steps"]
+                    break
+
     # Build settings dict - only override what we need, Wan2GP applies defaults
     settings = {
         "model_type": model_type,
@@ -233,20 +301,33 @@ def _run_generation_subprocess(
         "negative_prompt": negative_prompt,
         "resolution": resolution,
         "video_length": video_length,
-        "num_inference_steps": steps,
+        "num_inference_steps": effective_steps,
         "seed": seed,
         "guidance_scale": guidance_scale,
     }
 
-    # Note: override_profile is intentionally NOT set in settings.
-    # The CLI --profile flag (from PROFILE env var) handles VRAM management.
-    # mmgp profiles are: 1=6GB, 2=8GB, 3=10GB, 4=12GB, 5=16GB+
-    # Setting an invalid profile (e.g. 6) causes "Unknown profile" crash.
+    # Compute mmgp profile from VRAM:
+    # - If vram_gb provided by request, use it
+    # - If auto-detected GPU VRAM available, use it
+    # - Otherwise fall back to global PROFILE env var
+    if vram_gb is not None:
+        profile = _vram_to_profile(vram_gb)
+    elif GPU_VRAM_GB > 0:
+        profile = _vram_to_profile(GPU_VRAM_GB)
+    else:
+        profile = int(PROFILE)
 
     # Handle image inputs (filesystem paths for CLI mode)
+    # Qwen image edit models use image_refs (reference images) with video_prompt_type "I",
+    # NOT image_start with image_prompt_type "S" (which is for video i2v models).
+    is_qwen_edit = "qwen_image_edit" in model_type or "qwen_image_layered" in model_type
     if image_start_path:
-        settings["image_start"] = [image_start_path]
-        settings["image_prompt_type"] = "SE" if image_end_path else "S"
+        if is_qwen_edit:
+            settings["image_refs"] = [image_start_path]
+            settings["video_prompt_type"] = "I"
+        else:
+            settings["image_start"] = [image_start_path]
+            settings["image_prompt_type"] = "SE" if image_end_path else "S"
     if image_end_path:
         settings["image_end"] = [image_end_path]
         if not image_start_path:
@@ -254,6 +335,8 @@ def _run_generation_subprocess(
 
     if audio_guide_path:
         settings["audio_guide"] = audio_guide_path
+        # audio_prompt_type "A" tells Wan2GP to use the audio_guide input
+        settings["audio_prompt_type"] = settings.get("audio_prompt_type", "") + "A"
 
     # Write settings to temp file
     settings_path = os.path.join(job_dir, "settings.json")
@@ -265,14 +348,14 @@ def _run_generation_subprocess(
         sys.executable, os.path.abspath(wgp_script),
         "--process", settings_path,
         "--output-dir", job_dir,
-        "--profile", str(PROFILE),
+        "--profile", str(profile),
     ]
     if ATTENTION:
         cmd.extend(["--attention", ATTENTION])
 
     wan2gp_abs = os.path.abspath(WAN2GP_PATH)
     logger.info(f"[{job_id}] Starting generation: model={model_type}, resolution={resolution}, "
-                f"frames={video_length}, steps={steps}, seed={seed}")
+                f"frames={video_length}, steps={steps}, seed={seed}, profile={profile} (vram_gb={vram_gb})")
     logger.info(f"[{job_id}] Settings: {settings_path}")
 
     # Force unbuffered output so we see progress in real-time
@@ -474,22 +557,11 @@ async def root():
 
 @app.get("/models")
 async def list_models():
-    """List available models."""
+    """List available models from models.json config."""
     return {
-        "image": [
-            {"id": "qwen", "name": "Qwen Image (20B)", "description": "Qwen 2.5 image generation"},
-            {"id": "flux", "name": "Flux", "description": "Flux image generation"},
-        ],
-        "video": [
-            {"id": "wan_t2v_14b", "name": "Wan 2.1 T2V 14B", "description": "Wan text-to-video 14B"},
-            {"id": "wan_t2v_1_3b", "name": "Wan 2.1 T2V 1.3B", "description": "Low VRAM text-to-video"},
-            {"id": "wan_i2v_480p", "name": "Wan 2.1 I2V 480p", "description": "Image-to-video 480p"},
-            {"id": "wan_i2v_720p", "name": "Wan 2.1 I2V 720p", "description": "Image-to-video 720p"},
-            {"id": "ltx2_22B", "name": "LTX Video 2.3 (22B)", "description": "LTX-2.3 text/image to video"},
-            {"id": "ltx2_22B_distilled", "name": "LTX Video 2.3 Distilled (22B)", "description": "LTX-2.3 distilled (fast)"},
-            {"id": "ltx2_19B", "name": "LTX Video 2 (19B)", "description": "LTX-2 text/image to video"},
-            {"id": "hunyuan_t2v", "name": "Hunyuan Video T2V", "description": "Hunyuan text-to-video"},
-        ],
+        "image": MODELS_CONFIG.get("image", []),
+        "video": MODELS_CONFIG.get("video", []),
+        "gpu_sm": GPU_SM,
     }
 
 
@@ -504,7 +576,7 @@ async def generate_image(req: ImageGenRequest):
 
     job_id = str(uuid.uuid4())[:8]
     model = req.model or "qwen"
-    model_type = MODEL_MAP.get(model, model)
+    model_type = _resolve_model(model)
     resolution = find_closest_resolution(req.width, req.height)
 
     # Handle image input for img2img (must save before thread starts)
@@ -557,8 +629,8 @@ async def generate_video(req: VideoGenRequest):
     _cleanup_old_jobs()
 
     job_id = str(uuid.uuid4())[:8]
-    model = req.model or "wan_t2v_14b"
-    model_type = MODEL_MAP.get(model, model)
+    model = req.model or "ltx2_22B_distilled"
+    model_type = _resolve_model(model)
     resolution = find_closest_resolution(req.width, req.height)
 
     fps = req.fps or 24

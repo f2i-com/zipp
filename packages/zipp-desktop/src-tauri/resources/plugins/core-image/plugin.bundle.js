@@ -591,7 +591,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     return baseUrl;
   }
-  async function generateWan2GP(prompt, endpoint, model, width, height, steps, negativePrompt, imageInputs, vram) {
+  async function generateWan2GP(prompt, endpoint, model, width, height, steps, negativePrompt, imageInputs, vram, seed) {
     let baseUrl = endpoint || "http://127.0.0.1:8773";
     baseUrl = await ensureWan2GPReady(baseUrl);
     const apiUrl = `${baseUrl}/generate/image`;
@@ -603,7 +603,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       height,
       steps,
       model: model || "qwen",
-      seed: -1
+      seed: seed != null && seed >= 0 ? seed : -1
     };
     if (vram && vram !== "auto") {
       body.vram = parseInt(vram, 10);
@@ -655,7 +655,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     throw new Error("Wan2GP image generation timed out after 1 hour");
   }
-  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0, negativePrompt = "", wan2gpVram = "auto") {
+  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0, negativePrompt = "", wan2gpVram = "auto", wan2gpSeed = -1) {
     ctx.onNodeStatus?.(nodeId, "running");
     let finalPrompt = prompt;
     if (typeof input === "string" && input) {
@@ -696,7 +696,8 @@ ${input}` : input;
             steps,
             negativePrompt,
             imageInputs,
-            wan2gpVram
+            wan2gpVram,
+            wan2gpSeed
           );
           break;
         case "comfyui":
@@ -1012,10 +1013,18 @@ ${input}` : input;
             apiFormat === "wan2gp" ? data.wan2gpModel || data.model || "qwen" : data.model || ""
           ));
           const apiKeyConstant = escapeString(String(data.apiKeyConstant || projectSettings?.defaultImageApiKeyConstant || "OPENAI_API_KEY"));
-          const width = Number(data.width) || 1024;
-          const height = Number(data.height) || 1024;
+          let width = Number(data.width) || 1024;
+          let height = Number(data.height) || 1024;
+          if (apiFormat === "wan2gp" && data.wan2gpResolution) {
+            const parts = String(data.wan2gpResolution).split("x");
+            if (parts.length === 2) {
+              width = Number(parts[0]) || width;
+              height = Number(parts[1]) || height;
+            }
+          }
           const steps = Number(data.steps) || 20;
           const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
+          const wan2gpSeed = data.wan2gpRandomSeed !== false ? -1 : Number(data.wan2gpSeed) || -1;
           let comfyWorkflowCode = "null";
           if (data.comfyWorkflow) {
             try {
@@ -1111,7 +1120,8 @@ ${input}` : input;
       ${maxImageDimension},
       ${maxImageSizeKB},
       "${escapeString(String(data.negativePrompt || ""))}",
-      "${wan2gpVram}"
+      "${wan2gpVram}",
+      ${wan2gpSeed}
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");
@@ -1389,6 +1399,9 @@ ${input}` : input;
     const onModelChangeRef = (0, import_react.useRef)(data.onModelChange);
     const onWan2gpModelChangeRef = (0, import_react.useRef)(data.onWan2gpModelChange);
     const onWan2gpVramChangeRef = (0, import_react.useRef)(data.onWan2gpVramChange);
+    const onWan2gpSeedChangeRef = (0, import_react.useRef)(data.onWan2gpSeedChange);
+    const onWan2gpRandomSeedChangeRef = (0, import_react.useRef)(data.onWan2gpRandomSeedChange);
+    const onWan2gpResolutionChangeRef = (0, import_react.useRef)(data.onWan2gpResolutionChange);
     const onSizeChangeRef = (0, import_react.useRef)(data.onSizeChange);
     const onQualityChangeRef = (0, import_react.useRef)(data.onQualityChange);
     const onOutputFormatChangeRef = (0, import_react.useRef)(data.onOutputFormatChange);
@@ -1408,12 +1421,25 @@ ${input}` : input;
     const onImageInputCountChangeRef = (0, import_react.useRef)(data.onImageInputCountChange);
     const onOpenComfyWorkflowDialogRef = (0, import_react.useRef)(data.onOpenComfyWorkflowDialog);
     const fileInputRef = (0, import_react.useRef)(null);
+    const [wan2gpImageModels, setWan2gpImageModels] = (0, import_react.useState)([]);
+    (0, import_react.useEffect)(() => {
+      if (data.apiFormat === "wan2gp") {
+        const endpoint = data.endpoint || "http://127.0.0.1:8773";
+        fetch(`${endpoint}/models`).then((r) => r.json()).then((d) => {
+          if (d.image?.length) setWan2gpImageModels(d.image);
+        }).catch(() => {
+        });
+      }
+    }, [data.apiFormat, data.endpoint]);
     (0, import_react.useEffect)(() => {
       onEndpointChangeRef.current = data.onEndpointChange;
       onApiFormatChangeRef.current = data.onApiFormatChange;
       onModelChangeRef.current = data.onModelChange;
       onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
       onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
+      onWan2gpSeedChangeRef.current = data.onWan2gpSeedChange;
+      onWan2gpRandomSeedChangeRef.current = data.onWan2gpRandomSeedChange;
+      onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
       onSizeChangeRef.current = data.onSizeChange;
       onQualityChangeRef.current = data.onQualityChange;
       onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -1682,42 +1708,101 @@ ${input}` : input;
           ] }),
           isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Model" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
               "select",
               {
                 className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
                 value: data.wan2gpModel || "qwen",
                 onChange: (e) => onWan2gpModelChangeRef.current?.(e.target.value),
                 onMouseDown: (e) => e.stopPropagation(),
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen", children: "Qwen Image (20B)" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen_edit", children: "Qwen Image Edit (20B)" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux", children: "Flux Dev" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux_schnell", children: "Flux Schnell" })
-                ]
+                children: wan2gpImageModels.length > 0 ? wan2gpImageModels.map((m) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: m.id, children: m.name }, m.id)) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen", children: "Qwen Image Edit Plus (20B)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux2_klein_4b", children: "Flux 2 Klein (4B)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "flux2_klein_9b", children: "Flux 2 Klein (9B)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "z_image", children: "Z-Image Turbo (6B)" })
+                ] })
               }
             )
           ] }),
           isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "VRAM" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Resolution" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
               "select",
               {
                 className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
-                value: data.wan2gpVram || "auto",
-                onChange: (e) => onWan2gpVramChangeRef.current?.(e.target.value),
+                value: data.wan2gpResolution || "1024x1024",
+                onChange: (e) => onWan2gpResolutionChangeRef.current?.(e.target.value),
                 onMouseDown: (e) => e.stopPropagation(),
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "auto", children: "Auto" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "6", children: "6 GB (Low)" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "8", children: "8 GB" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "10", children: "10 GB" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "12", children: "12 GB" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "16", children: "16 GB" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "24", children: "24 GB+" })
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "1024x1024", children: "1024x1024 (1:1)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "1280x720", children: "1280x720 (16:9)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "720x1280", children: "720x1280 (9:16)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "1024x576", children: "1024x576 (16:9)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "576x1024", children: "576x1024 (9:16)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "832x624", children: "832x624 (4:3)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "624x832", children: "624x832 (3:4)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "512x512", children: "512x512 (1:1)" })
                 ]
               }
             )
+          ] }),
+          isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Seed" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  "input",
+                  {
+                    type: "number",
+                    className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500 disabled:opacity-50 disabled:cursor-not-allowed",
+                    value: data.wan2gpRandomSeed !== false ? "" : data.wan2gpSeed ?? -1,
+                    min: -1,
+                    onChange: (e) => onWan2gpSeedChangeRef.current?.(parseInt(e.target.value) || -1),
+                    onMouseDown: (e) => e.stopPropagation(),
+                    placeholder: "Random",
+                    disabled: data.wan2gpRandomSeed !== false
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "VRAM" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                  "select",
+                  {
+                    className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
+                    value: data.wan2gpVram || "auto",
+                    onChange: (e) => onWan2gpVramChangeRef.current?.(e.target.value),
+                    onMouseDown: (e) => e.stopPropagation(),
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "auto", children: "Auto" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "6", children: "6 GB" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "8", children: "8 GB" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "10", children: "10 GB" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "12", children: "12 GB" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "16", children: "16 GB" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "24", children: "24 GB+" })
+                    ]
+                  }
+                )
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "flex items-center gap-2 cursor-pointer select-none", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "checkbox",
+                  className: "nodrag accent-pink-500 w-3.5 h-3.5",
+                  checked: data.wan2gpRandomSeed !== false,
+                  onChange: (e) => {
+                    onWan2gpRandomSeedChangeRef.current?.(e.target.checked);
+                    if (e.target.checked) {
+                      onWan2gpSeedChangeRef.current?.(-1);
+                    }
+                  }
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "text-slate-600 dark:text-slate-400 text-xs", children: "Random seed" })
+            ] })
           ] }),
           isComfyUI && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Workflow" }),

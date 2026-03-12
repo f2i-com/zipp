@@ -219,6 +219,9 @@ export function useStableHandlers(updateNodeData: (id: string, data: Record<stri
     onWan2gpStepsChange: createHandler<number>('wan2gpSteps'),
     onWan2gpDurationChange: createHandler<number>('wan2gpDuration'),
     onWan2gpVramChange: createHandler<string>('wan2gpVram'),
+    onWan2gpSeedChange: createHandler<number>('wan2gpSeed'),
+    onWan2gpRandomSeedChange: createHandler<boolean>('wan2gpRandomSeed'),
+    onWan2gpResolutionChange: createHandler<string>('wan2gpResolution'),
     // Dynamic image input count
     onImageInputCountChange: createHandler<number>('imageInputCount'),
     // ComfyUI workflow dialog opener - placeholder that gets overridden per-node in nodesWithHandlers

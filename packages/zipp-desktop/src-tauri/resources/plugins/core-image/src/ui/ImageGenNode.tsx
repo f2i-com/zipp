@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect, useCallback, useMemo } from 'react';
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Position } from '@xyflow/react';
 import { CollapsibleNodeWrapper, type HandleConfig, type ValidationIssue } from 'zipp-ui-components';
 
@@ -32,6 +32,9 @@ interface ImageGenNodeData {
   model?: string;
   wan2gpModel?: string;
   wan2gpVram?: string;
+  wan2gpSeed?: number;
+  wan2gpRandomSeed?: boolean;
+  wan2gpResolution?: string;
   size?: string;
   quality?: string;
   outputFormat?: string;
@@ -70,6 +73,9 @@ interface ImageGenNodeData {
   onModelChange?: (value: string) => void;
   onWan2gpModelChange?: (value: string) => void;
   onWan2gpVramChange?: (value: string) => void;
+  onWan2gpSeedChange?: (value: number) => void;
+  onWan2gpRandomSeedChange?: (value: boolean) => void;
+  onWan2gpResolutionChange?: (value: string) => void;
   onSizeChange?: (value: string) => void;
   onQualityChange?: (value: string) => void;
   onOutputFormatChange?: (value: string) => void;
@@ -108,6 +114,9 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
   const onModelChangeRef = useRef(data.onModelChange);
   const onWan2gpModelChangeRef = useRef(data.onWan2gpModelChange);
   const onWan2gpVramChangeRef = useRef(data.onWan2gpVramChange);
+  const onWan2gpSeedChangeRef = useRef(data.onWan2gpSeedChange);
+  const onWan2gpRandomSeedChangeRef = useRef(data.onWan2gpRandomSeedChange);
+  const onWan2gpResolutionChangeRef = useRef(data.onWan2gpResolutionChange);
   const onSizeChangeRef = useRef(data.onSizeChange);
   const onQualityChangeRef = useRef(data.onQualityChange);
   const onOutputFormatChangeRef = useRef(data.onOutputFormatChange);
@@ -128,12 +137,28 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
   const onOpenComfyWorkflowDialogRef = useRef(data.onOpenComfyWorkflowDialog);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Dynamic model list from Wan2GP server
+  const [wan2gpImageModels, setWan2gpImageModels] = useState<{id: string; name: string; description?: string}[]>([]);
+
+  useEffect(() => {
+    if (data.apiFormat === 'wan2gp') {
+      const endpoint = data.endpoint || 'http://127.0.0.1:8773';
+      fetch(`${endpoint}/models`)
+        .then(r => r.json())
+        .then(d => { if (d.image?.length) setWan2gpImageModels(d.image); })
+        .catch(() => {});
+    }
+  }, [data.apiFormat, data.endpoint]);
+
   useEffect(() => {
     onEndpointChangeRef.current = data.onEndpointChange;
     onApiFormatChangeRef.current = data.onApiFormatChange;
     onModelChangeRef.current = data.onModelChange;
     onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
     onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
+    onWan2gpSeedChangeRef.current = data.onWan2gpSeedChange;
+    onWan2gpRandomSeedChangeRef.current = data.onWan2gpRandomSeedChange;
+    onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
     onSizeChangeRef.current = data.onSizeChange;
     onQualityChangeRef.current = data.onQualityChange;
     onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -480,33 +505,94 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
                   onChange={(e) => onWan2gpModelChangeRef.current?.(e.target.value)}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <option value="qwen">Qwen Image (20B)</option>
-                  <option value="qwen_edit">Qwen Image Edit (20B)</option>
-                  <option value="flux">Flux Dev</option>
-                  <option value="flux_schnell">Flux Schnell</option>
+                  {wan2gpImageModels.length > 0 ? (
+                    wan2gpImageModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="qwen">Qwen Image Edit Plus (20B)</option>
+                      <option value="flux2_klein_4b">Flux 2 Klein (4B)</option>
+                      <option value="flux2_klein_9b">Flux 2 Klein (9B)</option>
+                      <option value="z_image">Z-Image Turbo (6B)</option>
+                    </>
+                  )}
                 </select>
               </div>
             )}
 
-            {/* Wan2GP VRAM Setting */}
+            {/* Wan2GP Resolution */}
             {isWan2gp && (
               <div>
-                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">VRAM</label>
+                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Resolution</label>
                 <select
                   className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
-                  value={data.wan2gpVram || 'auto'}
-                  onChange={(e) => onWan2gpVramChangeRef.current?.(e.target.value)}
+                  value={data.wan2gpResolution || '1024x1024'}
+                  onChange={(e) => onWan2gpResolutionChangeRef.current?.(e.target.value)}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <option value="auto">Auto</option>
-                  <option value="6">6 GB (Low)</option>
-                  <option value="8">8 GB</option>
-                  <option value="10">10 GB</option>
-                  <option value="12">12 GB</option>
-                  <option value="16">16 GB</option>
-                  <option value="24">24 GB+</option>
+                  <option value="1024x1024">1024x1024 (1:1)</option>
+                  <option value="1280x720">1280x720 (16:9)</option>
+                  <option value="720x1280">720x1280 (9:16)</option>
+                  <option value="1024x576">1024x576 (16:9)</option>
+                  <option value="576x1024">576x1024 (9:16)</option>
+                  <option value="832x624">832x624 (4:3)</option>
+                  <option value="624x832">624x832 (3:4)</option>
+                  <option value="512x512">512x512 (1:1)</option>
                 </select>
               </div>
+            )}
+
+            {/* Wan2GP Seed + VRAM */}
+            {isWan2gp && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Seed</label>
+                    <input
+                      type="number"
+                      className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={data.wan2gpRandomSeed !== false ? '' : (data.wan2gpSeed ?? -1)}
+                      min={-1}
+                      onChange={(e) => onWan2gpSeedChangeRef.current?.(parseInt(e.target.value) || -1)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      placeholder="Random"
+                      disabled={data.wan2gpRandomSeed !== false}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">VRAM</label>
+                    <select
+                      className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
+                      value={data.wan2gpVram || 'auto'}
+                      onChange={(e) => onWan2gpVramChangeRef.current?.(e.target.value)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="6">6 GB</option>
+                      <option value="8">8 GB</option>
+                      <option value="10">10 GB</option>
+                      <option value="12">12 GB</option>
+                      <option value="16">16 GB</option>
+                      <option value="24">24 GB+</option>
+                    </select>
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="nodrag accent-pink-500 w-3.5 h-3.5"
+                    checked={data.wan2gpRandomSeed !== false}
+                    onChange={(e) => {
+                      onWan2gpRandomSeedChangeRef.current?.(e.target.checked);
+                      if (e.target.checked) {
+                        onWan2gpSeedChangeRef.current?.(-1);
+                      }
+                    }}
+                  />
+                  <span className="text-slate-600 dark:text-slate-400 text-xs">Random seed</span>
+                </label>
+              </>
             )}
 
             {/* ComfyUI Workflow File Picker */}

@@ -584,7 +584,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       }
     }
     const apiUrl = `${baseUrl}/generate/video`;
-    ctx.log("info", `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || "wan_t2v_14b"}, steps=${steps || 30}, duration=${duration || 5}s`);
+    ctx.log("info", `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || "ltx2_22B_distilled"}, steps=${steps || 30}, duration=${duration || 5}s`);
     const body = {
       prompt: prompt || "",
       negative_prompt: "",
@@ -592,7 +592,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       height: height || 480,
       fps: frameRate || 24,
       steps: steps || 30,
-      model: model || "wan_t2v_14b",
+      model: model || "ltx2_22B_distilled",
       seed: -1,
       duration: duration || 5
     };
@@ -1890,8 +1890,8 @@ var __PLUGIN_EXPORTS__ = (() => {
           const rawEndpoint = String(data.endpoint || "");
           const isComfyEndpoint = rawEndpoint.includes(":8188") || rawEndpoint === projectSettings?.defaultVideoEndpoint;
           const endpoint2 = escapeString(isComfyEndpoint ? "" : rawEndpoint);
-          const wan2gpModel = escapeString(String(data.wan2gpModel || "wan_t2v_14b"));
-          const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 30;
+          const wan2gpModel = escapeString(String(data.wan2gpModel || "ltx2_22B_distilled"));
+          const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 8;
           const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
           const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
           const comfyWidth2 = data.comfyWidth != null ? Number(data.comfyWidth) : void 0;
@@ -2561,6 +2561,16 @@ var __PLUGIN_EXPORTS__ = (() => {
     const onComfyAllImageNodeIdsChangeRef = (0, import_react3.useRef)(data.onComfyAllImageNodeIdsChange);
     const onOpenComfyWorkflowDialogRef = (0, import_react3.useRef)(data.onOpenComfyWorkflowDialog);
     const fileInputRef = (0, import_react3.useRef)(null);
+    const [wan2gpVideoModels, setWan2gpVideoModels] = (0, import_react3.useState)([]);
+    (0, import_react3.useEffect)(() => {
+      if (data.apiFormat === "wan2gp") {
+        const endpoint = data.endpoint || "http://127.0.0.1:8773";
+        fetch(`${endpoint}/models`).then((r) => r.json()).then((d) => {
+          if (d.video?.length) setWan2gpVideoModels(d.video);
+        }).catch(() => {
+        });
+      }
+    }, [data.apiFormat, data.endpoint]);
     (0, import_react3.useEffect)(() => {
       onEndpointChangeRef.current = data.onEndpointChange;
       onApiFormatChangeRef.current = data.onApiFormatChange;
@@ -2807,29 +2817,19 @@ var __PLUGIN_EXPORTS__ = (() => {
           isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Model" }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                 "select",
                 {
                   className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
-                  value: data.wan2gpModel || "wan_t2v_14b",
+                  value: data.wan2gpModel || "ltx2_22B_distilled",
                   onChange: (e) => onWan2gpModelChangeRef.current?.(e.target.value),
                   onMouseDown: (e) => e.stopPropagation(),
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("optgroup", { label: "LTX Video", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B", children: "LTX Video 2.3 (22B)" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B_distilled", children: "LTX Video 2.3 Distilled (22B)" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_19B", children: "LTX Video 2.0 (19B)" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_distilled", children: "LTX Video 2.0 Distilled (19B)" })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("optgroup", { label: "Wan", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_14b", children: "Wan 2.1 T2V 14B" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_1_3b", children: "Wan 2.1 T2V 1.3B (Low VRAM)" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_i2v_480p", children: "Wan 2.1 I2V 480p" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_i2v_720p", children: "Wan 2.1 I2V 720p" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "wan_t2v_2_2", children: "Wan 2.2 T2V" })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("optgroup", { label: "Hunyuan", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "hunyuan_t2v", children: "Hunyuan Video T2V" }) })
-                  ]
+                  children: wan2gpVideoModels.length > 0 ? wan2gpVideoModels.map((m) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: m.id, children: m.name }, m.id)) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B_distilled", children: "LTX Video 2.3 Distilled (22B)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "ltx2_22B", children: "LTX Video 2.3 (22B)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "t2v", children: "Wan 2.1 T2V (14B)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "hunyuan_t2v", children: "Hunyuan Video T2V" })
+                  ] })
                 }
               )
             ] }),
@@ -2857,10 +2857,10 @@ var __PLUGIN_EXPORTS__ = (() => {
                   {
                     type: "number",
                     className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
-                    value: data.wan2gpSteps || 30,
+                    value: data.wan2gpSteps || 8,
                     min: 1,
                     max: 100,
-                    onChange: (e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 30),
+                    onChange: (e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 8),
                     onMouseDown: (e) => e.stopPropagation()
                   }
                 )

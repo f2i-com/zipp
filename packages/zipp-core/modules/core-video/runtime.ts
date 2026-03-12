@@ -644,7 +644,7 @@ async function generateVideoWan2GP(
 
   const apiUrl = `${baseUrl}/generate/video`;
 
-  ctx.log('info', `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || 'wan_t2v_14b'}, steps=${steps || 30}, duration=${duration || 5}s`);
+  ctx.log('info', `[VideoGen] Wan2GP request to ${apiUrl}, model=${model || 'ltx2_22B_distilled'}, steps=${steps || 30}, duration=${duration || 5}s`);
 
   const body: Record<string, unknown> = {
     prompt: prompt || '',
@@ -653,7 +653,7 @@ async function generateVideoWan2GP(
     height: height || 480,
     fps: frameRate || 24,
     steps: steps || 30,
-    model: model || 'wan_t2v_14b',
+    model: model || 'ltx2_22B_distilled',
     seed: -1,
     duration: duration || 5,
   };

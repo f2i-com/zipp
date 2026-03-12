@@ -185,10 +185,10 @@ export class ZippCompiler {
     metrics.setGauge('lastCompilationNodes', graph.nodes.length);
 
     try {
-    // Filter out invalid edges (edges that reference non-existent nodes)
+    // Filter out invalid edges (self-loops and edges that reference non-existent nodes)
     const nodeIds = new Set(graph.nodes.map(n => n.id));
     const validEdges = graph.edges.filter(e =>
-      nodeIds.has(e.source) && nodeIds.has(e.target)
+      e.source !== e.target && nodeIds.has(e.source) && nodeIds.has(e.target)
     );
     const validGraph: WorkflowGraph = { ...graph, edges: validEdges };
 

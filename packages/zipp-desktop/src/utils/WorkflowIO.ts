@@ -286,7 +286,7 @@ export function applyAutoLayout(nodes: Node[], edges: Edge[], direction: 'LR' | 
  * @returns React Flow edges
  */
 export function graphToReactFlowEdges(graph: WorkflowGraph): Edge[] {
-  return graph.edges.map((e) => ({
+  return graph.edges.filter(e => e.source !== e.target).map((e) => ({
     // Use a deterministic ID based on edge properties to avoid React key warnings on reorder
     id: `e-${e.source}-${e.target}-${e.sourceHandle || 'default'}-${e.targetHandle || 'default'}`,
     source: e.source,

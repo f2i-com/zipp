@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect, useCallback, useMemo, type ChangeEvent } from 'react';
+import { memo, useState, useRef, useEffect, useCallback, useMemo, type ChangeEvent } from 'react';
 import { Position } from '@xyflow/react';
 import { CollapsibleNodeWrapper, type HandleConfig, type ValidationIssue } from 'zipp-ui-components';
 
@@ -113,6 +113,19 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
     const onComfyAllImageNodeIdsChangeRef = useRef(data.onComfyAllImageNodeIdsChange);
     const onOpenComfyWorkflowDialogRef = useRef(data.onOpenComfyWorkflowDialog);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Dynamic model list from Wan2GP server
+    const [wan2gpVideoModels, setWan2gpVideoModels] = useState<{id: string; name: string; description?: string}[]>([]);
+
+    useEffect(() => {
+        if (data.apiFormat === 'wan2gp') {
+            const endpoint = data.endpoint || 'http://127.0.0.1:8773';
+            fetch(`${endpoint}/models`)
+                .then(r => r.json())
+                .then(d => { if (d.video?.length) setWan2gpVideoModels(d.video); })
+                .catch(() => {});
+        }
+    }, [data.apiFormat, data.endpoint]);
 
     useEffect(() => {
         onEndpointChangeRef.current = data.onEndpointChange;
@@ -408,26 +421,22 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
                                 <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Model</label>
                                 <select
                                     className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
-                                    value={data.wan2gpModel || 'wan_t2v_14b'}
+                                    value={data.wan2gpModel || 'ltx2_22B_distilled'}
                                     onChange={(e) => onWan2gpModelChangeRef.current?.(e.target.value)}
                                     onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                    <optgroup label="LTX Video">
-                                        <option value="ltx2_22B">LTX Video 2.3 (22B)</option>
-                                        <option value="ltx2_22B_distilled">LTX Video 2.3 Distilled (22B)</option>
-                                        <option value="ltx2_19B">LTX Video 2.0 (19B)</option>
-                                        <option value="ltx2_distilled">LTX Video 2.0 Distilled (19B)</option>
-                                    </optgroup>
-                                    <optgroup label="Wan">
-                                        <option value="wan_t2v_14b">Wan 2.1 T2V 14B</option>
-                                        <option value="wan_t2v_1_3b">Wan 2.1 T2V 1.3B (Low VRAM)</option>
-                                        <option value="wan_i2v_480p">Wan 2.1 I2V 480p</option>
-                                        <option value="wan_i2v_720p">Wan 2.1 I2V 720p</option>
-                                        <option value="wan_t2v_2_2">Wan 2.2 T2V</option>
-                                    </optgroup>
-                                    <optgroup label="Hunyuan">
-                                        <option value="hunyuan_t2v">Hunyuan Video T2V</option>
-                                    </optgroup>
+                                    {wan2gpVideoModels.length > 0 ? (
+                                        wan2gpVideoModels.map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="ltx2_22B_distilled">LTX Video 2.3 Distilled (22B)</option>
+                                            <option value="ltx2_22B">LTX Video 2.3 (22B)</option>
+                                            <option value="t2v">Wan 2.1 T2V (14B)</option>
+                                            <option value="hunyuan_t2v">Hunyuan Video T2V</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -449,10 +458,10 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
                                     <input
                                         type="number"
                                         className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
-                                        value={data.wan2gpSteps || 30}
+                                        value={data.wan2gpSteps || 8}
                                         min={1}
                                         max={100}
-                                        onChange={(e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 30)}
+                                        onChange={(e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 8)}
                                         onMouseDown={(e) => e.stopPropagation()}
                                     />
                                 </div>

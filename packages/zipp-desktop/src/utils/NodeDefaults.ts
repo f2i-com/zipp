@@ -133,6 +133,13 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
         chunkSize: 2000,
         overlap: 200,
       };
+    case 'video_gen':
+      return {
+        apiFormat: 'comfyui',
+        wan2gpModel: 'ltx2_22B_distilled',
+        wan2gpDuration: 5,
+        wan2gpSteps: 8,
+      };
     case 'video_frame_extractor':
       return {
         fps: 1,  // 1 frame per second
