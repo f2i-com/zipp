@@ -310,6 +310,18 @@ export function useWorkflowExecution({
       return;
     }
 
+    // Apply any pending input updates that might not have been reflected in React state yet.
+    // This handles the race condition where confirmRunModal updates React state but
+    // getWorkflowGraph reads from a stale closure before React re-renders.
+    const pendingUpdates = pendingInputUpdatesRef.current;
+    if (pendingUpdates && pendingUpdates.size > 0) {
+      graph.nodes = graph.nodes.map(n => {
+        const update = pendingUpdates.get(n.id);
+        return update ? { ...n, data: { ...n.data, ...update } } : n;
+      });
+      pendingInputUpdatesRef.current = null;
+    }
+
     // Submit to job queue
     const jobId = jobManager.submit(flowId, flowName, graph);
     setManualJobId(jobId);
@@ -356,6 +368,10 @@ export function useWorkflowExecution({
   // Ref to track confirm timeout for cleanup
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Ref to store pending input updates from RunWorkflowModal
+  // These are applied to the graph before submission to avoid React state timing issues
+  const pendingInputUpdatesRef = useRef<Map<string, Record<string, unknown>> | null>(null);
+
   // Cleanup confirm timeout on unmount
   useEffect(() => {
     return () => {
@@ -374,6 +390,10 @@ export function useWorkflowExecution({
       updatedInputs.forEach((data, nodeId) => {
         updateNodeData(nodeId, data);
       });
+
+      // Store pending updates so submitWorkflow can apply them to the graph
+      // even if React hasn't re-rendered yet (avoids stale closure race condition)
+      pendingInputUpdatesRef.current = updatedInputs;
 
       // Clear any previous timeout
       if (confirmTimeoutRef.current) {

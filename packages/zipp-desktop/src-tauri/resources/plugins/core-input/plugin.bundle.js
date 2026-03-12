@@ -196,9 +196,50 @@ var __PLUGIN_EXPORTS__ = (() => {
           break;
         }
         case "input_file": {
-          code += `
-  ${letOrAssign}${outputVar} = ${JSON.stringify(data.content || data.fileContent || data.dataUrl || data.filePath || "")};
+          const fileContent = data.content || data.fileContent || data.dataUrl || "";
+          const filePath = String(data.filePath || "");
+          const fileType = String(data.fileType || "");
+          if (fileContent) {
+            code += `
+  ${letOrAssign}${outputVar} = ${JSON.stringify(fileContent)};
+  console.log("[InputFile] (${node.id}) embedded content, length:", ${outputVar}.length);
   workflow_context["${node.id}"] = ${outputVar};`;
+          } else if (filePath) {
+            const escapedPath = escapeString(filePath);
+            const isImage = fileType === "image_ref" || fileType === "image" || /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(filePath);
+            if (isImage) {
+              const ext = filePath.toLowerCase().split(".").pop() || "png";
+              const mimeMap = {
+                png: "image/png",
+                jpg: "image/jpeg",
+                jpeg: "image/jpeg",
+                gif: "image/gif",
+                webp: "image/webp",
+                bmp: "image/bmp",
+                svg: "image/svg+xml"
+              };
+              const mime = mimeMap[ext] || "image/png";
+              code += `
+  console.log("[InputFile] (${node.id}) reading image file: ${escapedPath}");
+  ${letOrAssign}${outputVar} = await FileSystem.readFile("${escapedPath}", "base64", "${node.id}");
+  console.log("[InputFile] (${node.id}) read result:", ${outputVar} ? "loaded " + ${outputVar}.length + " chars" : "null/empty");
+  if (${outputVar} && !${outputVar}.startsWith("data:")) {
+    ${outputVar} = "data:${mime};base64," + ${outputVar};
+  }
+  workflow_context["${node.id}"] = ${outputVar};`;
+            } else {
+              code += `
+  console.log("[InputFile] (${node.id}) reading text file: ${escapedPath}");
+  ${letOrAssign}${outputVar} = await FileSystem.readFile("${escapedPath}", "text", "${node.id}");
+  console.log("[InputFile] (${node.id}) read result:", ${outputVar} ? "loaded " + ${outputVar}.length + " chars" : "null/empty");
+  workflow_context["${node.id}"] = ${outputVar};`;
+            }
+          } else {
+            code += `
+  ${letOrAssign}${outputVar} = "";
+  console.log("[InputFile] (${node.id}) no file path or content configured");
+  workflow_context["${node.id}"] = ${outputVar};`;
+          }
           break;
         }
         case "input_video": {
