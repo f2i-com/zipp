@@ -489,11 +489,23 @@ export class ZippRuntime {
       }
     }
 
-    // Add a dummy console object for FormLogic
-    shimCode += `\nlet console = {};\n`;
-    shimCode += `console["log"] = function() {};\n`;
-    shimCode += `console["warn"] = function() {};\n`;
-    shimCode += `console["error"] = function() {};\n`;
+    // Add console object for FormLogic that buffers logs for host to drain
+    shimCode += `\nlet __console_buffer = [];\n`;
+    shimCode += `let console = {};\n`;
+    shimCode += `console["log"] = function(...args) {\n`;
+    shimCode += `  let parts = [];\n`;
+    shimCode += `  for (let i = 0; i < args.length; i++) {\n`;
+    shimCode += `    let arg = args[i];\n`;
+    shimCode += `    if (typeof arg === "object" || typeof arg === "hash" || typeof arg === "array") {\n`;
+    shimCode += `      try { parts.push(JSON.stringify(arg)); } catch(e) { parts.push("" + arg); }\n`;
+    shimCode += `    } else {\n`;
+    shimCode += `      parts.push("" + arg);\n`;
+    shimCode += `    }\n`;
+    shimCode += `  }\n`;
+    shimCode += `  __console_buffer.push(parts.join(" "));\n`;
+    shimCode += `};\n`;
+    shimCode += `console["warn"] = console["log"];\n`;
+    shimCode += `console["error"] = console["log"];\n`;
     shimCode += `console["debug"] = function() {};\n`;
 
     return shimCode;
@@ -602,9 +614,21 @@ __step();
               return;
             }
 
+            // Drain console.log buffer from VM
+            try {
+              const logs = engine.evalInContext('__console_buffer');
+              if (logs && Array.isArray(logs) && logs.length > 0) {
+                for (const msg of logs) {
+                  this.log('info', `[VM] ${msg}`);
+                }
+                engine.evalInContext('__console_buffer = []');
+              }
+            } catch (e) {
+              // Ignore errors reading console buffer
+            }
+
             let calls = engine.drainPendingHostCalls();
             for (const call of calls) {
-              // We'll leave out console.log("[POLL] Drain...") to clean up test output
               if (call.kind === "__system.finish") {
                 isDone = true;
                 const res = call.args[0] ? JSON.parse(call.args[0]) : null;
@@ -662,6 +686,17 @@ __step();
     compiler.setProjectSettings(this.projectSettings);
 
     const script = compiler.compile(graph, inputs);
+
+    // DEBUG: Dump compiled script to file for inspection
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const debugPath = path.join(process.env.APPDATA || '', 'zipp', 'debug_compiled_script.js');
+      fs.writeFileSync(debugPath, script, 'utf8');
+      this.log('info', `[DEBUG] Compiled script saved to: ${debugPath} (${script.length} chars)`);
+    } catch (e) {
+      // Ignore errors in debug dump
+    }
 
     this.log('info', '--- Starting Workflow Execution ---');
 

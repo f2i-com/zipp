@@ -571,7 +571,7 @@
         "y": 300
       },
       "data": {
-        "code": "// Process TTS results and calculate frame counts per scene\n// Uses Audio.getAudioDuration() to get actual audio duration from files\nlet ttsResults = input;\nlet fps = 25;\nlet sceneDurations = [];\nlet sceneFrameCounts = [];\nlet ttsDurations = [];\nlet totalDuration = 0;\nlet numScenes = ttsResults.length;\nlet endPaddingSeconds = 4;\n\nconsole.log(\"[process-tts-results] TTS results:\", ttsResults);\nconsole.log(\"[process-tts-results] Number of scenes:\", numScenes);\n\nfor (let i = 0; i < numScenes; i = i + 1) {\n  let result = ttsResults[i];\n  let durationMs = 0;\n  let audioPath = null;\n\n  // TTS returns objects like {audio, path, durationMs} or strings\n  if (result && typeof result === \"object\") {\n    // Try to get duration from object first\n    durationMs = result.durationMs || 0;\n    // Get path for fallback duration detection\n    audioPath = result.path || result.audio || null;\n    console.log(\"[process-tts-results] Object result - durationMs:\", durationMs, \"path:\", audioPath);\n  } else if (result && typeof result === \"string\") {\n    audioPath = result;\n    console.log(\"[process-tts-results] String result:\", audioPath);\n  }\n\n  // If no duration from object, use ffprobe to get it from file\n  if (durationMs <= 0 && audioPath) {\n    console.log(\"[process-tts-results] Getting duration via ffprobe for:\", audioPath);\n    durationMs = await Audio.getAudioDuration(audioPath);\n    console.log(\"[process-tts-results] Duration from ffprobe:\", durationMs, \"ms\");\n  }\n\n  // Fallback if duration detection failed\n  if (durationMs <= 0) {\n    console.log(\"[process-tts-results] Duration detection failed, using fallback 5000ms\");\n    durationMs = 5000;\n  }\n\n  let ttsDurationSec = durationMs / 1000;\n  ttsDurations.push(ttsDurationSec);\n\n  // Calculate frame count: duration * fps (25fps for video)\n  let frameCount = Math.ceil(ttsDurationSec * fps);\n  // Clamp frame count to reasonable range\n  if (frameCount < 72) frameCount = 72;\n  if (frameCount > 300) frameCount = 300;\n\n  console.log(\"[process-tts-results] Scene\", i, \": duration=\", ttsDurationSec, \"s, frames=\", frameCount);\n\n  let isLastScene = (i === numScenes - 1);\n  let targetDuration = ttsDurationSec;\n  if (isLastScene) {\n    targetDuration = targetDuration + endPaddingSeconds;\n  }\n\n  sceneDurations.push(targetDuration);\n  sceneFrameCounts.push(frameCount);\n  totalDuration = totalDuration + targetDuration;\n}\n\nconsole.log(\"[process-tts-results] Final frame counts:\", sceneFrameCounts);\nworkflow_context[\"ttsResults\"] = ttsResults;\nworkflow_context[\"ttsDurations\"] = ttsDurations;\nworkflow_context[\"sceneDurations\"] = sceneDurations;\nworkflow_context[\"sceneFrameCounts\"] = sceneFrameCounts;\nworkflow_context[\"totalDuration\"] = totalDuration;\n\nreturn sceneFrameCounts;"
+        "code": "// Process TTS results and calculate frame counts per scene\n// Uses Audio.getAudioDuration() to get actual audio duration from files\nlet ttsResults = input;\nlet fps = 25;\nlet sceneDurations = [];\nlet sceneFrameCounts = [];\nlet ttsDurations = [];\nlet totalDuration = 0;\nlet numScenes = ttsResults.length;\nlet endPaddingSeconds = 1;\n\nconsole.log(\"[process-tts-results] TTS results:\", ttsResults);\nconsole.log(\"[process-tts-results] Number of scenes:\", numScenes);\n\nfor (let i = 0; i < numScenes; i = i + 1) {\n  let result = ttsResults[i];\n  let durationMs = 0;\n  let audioPath = null;\n\n  // TTS returns objects like {audio, path, durationMs} or strings\n  if (result && typeof result === \"object\") {\n    // Try to get duration from object first\n    durationMs = result.durationMs || 0;\n    // Get path for fallback duration detection\n    audioPath = result.path || result.audio || null;\n    console.log(\"[process-tts-results] Object result - durationMs:\", durationMs, \"path:\", audioPath);\n  } else if (result && typeof result === \"string\") {\n    audioPath = result;\n    console.log(\"[process-tts-results] String result:\", audioPath);\n  }\n\n  // If no duration from object, use ffprobe to get it from file\n  if (durationMs <= 0 && audioPath) {\n    console.log(\"[process-tts-results] Getting duration via ffprobe for:\", audioPath);\n    durationMs = await Audio.getAudioDuration(audioPath);\n    console.log(\"[process-tts-results] Duration from ffprobe:\", durationMs, \"ms\");\n  }\n\n  // Fallback if duration detection failed\n  if (durationMs <= 0) {\n    console.log(\"[process-tts-results] Duration detection failed, using fallback 5000ms\");\n    durationMs = 5000;\n  }\n\n  let ttsDurationSec = durationMs / 1000;\n  ttsDurations.push(ttsDurationSec);\n\n  // Calculate frame count: duration * fps (25fps for video)\n  let frameCount = Math.ceil(ttsDurationSec * fps);\n  // Clamp frame count to reasonable range\n  if (frameCount < 72) frameCount = 72;\n  if (frameCount > 300) frameCount = 300;\n\n  console.log(\"[process-tts-results] Scene\", i, \": duration=\", ttsDurationSec, \"s, frames=\", frameCount);\n\n  let isLastScene = (i === numScenes - 1);\n  let targetDuration = ttsDurationSec;\n  if (isLastScene) {\n    targetDuration = targetDuration + endPaddingSeconds;\n  }\n\n  sceneDurations.push(targetDuration);\n  sceneFrameCounts.push(frameCount);\n  totalDuration = totalDuration + targetDuration;\n}\n\nconsole.log(\"[process-tts-results] Final frame counts:\", sceneFrameCounts);\nworkflow_context[\"ttsResults\"] = ttsResults;\nworkflow_context[\"ttsDurations\"] = ttsDurations;\nworkflow_context[\"sceneDurations\"] = sceneDurations;\nworkflow_context[\"sceneFrameCounts\"] = sceneFrameCounts;\nworkflow_context[\"totalDuration\"] = totalDuration;\n\nreturn sceneFrameCounts;"
       }
     },
     {
@@ -916,7 +916,7 @@
         "y": 150
       },
       "data": {
-        "code": "// Select final scene image (best approved or last attempt)\nlet finalRetryImage = input;\n\n// Check if already approved earlier\nlet alreadyApproved = workflow_context[\"__scene_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  let approvedImage = workflow_context[\"__scene_\" + loop_index + \"_image\"];\n  console.log(\"[select-final-scene-image] Using previously approved image\");\n  return approvedImage;\n}\n\n// If we get here, validation failed all attempts - use last generated\nconsole.log(\"[select-final-scene-image] No approved image, using last attempt\");\nreturn finalRetryImage;"
+        "code": "// Select final scene image (best approved or last attempt)\nlet finalRetryImage = input;\n\n// Check if already approved earlier\nlet alreadyApproved = workflow_context[\"__scene_\" + loop_index + \"_approved\"];\nif (alreadyApproved) {\n  let approvedImage = workflow_context[\"__scene_\" + loop_index + \"_image\"];\n  console.log(\"[select-final-scene-image] Using approved image, type:\", typeof approvedImage);\n  if (typeof approvedImage === \"string\") {\n    console.log(\"[select-final-scene-image] preview:\", approvedImage.substring(0, 120));\n  } else {\n    console.log(\"[select-final-scene-image] preview:\", JSON.stringify(approvedImage).substring(0, 200));\n  }\n  return approvedImage;\n}\n\n// If we get here, validation failed all attempts - use last generated\nconsole.log(\"[select-final-scene-image] No approved image, using last attempt, type:\", typeof finalRetryImage);\nreturn finalRetryImage;"
       }
     },
     {
@@ -927,7 +927,7 @@
         "y": 150
       },
       "data": {
-        "code": "// Pass through the generated scene image\nlet sceneImage = input;\nconsole.log(\"[store-chain-end] Scene image generated\");\nreturn sceneImage;"
+        "code": "// Pass through the generated scene image\nlet sceneImage = input;\nconsole.log(\"[store-chain-end] Scene image type:\", typeof sceneImage);\nif (typeof sceneImage === \"string\") {\n  console.log(\"[store-chain-end] preview:\", sceneImage.substring(0, 120));\n} else {\n  console.log(\"[store-chain-end] preview:\", JSON.stringify(sceneImage).substring(0, 200));\n}\nreturn sceneImage;"
       }
     },
     {
@@ -938,7 +938,7 @@
         "y": 100
       },
       "data": {
-        "code": "// Each scene uses its own generated image for video (no chaining)\n// Character references and style are applied during image generation\nlet sceneImage = input;\n\nconsole.log(\"[combine-image-pair] === SCENE IMAGE ===\");\nconsole.log(\"[combine-image-pair] loop_index:\", loop_index);\nconsole.log(\"[combine-image-pair] Using scene's own generated image\");\nif (typeof sceneImage === \"string\") {\n  console.log(\"[combine-image-pair] image preview:\", sceneImage.substring(0, 80));\n}\n\n// Return pair with same image for both (startImage used by extract-scene-image)\nlet pair = { startImage: sceneImage, endImage: sceneImage };\nreturn pair;"
+        "code": "// Each scene uses its own generated image for video (no chaining)\nlet sceneImage = input;\n\nconsole.log(\"[combine-image-pair] === SCENE IMAGE ===\");\nconsole.log(\"[combine-image-pair] loop_index:\", loop_index);\nconsole.log(\"[combine-image-pair] input type:\", typeof sceneImage);\nif (typeof sceneImage === \"string\") {\n  console.log(\"[combine-image-pair] image preview:\", sceneImage.substring(0, 120));\n} else if (sceneImage && typeof sceneImage === \"object\") {\n  let keys = [];\n  for (let k in sceneImage) { keys.push(k); }\n  console.log(\"[combine-image-pair] object keys:\", keys.join(\", \"));\n  console.log(\"[combine-image-pair] object preview:\", JSON.stringify(sceneImage).substring(0, 200));\n} else {\n  console.log(\"[combine-image-pair] value:\", sceneImage);\n}\n\n// Return pair with same image for both (startImage used by extract-scene-image)\nlet pair = { startImage: sceneImage, endImage: sceneImage };\nreturn pair;"
       }
     },
     {
@@ -949,18 +949,6 @@
         "y": 150
       },
       "data": {}
-    },
-    {
-      "id": "free-gpu-memory",
-      "type": "comfyui_free_memory",
-      "position": {
-        "x": 3800,
-        "y": 150
-      },
-      "data": {
-        "unloadModels": true,
-        "freeMemory": true
-      }
     },
     {
       "id": "video-loop-start",
@@ -981,7 +969,7 @@
         "y": 80
       },
       "data": {
-        "code": "// Extract the START image for video generation\n// Scene 0: startImage = endImage (same image)\n// Scene 1+: startImage = chained image from previous scene\nconsole.log(\"[extract-scene-image] === EXTRACT SCENE IMAGE ===\");\nconsole.log(\"[extract-scene-image] Input type:\", typeof input);\nlet pair = input;\nif (typeof pair === \"string\") {\n  console.log(\"[extract-scene-image] Input is string, parsing\");\n  try { pair = JSON.parse(pair); } catch (e) { /* use as-is */ }\n}\nif (pair && typeof pair === \"object\") {\n  let keys = [];\n  for (let k in pair) { keys.push(k); }\n  console.log(\"[extract-scene-image] Pair keys:\", keys.join(\", \"));\n}\nlet result = null;\n// Use startImage - this is what the video starts from\nif (pair && pair.startImage) {\n  result = pair.startImage;\n  console.log(\"[extract-scene-image] Using startImage for video\");\n  if (typeof result === \"string\") {\n    console.log(\"[extract-scene-image] startImage preview:\", result.substring(0, 100));\n  }\n} else if (pair && pair.endImage) {\n  result = pair.endImage;\n  console.log(\"[extract-scene-image] Fallback to endImage\");\n} else {\n  console.log(\"[extract-scene-image] No image found, using pair as-is\");\n  result = pair;\n}\nreturn result;"
+        "code": "// Extract the START image for video generation\nconsole.log(\"[extract-scene-image] === EXTRACT SCENE IMAGE ===\");\nconsole.log(\"[extract-scene-image] Input type:\", typeof input);\nconsole.log(\"[extract-scene-image] Input preview:\", JSON.stringify(input).substring(0, 300));\nlet pair = input;\nif (typeof pair === \"string\") {\n  console.log(\"[extract-scene-image] Input is string, parsing\");\n  try { pair = JSON.parse(pair); } catch (e) { /* use as-is */ }\n}\nif (pair && typeof pair === \"object\") {\n  let keys = [];\n  for (let k in pair) { keys.push(k); }\n  console.log(\"[extract-scene-image] Pair keys:\", keys.join(\", \"));\n}\nlet result = null;\nif (pair && pair.startImage) {\n  result = pair.startImage;\n  console.log(\"[extract-scene-image] Using startImage, type:\", typeof result);\n  if (typeof result === \"string\") {\n    console.log(\"[extract-scene-image] startImage preview:\", result.substring(0, 120));\n  }\n} else if (pair && pair.endImage) {\n  result = pair.endImage;\n  console.log(\"[extract-scene-image] Fallback to endImage\");\n} else {\n  console.log(\"[extract-scene-image] No image found in pair, using pair as-is\");\n  result = pair;\n}\nreturn result;"
       }
     },
     {
@@ -992,7 +980,7 @@
         "y": 220
       },
       "data": {
-        "code": "// Get video prompt using loop index - use result variable pattern\nlet result = null;\nlet scenes = workflow_context[\"scenes\"] || (workflow_context[\"story\"] && workflow_context[\"story\"].scenes);\nconsole.log(\"[get-video-prompt] scenes exists:\", !!scenes, \"scenes length:\", scenes ? scenes.length : 0, \"loop_index:\", loop_index);\n\nlet style = workflow_context[\"__style__\"] || workflow_context[\"normalize-style\"] || workflow_context[\"input-style\"] || \"cinematic, high quality\";\nconsole.log(\"[get-video-prompt] Style:\", style);\n\nif (scenes && scenes[loop_index]) {\n  let scene = scenes[loop_index];\n  console.log(\"[get-video-prompt] Scene\", loop_index, \"title:\", scene.title);\n  let prompt = scene.video_prompt || scene.videoPrompt || scene.motion_prompt || scene.motionPrompt || scene.action || scene.animation;\n  if (prompt) {\n    // Append style if not present\n    if (prompt.toLowerCase().indexOf(style.toLowerCase()) === -1) {\n      prompt = prompt + \", \" + style;\n    }\n    result = prompt;\n    console.log(\"[get-video-prompt] Found prompt:\", result.substring(0, 200));\n  }\n}\n\nif (!result) {\n  result = \"cinematic video, smooth motion, \" + style;\n  console.log(\"[get-video-prompt] FALLBACK\");\n}\n\nreturn result;"
+        "code": "// Get video prompt using loop index - include scene context for meaningful description\nlet result = null;\nlet scenes = workflow_context[\"scenes\"] || (workflow_context[\"story\"] && workflow_context[\"story\"].scenes);\nconsole.log(\"[get-video-prompt] scenes exists:\", !!scenes, \"scenes length:\", scenes ? scenes.length : 0, \"loop_index:\", loop_index);\n\nlet style = workflow_context[\"__style__\"] || workflow_context[\"normalize-style\"] || workflow_context[\"input-style\"] || \"cinematic, high quality\";\nconsole.log(\"[get-video-prompt] Style:\", style);\n\nif (scenes && scenes[loop_index]) {\n  let scene = scenes[loop_index];\n  console.log(\"[get-video-prompt] Scene\", loop_index, \"title:\", scene.title);\n  let prompt = scene.video_prompt || scene.videoPrompt || scene.motion_prompt || scene.motionPrompt || scene.action || scene.animation;\n  if (prompt) {\n    // Prepend scene title and narration for meaningful context\n    let sceneContext = \"\";\n    if (scene.title) sceneContext = sceneContext + \"Scene: \" + scene.title + \". \";\n    if (scene.narration) sceneContext = sceneContext + scene.narration + \" \";\n    prompt = sceneContext + prompt;\n    // Append style if not present\n    if (prompt.toLowerCase().indexOf(style.toLowerCase()) === -1) {\n      prompt = prompt + \", \" + style;\n    }\n    result = prompt;\n    console.log(\"[get-video-prompt] Found prompt:\", result.substring(0, 200));\n  }\n}\n\nif (!result) {\n  result = \"cinematic video, smooth motion, \" + style;\n  console.log(\"[get-video-prompt] FALLBACK\");\n}\n\nreturn result;"
       }
     },
     {
@@ -1255,7 +1243,7 @@
         "y": 350
       },
       "data": {
-        "code": "// Create music prompt from story\nlet story = workflow_context[\"story\"];\nlet title = \"a video\";\nlet mood = \"cinematic\";\nif (story) {\n  if (story.title) title = story.title;\n  if (story.mood) mood = story.mood;\n}\nreturn \"background music for \" + title + \", \" + mood + \", orchestral, instrumental, no vocals\";"
+        "code": "// Create music prompt from story with scene context\nlet story = workflow_context[\"story\"];\nlet title = \"a video\";\nlet mood = \"cinematic\";\nlet sceneDescriptions = \"\";\nif (story) {\n  if (story.title) title = story.title;\n  if (story.mood) mood = story.mood;\n  // Add scene context for better music matching\n  let scenes = story.scenes || workflow_context[\"scenes\"];\n  if (scenes && scenes.length > 0) {\n    let descs = [];\n    for (let i = 0; i < scenes.length; i = i + 1) {\n      if (scenes[i].title) descs.push(scenes[i].title);\n    }\n    if (descs.length > 0) sceneDescriptions = \". Scenes: \" + descs.join(\", \");\n  }\n}\nreturn mood + \" background music for \\\"\" + title + \"\\\"\" + sceneDescriptions + \". Orchestral, instrumental, cinematic soundtrack, no vocals, no lyrics\";"
       }
     },
     {
@@ -1266,7 +1254,7 @@
         "y": 450
       },
       "data": {
-        "code": "// Get total video duration for music generation\nlet totalDuration = workflow_context[\"totalDuration\"];\n\nif (totalDuration && totalDuration > 0) {\n  let musicDuration = Math.ceil(totalDuration) + 5;\n  if (musicDuration < 10) musicDuration = 10;\n  if (musicDuration > 240) musicDuration = 240;\n  return musicDuration;\n}\n\nreturn 60;"
+        "code": "// Get total video duration for music generation\nlet totalDuration = workflow_context[\"totalDuration\"];\n\nif (totalDuration && totalDuration > 0) {\n  let musicDuration = Math.ceil(totalDuration) + 1;\n  if (musicDuration < 10) musicDuration = 10;\n  if (musicDuration > 240) musicDuration = 240;\n  return musicDuration;\n}\n\nreturn 60;"
       }
     },
     {
@@ -2115,17 +2103,10 @@
     },
     {
       "source": "image-loop-end",
-      "target": "free-gpu-memory",
-      "sourceHandle": "results",
-      "targetHandle": "input",
-      "id": "e-imgloopend-free"
-    },
-    {
-      "source": "free-gpu-memory",
       "target": "video-loop-start",
+      "sourceHandle": "results",
       "targetHandle": "array",
-      "id": "e-free-vidloop",
-      "sourceHandle": "default"
+      "id": "e-imgloopend-vidloop"
     },
     {
       "source": "video-loop-start",

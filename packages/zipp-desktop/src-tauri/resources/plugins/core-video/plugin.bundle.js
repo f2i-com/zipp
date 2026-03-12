@@ -1909,6 +1909,11 @@ var __PLUGIN_EXPORTS__ = (() => {
           const durationVar = inputs.get("duration");
           let code3 = `
   // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
+          if (imageVar !== "null") {
+            code3 += `
+  console.log("[VideoGen Compiler Debug] imageVar (${imageVar}) type:", typeof ${imageVar});
+  console.log("[VideoGen Compiler Debug] imageVar value:", JSON.stringify(${imageVar}).substring(0, 500));`;
+          }
           code3 += `
   ${letOrAssign}${outputVar} = await VideoFrames.generateVideoWan2GP(
     "${endpoint2}",

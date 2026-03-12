@@ -177,7 +177,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       return ["loop_start", "loop_end", "condition", "output", "subflow", "macro_input", "macro_output", "macro"];
     },
     compileNode(nodeType, ctx2) {
-      const { node, inputs, outputVar, sanitizedId, skipVarDeclaration, escapeString, debugEnabled } = ctx2;
+      const { node, inputs, outputVar, sanitizedId, skipVarDeclaration, escapeString, debugEnabled, isInLoop, loopStartId, sanitizeId } = ctx2;
       const data = node.data;
       const letOrAssign = skipVarDeclaration ? "" : "let ";
       const debug = debugEnabled ?? false;
@@ -199,9 +199,15 @@ var __PLUGIN_EXPORTS__ = (() => {
           const conditionField = escapeString(String(data.conditionField || ""));
           if (data.expression && typeof data.expression === "string") {
             const expr = data.expression;
+            let loopIndexDecl = "";
+            if (isInLoop && loopStartId && sanitizeId) {
+              const sanitizedLoopId = sanitizeId(loopStartId);
+              loopIndexDecl = `
+  let loop_index = _i_${sanitizedLoopId};`;
+            }
             code += `
   // Condition evaluation (expression mode)
-  let _cond_val_${sanitizedId} = ${inputVar};
+  let _cond_val_${sanitizedId} = ${inputVar};${loopIndexDecl}
   let _cond_result_${sanitizedId} = false;
   try {
     _cond_result_${sanitizedId} = !!(${expr});

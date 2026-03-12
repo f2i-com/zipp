@@ -235,6 +235,12 @@ const CoreVideoCompiler: ModuleCompiler = {
 
         let code = `
   // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
+        // Debug: log the image variable value before calling generateVideoWan2GP
+        if (imageVar !== 'null') {
+          code += `
+  console.log("[VideoGen Compiler Debug] imageVar (${imageVar}) type:", typeof ${imageVar});
+  console.log("[VideoGen Compiler Debug] imageVar value:", JSON.stringify(${imageVar}).substring(0, 500));`;
+        }
         code += `
   ${letOrAssign}${outputVar} = await VideoFrames.generateVideoWan2GP(
     "${endpoint}",

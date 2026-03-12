@@ -529,7 +529,10 @@ var __PLUGIN_EXPORTS__ = (() => {
           const asyncPrefix = hasAwait ? "async " : "";
           const awaitPrefix = hasAwait ? "await " : "";
           if (hasReturn && hasAwait) {
-            const transformedCode = userCode.replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`).replace(/\breturn\s*;/g, "break;");
+            const transformedCode = userCode.split("\n").map((ln) => {
+              if (ln.trimStart().startsWith("//")) return ln;
+              return ln.replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`).replace(/\breturn\s*;/g, "break;");
+            }).join("\n");
             code += `
   // Logic block: inline with await + return (do/while pattern)
   let context = workflow_context;`;
@@ -553,12 +556,33 @@ var __PLUGIN_EXPORTS__ = (() => {
   } while (false);
   workflow_context["${node.id}"] = ${outputVar};`;
           } else if (hasReturn) {
+            const transformedCode = userCode.split("\n").map((ln) => {
+              if (ln.trimStart().startsWith("//")) return ln;
+              return ln.replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`).replace(/\breturn\s*;/g, "break;");
+            }).join("\n");
             code += `
-  // Logic block: wrapped in IIFE for proper return behavior
-  let context = workflow_context;
-  ${letOrAssign}${outputVar} = (function(${iifeParams.join(", ")}) {${namedInputsSetup}
-    ${userCode}
-  })(${iifeArgs.join(", ")});
+  // Logic block: inline with return (do/while pattern)
+  console.log("[LogicBlock Debug] (${node.id}) inputVar=${inputVar}, type:", typeof ${inputVar}, "preview:", JSON.stringify(${inputVar}).substring(0, 300));
+  let context = workflow_context;`;
+            code += `
+  let input = ${inputVar};`;
+            for (const [handleId, sourceVar] of inputs) {
+              if (handleId !== "default" && handleId !== "input") {
+                code += `
+  let ${handleId} = ${sourceVar};`;
+              }
+            }
+            if (isInLoop && loopStartId) {
+              const sanitizedLoopId = sanitizeId(loopStartId);
+              code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+            }
+            code += `
+  ${letOrAssign}${outputVar} = null;
+  do {
+    ${transformedCode}
+  } while (false);
+  console.log("[LogicBlock Debug] (${node.id}) outputVar=${outputVar}, type:", typeof ${outputVar}, "preview:", JSON.stringify(${outputVar}).substring(0, 300));
   workflow_context["${node.id}"] = ${outputVar};`;
           } else {
             const isSingleExpression = !userCode.includes(";") && !userCode.includes("\n");
@@ -603,12 +627,23 @@ var __PLUGIN_EXPORTS__ = (() => {
   workflow_context["${node.id}"] = ${outputVar};`;
             } else {
               code += `
-  // Logic block: multi-statement (no return)
+  // Logic block: multi-statement (no return, inline)
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = (function(${iifeParams.join(", ")}) {${namedInputsSetup}
-    ${userCode};
-    return null;
-  })(${iifeArgs.join(", ")});
+  let input = ${inputVar};`;
+              for (const [handleId, sourceVar] of inputs) {
+                if (handleId !== "default" && handleId !== "input") {
+                  code += `
+  let ${handleId} = ${sourceVar};`;
+                }
+              }
+              if (isInLoop && loopStartId) {
+                const sanitizedLoopId = sanitizeId(loopStartId);
+                code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+              }
+              code += `
+  ${userCode};
+  ${letOrAssign}${outputVar} = null;
   workflow_context["${node.id}"] = ${outputVar};`;
             }
           }

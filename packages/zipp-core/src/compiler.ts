@@ -812,7 +812,8 @@ workflow_context;
     }
 
     let ${loopItemVar} = ${loopArrayVar}[${loopVar}];
-    console.log("[Loop] iteration: " + (${loopVar} + 1) + " of " + ${loopCountVar});
+    console.log("[Loop] (${startNode.id}) iteration: " + (${loopVar} + 1) + " of " + ${loopCountVar});
+    console.log("[Loop] (${startNode.id}) item type: " + typeof ${loopItemVar} + ", preview: " + JSON.stringify(${loopItemVar}).substring(0, 300));
 
     // Current item, index, and history available to inner nodes
     ${itemOutputVar} = ${loopItemVar};
@@ -1006,7 +1007,8 @@ workflow_context;
   // --- Loop End: ${endNode.id} ---
   workflow_context["${startNode.id}"] = ${loopCountVar};
   workflow_context["${endNode.id}"] = ${resultsVar};
-  console.log("[Loop] completed with " + ${resultsVar}.length + " results" + (${loopDoneVar} ? " (stop condition met)" : ""));
+  console.log("[Loop] (${startNode.id}) completed with " + ${resultsVar}.length + " results" + (${loopDoneVar} ? " (stop condition met)" : ""));
+  console.log("[Loop] (${startNode.id}) results preview: " + JSON.stringify(${resultsVar}).substring(0, 500));
 `;
     }
 

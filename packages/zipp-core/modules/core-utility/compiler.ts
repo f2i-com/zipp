@@ -221,9 +221,13 @@ const CoreUtilityCompiler: ModuleCompiler = {
           // Logic block with both return and await: inline the code using do/while(false) + break
           // Can't use async IIFE because the runtime's await→yield replacement breaks nested functions.
           // Transform "return X;" into "outputVar = (X); break;" for early-return support.
-          const transformedCode = userCode
-            .replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`)
-            .replace(/\breturn\s*;/g, 'break;');
+          // Process line-by-line to skip comment lines (avoid transforming "return" inside comments).
+          const transformedCode = userCode.split('\n').map((ln: string) => {
+            if (ln.trimStart().startsWith('//')) return ln;
+            return ln
+              .replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`)
+              .replace(/\breturn\s*;/g, 'break;');
+          }).join('\n');
 
           code += `
   // Logic block: inline with await + return (do/while pattern)
@@ -249,14 +253,41 @@ const CoreUtilityCompiler: ModuleCompiler = {
   } while (false);
   workflow_context["${node.id}"] = ${outputVar};`;
         } else if (hasReturn) {
-          // Wrap in immediately-invoked function expression (IIFE) so return statements work properly
-          // Pass all variables as IIFE parameters to avoid FormLogic closure capture issues
+          // Logic block with return but no await: inline using do/while(false) + break
+          // Avoids IIFE to prevent FormLogic closure capture issues with parameter passing.
+          // Transform "return X;" into "outputVar = (X); break;" for early-return support.
+          // Process line-by-line to skip comment lines (avoid transforming "return" inside comments).
+          const transformedCode = userCode.split('\n').map((ln: string) => {
+            if (ln.trimStart().startsWith('//')) return ln;
+            return ln
+              .replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`)
+              .replace(/\breturn\s*;/g, 'break;');
+          }).join('\n');
+
           code += `
-  // Logic block: wrapped in IIFE for proper return behavior
-  let context = workflow_context;
-  ${letOrAssign}${outputVar} = (function(${iifeParams.join(', ')}) {${namedInputsSetup}
-    ${userCode}
-  })(${iifeArgs.join(', ')});
+  // Logic block: inline with return (do/while pattern)
+  console.log("[LogicBlock Debug] (${node.id}) inputVar=${inputVar}, type:", typeof ${inputVar}, "preview:", JSON.stringify(${inputVar}).substring(0, 300));
+  let context = workflow_context;`;
+          // Set up named inputs inline
+          code += `
+  let input = ${inputVar};`;
+          for (const [handleId, sourceVar] of inputs) {
+            if (handleId !== 'default' && handleId !== 'input') {
+              code += `
+  let ${handleId} = ${sourceVar};`;
+            }
+          }
+          if (isInLoop && loopStartId) {
+            const sanitizedLoopId = sanitizeId(loopStartId);
+            code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+          }
+          code += `
+  ${letOrAssign}${outputVar} = null;
+  do {
+    ${transformedCode}
+  } while (false);
+  console.log("[LogicBlock Debug] (${node.id}) outputVar=${outputVar}, type:", typeof ${outputVar}, "preview:", JSON.stringify(${outputVar}).substring(0, 300));
   workflow_context["${node.id}"] = ${outputVar};`;
         } else {
           // No return statements - simple inline execution
@@ -307,14 +338,26 @@ const CoreUtilityCompiler: ModuleCompiler = {
   ${letOrAssign}${outputVar} = null;
   workflow_context["${node.id}"] = ${outputVar};`;
           } else {
-            // Multi-statement code without return or await - wrap in IIFE with parameters
+            // Multi-statement code without return or await - inline directly
+            // Avoids IIFE to prevent FormLogic closure capture issues with parameter passing.
             code += `
-  // Logic block: multi-statement (no return)
+  // Logic block: multi-statement (no return, inline)
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = (function(${iifeParams.join(', ')}) {${namedInputsSetup}
-    ${userCode};
-    return null;
-  })(${iifeArgs.join(', ')});
+  let input = ${inputVar};`;
+            for (const [handleId, sourceVar] of inputs) {
+              if (handleId !== 'default' && handleId !== 'input') {
+                code += `
+  let ${handleId} = ${sourceVar};`;
+              }
+            }
+            if (isInLoop && loopStartId) {
+              const sanitizedLoopId = sanitizeId(loopStartId);
+              code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+            }
+            code += `
+  ${userCode};
+  ${letOrAssign}${outputVar} = null;
   workflow_context["${node.id}"] = ${outputVar};`;
           }
         }

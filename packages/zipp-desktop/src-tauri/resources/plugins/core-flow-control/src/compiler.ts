@@ -26,7 +26,7 @@ const CoreFlowControlCompiler: ModuleCompiler = {
   },
 
   compileNode(nodeType: string, ctx: ModuleCompilerContext): string | null {
-    const { node, inputs, outputVar, sanitizedId, skipVarDeclaration, escapeString, debugEnabled } = ctx;
+    const { node, inputs, outputVar, sanitizedId, skipVarDeclaration, escapeString, debugEnabled, isInLoop, loopStartId, sanitizeId } = ctx;
     const data = node.data;
     const letOrAssign = skipVarDeclaration ? '' : 'let ';
     const debug = debugEnabled ?? false;
@@ -60,9 +60,15 @@ const CoreFlowControlCompiler: ModuleCompiler = {
         // Check for expression mode first - allows direct JS expression evaluation
         if (data.expression && typeof data.expression === 'string') {
           const expr = data.expression;
+          // Expose loop_index when condition is inside a loop (matches logic_block behavior)
+          let loopIndexDecl = '';
+          if (isInLoop && loopStartId && sanitizeId) {
+            const sanitizedLoopId = sanitizeId(loopStartId);
+            loopIndexDecl = `\n  let loop_index = _i_${sanitizedLoopId};`;
+          }
           code += `
   // Condition evaluation (expression mode)
-  let _cond_val_${sanitizedId} = ${inputVar};
+  let _cond_val_${sanitizedId} = ${inputVar};${loopIndexDecl}
   let _cond_result_${sanitizedId} = false;
   try {
     _cond_result_${sanitizedId} = !!(${expr});
