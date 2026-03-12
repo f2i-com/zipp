@@ -160,7 +160,8 @@
         "maxTokens": 800,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {

@@ -6,7 +6,7 @@
     "video",
     "music",
     "ai",
-    "heartmula",
+    "ace-step",
     "lyrics",
     "animation",
     "complete"
@@ -82,7 +82,8 @@
         "maxImageDimension": 512,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {
@@ -169,7 +170,8 @@
         "maxTokens": 0,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {
@@ -191,14 +193,12 @@
         "y": 100
       },
       "data": {
-        "service": "heartmula",
-        "apiUrl": "http://127.0.0.1:8767/generate",
+        "apiUrl": "http://127.0.0.1:8766/generate",
         "duration": 240,
-        "temperature": 1.0,
-        "topk": 50,
-        "cfgScale": 1.5,
         "seed": -1,
-        "filename": "music_video_song"
+        "filename": "music_video_song",
+        "inferSteps": 27,
+        "guidanceScale": 15
       }
     },
     {
@@ -283,7 +283,8 @@
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {
@@ -488,7 +489,8 @@
         "maxTokens": 0,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {
@@ -570,7 +572,8 @@
         "maxImageDimension": 512,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
-        "requestFormat": "openai"
+        "provider": "huggingface",
+        "format": "openai"
       }
     },
     {
