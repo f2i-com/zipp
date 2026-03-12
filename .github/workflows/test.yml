@@ -50,9 +50,12 @@ jobs:
         run: mklink /J "${{ github.workspace }}\..\formlogic-rust" "${{ github.workspace }}\formlogic-rust"
 
       - name: Install wasm-bindgen-cli
-        uses: jetli/wasm-bindgen-action@v0.2.0
-        with:
-          version: 'latest'
+        shell: bash
+        working-directory: formlogic-rust
+        run: |
+          WB_VER=$(grep -A1 'name = "wasm-bindgen"' Cargo.lock | grep 'version' | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Installing wasm-bindgen-cli@$WB_VER (from Cargo.lock)"
+          cargo install wasm-bindgen-cli --version "$WB_VER"
 
       - name: Build formlogic-rust WASM
         shell: bash
@@ -120,9 +123,12 @@ jobs:
         run: mklink /J "${{ github.workspace }}\..\formlogic-rust" "${{ github.workspace }}\formlogic-rust"
 
       - name: Install wasm-bindgen-cli
-        uses: jetli/wasm-bindgen-action@v0.2.0
-        with:
-          version: 'latest'
+        shell: bash
+        working-directory: formlogic-rust
+        run: |
+          WB_VER=$(grep -A1 'name = "wasm-bindgen"' Cargo.lock | grep 'version' | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Installing wasm-bindgen-cli@$WB_VER (from Cargo.lock)"
+          cargo install wasm-bindgen-cli --version "$WB_VER"
 
       - name: Build formlogic-rust WASM
         shell: bash
