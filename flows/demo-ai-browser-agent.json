@@ -17,7 +17,10 @@
     {
       "id": "input-url",
       "type": "input_text",
-      "position": { "x": 50, "y": 150 },
+      "position": {
+        "x": 50,
+        "y": 150
+      },
       "data": {
         "value": "https://news.ycombinator.com",
         "label": "start_url"
@@ -26,7 +29,10 @@
     {
       "id": "input-goal",
       "type": "input_text",
-      "position": { "x": 50, "y": 300 },
+      "position": {
+        "x": 50,
+        "y": 300
+      },
       "data": {
         "value": "Find the top 3 news headlines on this page and return them as a list",
         "label": "agent_goal"
@@ -35,7 +41,10 @@
     {
       "id": "browser-session",
       "type": "browser_session",
-      "position": { "x": 300, "y": 150 },
+      "position": {
+        "x": 300,
+        "y": 150
+      },
       "data": {
         "userAgent": "chrome",
         "sessionMode": "webview"
@@ -44,7 +53,10 @@
     {
       "id": "initial-navigate",
       "type": "browser_control",
-      "position": { "x": 550, "y": 200 },
+      "position": {
+        "x": 550,
+        "y": 200
+      },
       "data": {
         "action": "goto",
         "selector": "",
@@ -54,7 +66,10 @@
     {
       "id": "init-history",
       "type": "memory",
-      "position": { "x": 550, "y": 400 },
+      "position": {
+        "x": 550,
+        "y": 400
+      },
       "data": {
         "key": "agent_history",
         "mode": "write",
@@ -64,7 +79,10 @@
     {
       "id": "loop-start",
       "type": "loop_start",
-      "position": { "x": 850, "y": 250 },
+      "position": {
+        "x": 850,
+        "y": 250
+      },
       "data": {
         "loopMode": "count",
         "iterations": 10
@@ -73,7 +91,10 @@
     {
       "id": "get-page-html",
       "type": "browser_control",
-      "position": { "x": 1100, "y": 150 },
+      "position": {
+        "x": 1100,
+        "y": 150
+      },
       "data": {
         "action": "get_html",
         "selector": "",
@@ -83,7 +104,10 @@
     {
       "id": "read-history",
       "type": "memory",
-      "position": { "x": 1100, "y": 350 },
+      "position": {
+        "x": 1100,
+        "y": 350
+      },
       "data": {
         "key": "agent_history",
         "mode": "read",
@@ -93,7 +117,10 @@
     {
       "id": "extract-text",
       "type": "browser_extract",
-      "position": { "x": 1350, "y": 150 },
+      "position": {
+        "x": 1350,
+        "y": 150
+      },
       "data": {
         "extractionType": "css_selector",
         "selector": "body",
@@ -105,27 +132,44 @@
     {
       "id": "ai-prompt",
       "type": "template",
-      "position": { "x": 1600, "y": 100 },
+      "position": {
+        "x": 1600,
+        "y": 100
+      },
       "data": {
         "inputCount": 4,
-        "inputNames": ["goal", "page_content", "iteration", "history"],
+        "inputNames": [
+          "goal",
+          "page_content",
+          "iteration",
+          "history"
+        ],
         "template": "You are a web browsing agent. Navigate and interact with the website to accomplish your goal.\n\n## GOAL\n{{goal}}\n\n## CURRENT PAGE (text content)\n{{page_content}}\n\n## ITERATION\n{{iteration}}\n\n## PREVIOUS ACTIONS\n{{history}}\n\n## AVAILABLE ACTIONS\n- click: Click element (provide CSS selector)\n- type: Type into field (selector + value)\n- scroll: Scroll page (value: \"down\", \"up\")\n- goto: Navigate to URL (selector = URL)\n- done: Task complete (result = your answer)\n\nRespond with JSON only:\n{\"thinking\": \"...\", \"action\": \"click|type|scroll|goto|done\", \"selector\": \"...\", \"value\": \"...\", \"result\": \"...\"}"
       }
     },
     {
       "id": "ai-decide",
       "type": "ai_llm",
-      "position": { "x": 1950, "y": 200 },
+      "position": {
+        "x": 1950,
+        "y": 200
+      },
       "data": {
         "systemPrompt": "You are a precise web automation agent. Respond with valid JSON only, no markdown.",
         "temperature": 0.2,
-        "maxTokens": 800
+        "maxTokens": 800,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
       "id": "parse-response",
       "type": "logic_block",
-      "position": { "x": 2250, "y": 200 },
+      "position": {
+        "x": 2250,
+        "y": 200
+      },
       "data": {
         "code": "JSON.parse(input)"
       }
@@ -133,7 +177,10 @@
     {
       "id": "extract-isdone",
       "type": "logic_block",
-      "position": { "x": 2500, "y": 200 },
+      "position": {
+        "x": 2500,
+        "y": 200
+      },
       "data": {
         "code": "input.action == \"done\" ? \"true\" : \"false\""
       }
@@ -141,7 +188,10 @@
     {
       "id": "check-done",
       "type": "condition",
-      "position": { "x": 2700, "y": 200 },
+      "position": {
+        "x": 2700,
+        "y": 200
+      },
       "data": {
         "operator": "equals",
         "compareValue": "true"
@@ -150,7 +200,10 @@
     {
       "id": "extract-action",
       "type": "logic_block",
-      "position": { "x": 2900, "y": 350 },
+      "position": {
+        "x": 2900,
+        "y": 350
+      },
       "data": {
         "code": "input.action"
       }
@@ -158,7 +211,10 @@
     {
       "id": "extract-selector",
       "type": "logic_block",
-      "position": { "x": 2900, "y": 480 },
+      "position": {
+        "x": 2900,
+        "y": 480
+      },
       "data": {
         "code": "input.selector"
       }
@@ -166,7 +222,10 @@
     {
       "id": "extract-value",
       "type": "logic_block",
-      "position": { "x": 2900, "y": 610 },
+      "position": {
+        "x": 2900,
+        "y": 610
+      },
       "data": {
         "code": "input.value"
       }
@@ -174,7 +233,10 @@
     {
       "id": "execute-action",
       "type": "browser_control",
-      "position": { "x": 3150, "y": 450 },
+      "position": {
+        "x": 3150,
+        "y": 450
+      },
       "data": {
         "action": "click",
         "timeout": 15000
@@ -183,7 +245,10 @@
     {
       "id": "update-history",
       "type": "logic_block",
-      "position": { "x": 3400, "y": 350 },
+      "position": {
+        "x": 3400,
+        "y": 350
+      },
       "data": {
         "code": "input.parsed.action + \" on \" + input.parsed.selector"
       }
@@ -191,7 +256,10 @@
     {
       "id": "save-history",
       "type": "memory",
-      "position": { "x": 3650, "y": 350 },
+      "position": {
+        "x": 3650,
+        "y": 350
+      },
       "data": {
         "key": "agent_history",
         "mode": "write"
@@ -200,7 +268,10 @@
     {
       "id": "loop-end",
       "type": "loop_end",
-      "position": { "x": 3900, "y": 350 },
+      "position": {
+        "x": 3900,
+        "y": 350
+      },
       "data": {
         "stopCondition": "none"
       }
@@ -208,7 +279,10 @@
     {
       "id": "extract-result",
       "type": "logic_block",
-      "position": { "x": 2900, "y": 50 },
+      "position": {
+        "x": 2900,
+        "y": 50
+      },
       "data": {
         "code": "input.result || \"Task completed\""
       }
@@ -216,7 +290,10 @@
     {
       "id": "output-result",
       "type": "output",
-      "position": { "x": 4100, "y": 100 },
+      "position": {
+        "x": 4100,
+        "y": 100
+      },
       "data": {
         "label": "agent_result"
       }

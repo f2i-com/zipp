@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "id": "flow-comfyui-gen",
-  "name": "ComfyUI Generator",
-  "description": "Simple image generation with ComfyUI - load your own workflow from ComfyUI",
+  "name": "Image Generator",
+  "description": "Generate images from text prompts using Wan2GP (Qwen Edit)",
   "tags": [
     "utility",
     "image",
@@ -30,8 +30,16 @@
         "y": 50
       },
       "data": {
-        "apiFormat": "comfyui",
-        "endpoint": "http://localhost:8188"
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1024x1024",
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
+        "comfySeedMode": "random",
+        "comfyAllImageNodeIds": []
       }
     },
     {

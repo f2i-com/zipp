@@ -126,7 +126,10 @@
         "systemPrompt": "You are a visual story creator. Create stories with distinct, visually interesting characters. Each character must have a unique, detailed appearance. Output valid JSON only.",
         "imageInputCount": 1,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -235,12 +238,16 @@
         "quality": "high",
         "imageInputCount": 1,
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Optional Input Image"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image", "label": "Reference Image", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1024x1024"
       }
     },
     {
@@ -253,7 +260,9 @@
       "data": {
         "template": "Rate this character image. Be LENIENT - only reject for OBVIOUS defects.\n\nCHARACTER PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms or legs obviously shown\n- Severely distorted face (missing eyes, melted)\n- Major quality issues\n\nArtistic style variations are OK. When in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
         "inputCount": 1,
-        "inputNames": ["prompt"]
+        "inputNames": [
+          "prompt"
+        ]
       }
     },
     {
@@ -269,7 +278,10 @@
         "maxTokens": 300,
         "imageInputCount": 2,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -307,12 +319,16 @@
         "quality": "high",
         "imageInputCount": 2,
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated hands, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Image to Edit"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Style Reference"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO - Retry 1",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Image to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Style Reference", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1024x1024"
       }
     },
     {
@@ -358,7 +374,9 @@
       "data": {
         "template": "Rate this character image. Be LENIENT - only reject for OBVIOUS defects.\n\nCHARACTER PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms or legs obviously shown\n- Severely distorted face\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
         "inputCount": 1,
-        "inputNames": ["prompt"]
+        "inputNames": [
+          "prompt"
+        ]
       }
     },
     {
@@ -374,7 +392,10 @@
         "maxTokens": 300,
         "imageInputCount": 2,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -412,12 +433,16 @@
         "quality": "high",
         "imageInputCount": 2,
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated hands, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Image to Edit"}},"9":{"inputs":{"width":1024,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Style Reference"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO - Retry 2",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Image to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Style Reference", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8", "12"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1024x1024"
       }
     },
     {
@@ -575,7 +600,7 @@
         "code": "// Get SECOND character image for scene generation (if present)\nlet scene = input;\nlet referenceImage = null;\n\n// Check if scene has characters present\nlet charactersPresent = null;\nif (scene && typeof scene === \"object\") {\n  charactersPresent = scene.charactersPresent || scene.characters_present || scene[\"charactersPresent\"];\n}\n\nconsole.log(\"[get-char-image-2] Characters present:\", charactersPresent ? JSON.stringify(charactersPresent) : \"none\");\n\n// Get SECOND character image (if 2 characters in scene)\nif (charactersPresent && Array.isArray(charactersPresent) && charactersPresent.length > 1) {\n  let charImages = workflow_context[\"characterImages\"];\n  if (charImages) {\n    let charName = charactersPresent[1];\n    if (charImages[charName]) {\n      console.log(\"[get-char-image-2] Using character 2 image for:\", charName);\n      referenceImage = charImages[charName];\n    }\n  }\n}\n\nif (!referenceImage) {\n  console.log(\"[get-char-image-2] No second character in this scene\");\n}\n\nreturn referenceImage;"
       }
     },
-        {
+    {
       "id": "extract-end-prompt",
       "type": "logic_block",
       "position": {
@@ -597,12 +622,16 @@
         "size": "1792x1024",
         "quality": "high",
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative (leave blank)"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Image"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Image"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Character 1", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 2", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8", "12"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1920x1088"
       }
     },
     {
@@ -615,7 +644,9 @@
       "data": {
         "template": "Rate this scene image. Be LENIENT - only reject for OBVIOUS defects.\n\nSCENE PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms/legs on a character obviously shown\n- Severely distorted faces\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
         "inputCount": 1,
-        "inputNames": ["prompt"]
+        "inputNames": [
+          "prompt"
+        ]
       }
     },
     {
@@ -631,7 +662,10 @@
         "maxTokens": 300,
         "imageInputCount": 3,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -713,12 +747,16 @@
         "quality": "high",
         "imageInputCount": 3,
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0],"image3":["13",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Scene to Edit"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Reference"}},"13":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Reference"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO Scene - Retry 1",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Scene to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 1", "allowBypass": true}, {"nodeId": "13", "inputName": "image", "handleId": "image_2", "label": "Character 2", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8", "12", "13"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1920x1088"
       }
     },
     {
@@ -731,7 +769,9 @@
       "data": {
         "template": "Rate this scene image. Be LENIENT - only reject for OBVIOUS defects.\n\nSCENE PROMPT: {{prompt}}\n\nOnly flag if CLEARLY visible:\n- 3+ arms/legs on a character\n- Severely distorted faces\n- Major quality issues\n\nWhen in doubt, give rating 8+.\n\nReply with JSON:\n{\"rating\": 1-10, \"issues\": \"obvious problems or 'none'\", \"fixPrompt\": \"fix prompt or empty\"}",
         "inputCount": 1,
-        "inputNames": ["prompt"]
+        "inputNames": [
+          "prompt"
+        ]
       }
     },
     {
@@ -747,7 +787,10 @@
         "maxTokens": 300,
         "imageInputCount": 3,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -829,12 +872,16 @@
         "quality": "high",
         "imageInputCount": 3,
         "maxImageDimension": 768,
-        "comfyWorkflow": {"2":{"inputs":{"seed":954710044113178,"steps":8,"cfg":1,"sampler_name":"euler","scheduler":"beta","denoise":1,"model":["11",0],"positive":["3",0],"negative":["4",0],"latent_image":["9",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"3":{"inputs":{"prompt":"","clip":["11",1],"vae":["11",2],"image1":["8",0],"image2":["12",0],"image3":["13",0]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Input Prompt"}},"4":{"inputs":{"prompt":"text, writing, titles, blurry, watermarks, extra limbs, mutated, bad anatomy","clip":["11",1],"vae":["11",2]},"class_type":"TextEncodeQwenImageEditPlus","_meta":{"title":"TextEncodeQwenImageEditPlus Negative"}},"5":{"inputs":{"samples":["2",0],"vae":["11",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"6":{"inputs":{"images":["5",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"8":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Failed Scene to Edit"}},"9":{"inputs":{"width":1792,"height":1024,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Final Image Size"}},"11":{"inputs":{"ckpt_name":"Qwen-Rapid-AIO-SFW-v20.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}},"12":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 1 Reference"}},"13":{"inputs":{"image":""},"class_type":"LoadImage","_meta":{"title":"Character 2 Reference"}}},
-        "comfyWorkflowName": "Qwen Rapid AIO Scene - Retry 2",
-        "comfyPrimaryPromptNodeId": "3",
-        "comfyImageInputConfigs": [{"nodeId": "8", "inputName": "image", "handleId": "image_0", "label": "Failed Scene to Edit", "allowBypass": true}, {"nodeId": "12", "inputName": "image", "handleId": "image_1", "label": "Character 1", "allowBypass": true}, {"nodeId": "13", "inputName": "image", "handleId": "image_2", "label": "Character 2", "allowBypass": true}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["8", "12", "13"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "qwen",
+        "wan2gpSteps": 4,
+        "wan2gpResolution": "1920x1088"
       }
     },
     {
@@ -963,7 +1010,10 @@
         "maxTokens": 500,
         "imageInputCount": 1,
         "imageFormat": "base64_inline",
-        "maxImageDimension": 768
+        "maxImageDimension": 768,
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {
@@ -974,12 +1024,17 @@
         "y": 150
       },
       "data": {
-        "comfyWorkflow": {"75":{"inputs":{"filename_prefix":"video/LTX_2.0_i2v","format":"auto","codec":"auto","video":["92:97",0]},"class_type":"SaveVideo","_meta":{"title":"Save Video"}},"98":{"inputs":{"image":"snow_bike_jump_crew.png"},"class_type":"LoadImage","_meta":{"title":"Load Image"}},"102":{"inputs":{"resize_type":"scale dimensions","resize_type.width":1280,"resize_type.height":720,"resize_type.crop":"center","scale_method":"lanczos","input":["98",0]},"class_type":"ResizeImageMaskNode","_meta":{"title":"Resize Image/Mask"}},"92:8":{"inputs":{"sampler_name":"euler"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:60":{"inputs":{"text_encoder":"gemma_3_12B_it.safetensors","ckpt_name":"ltx-2-19b-distilled-fp8.safetensors","device":"default"},"class_type":"LTXAVTextEncoderLoader","_meta":{"title":"LTXV Audio Text Encoder Loader"}},"92:66":{"inputs":{"sampler_name":"gradient_estimation"},"class_type":"KSamplerSelect","_meta":{"title":"KSamplerSelect"}},"92:73":{"inputs":{"sigmas":"0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:81":{"inputs":{"positive":["92:22",0],"negative":["92:22",1],"latent":["92:80",0]},"class_type":"LTXVCropGuides","_meta":{"title":"LTXVCropGuides"}},"92:82":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:81",0],"negative":["92:81",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:51":{"inputs":{"frames_number":["92:62",0],"frame_rate":25,"batch_size":1,"audio_vae":["92:48",0]},"class_type":"LTXVEmptyLatentAudio","_meta":{"title":"LTXV Empty Latent Audio"}},"92:22":{"inputs":{"frame_rate":25,"positive":["92:3",0],"negative":["92:112",0]},"class_type":"LTXVConditioning","_meta":{"title":"LTXVConditioning"}},"92:89":{"inputs":{"width":["92:105",0],"height":["92:105",1],"batch_size":1,"color":0},"class_type":"EmptyImage","_meta":{"title":"EmptyImage"}},"92:41":{"inputs":{"noise":["92:11",0],"guider":["92:47",0],"sampler":["92:8",0],"sigmas":["92:113",0],"latent_image":["92:56",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:67":{"inputs":{"noise_seed":0},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:97":{"inputs":{"fps":25,"images":["92:95",0],"audio":["92:96",0]},"class_type":"CreateVideo","_meta":{"title":"Create Video"}},"92:80":{"inputs":{"av_latent":["92:41",0]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:95":{"inputs":{"samples":["92:94",0],"vae":["92:1",2]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"92:94":{"inputs":{"av_latent":["92:70",1]},"class_type":"LTXVSeparateAVLatent","_meta":{"title":"LTXVSeparateAVLatent"}},"92:70":{"inputs":{"noise":["92:67",0],"guider":["92:82",0],"sampler":["92:66",0],"sigmas":["92:73",0],"latent_image":["92:83",0]},"class_type":"SamplerCustomAdvanced","_meta":{"title":"SamplerCustomAdvanced"}},"92:96":{"inputs":{"samples":["92:94",1],"audio_vae":["92:48",0]},"class_type":"LTXVAudioVAEDecode","_meta":{"title":"LTXV Audio VAE Decode"}},"92:48":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"LTXVAudioVAELoader","_meta":{"title":"LTXV Audio VAE Loader"}},"92:56":{"inputs":{"video_latent":["92:107",0],"audio_latent":["92:51",0]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:84":{"inputs":{"samples":["92:81",2],"upscale_model":["92:76",0],"vae":["92:1",2]},"class_type":"LTXVLatentUpsampler","_meta":{"title":"spatial"}},"92:90":{"inputs":{"upscale_method":"lanczos","scale_by":0.5,"image":["92:89",0]},"class_type":"ImageScaleBy","_meta":{"title":"Upscale Image By"}},"92:62":{"inputs":{"value":121},"class_type":"PrimitiveInt","_meta":{"title":"Length"}},"92:91":{"inputs":{"image":["92:90",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:105":{"inputs":{"image":["102",0]},"class_type":"GetImageSize","_meta":{"title":"Get Image Size"}},"92:99":{"inputs":{"img_compression":33,"image":["92:106",0]},"class_type":"LTXVPreprocess","_meta":{"title":"LTXVPreprocess"}},"92:43":{"inputs":{"width":["92:91",0],"height":["92:91",1],"length":["92:62",0],"batch_size":1},"class_type":"EmptyLTXVLatentVideo","_meta":{"title":"EmptyLTXVLatentVideo"}},"92:107":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:43",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:83":{"inputs":{"video_latent":["92:108",0],"audio_latent":["92:80",1]},"class_type":"LTXVConcatAVLatent","_meta":{"title":"LTXVConcatAVLatent"}},"92:108":{"inputs":{"strength":1,"bypass":false,"vae":["92:1",2],"image":["92:99",0],"latent":["92:84",0]},"class_type":"LTXVImgToVideoInplace","_meta":{"title":"LTXVImgToVideoInplace"}},"92:3":{"inputs":{"text":"","clip":["92:60",0]},"class_type":"CLIPTextEncode","_meta":{"title":"CLIP Text Encode (Prompt)"}},"92:112":{"inputs":{"conditioning":["92:3",0]},"class_type":"ConditioningZeroOut","_meta":{"title":"ConditioningZeroOut"}},"92:11":{"inputs":{"noise_seed":10},"class_type":"RandomNoise","_meta":{"title":"RandomNoise"}},"92:113":{"inputs":{"sigmas":"1., 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"},"class_type":"ManualSigmas","_meta":{"title":"ManualSigmas"}},"92:47":{"inputs":{"cfg":1,"model":["92:1",0],"positive":["92:22",0],"negative":["92:22",1]},"class_type":"CFGGuider","_meta":{"title":"CFGGuider"}},"92:106":{"inputs":{"longer_edge":1536,"images":["102",0]},"class_type":"ResizeImagesByLongerEdge","_meta":{"title":"Resize Images by Longer Edge"}},"92:76":{"inputs":{"model_name":"ltx-2-spatial-upscaler-x2-1.0.safetensors"},"class_type":"LatentUpscaleModelLoader","_meta":{"title":"Load Latent Upscale Model"}},"92:1":{"inputs":{"ckpt_name":"ltx-2-19b-distilled-fp8.safetensors"},"class_type":"CheckpointLoaderSimple","_meta":{"title":"Load Checkpoint"}}},
-        "comfyWorkflowName": "LTX 2.0 i2v Distilled",
-        "comfyPrimaryPromptNodeId": "92:3",
-        "comfyImageInputConfigs": [{"nodeId": "98", "inputName": "image", "handleId": "image_0", "label": "Start Image"}],
+        "comfyWorkflow": "",
+        "comfyWorkflowName": "",
+        "comfyPrimaryPromptNodeId": "",
+        "comfyImageInputConfigs": [],
         "comfySeedMode": "random",
-        "comfyAllImageNodeIds": ["98"]
+        "comfyAllImageNodeIds": [],
+        "apiFormat": "wan2gp",
+        "wan2gpModel": "ltx2_22B_distilled",
+        "wan2gpSteps": 8,
+        "wan2gpResolution": "1280x720",
+        "wan2gpDuration": 5
       }
     },
     {
@@ -2046,17 +2101,17 @@
       "target": "select-video-path",
       "id": "e-pip-select"
     },
-        {
+    {
       "source": "input-enable-captions",
       "target": "gate-captions-text",
       "id": "e-captions-gate"
     },
-        {
+    {
       "source": "input-enable-captions",
       "target": "get-caption-durations",
       "id": "e-captions-durations"
     },
-        {
+    {
       "source": "select-video-path",
       "target": "video-captions",
       "targetHandle": "video",
@@ -2079,7 +2134,7 @@
       "target": "select-final-video",
       "id": "e-captions-final"
     },
-        {
+    {
       "source": "select-final-video",
       "target": "music-prompt",
       "id": "e-final-musicprompt"

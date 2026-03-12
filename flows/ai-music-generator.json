@@ -66,7 +66,10 @@
         "y": 100
       },
       "data": {
-        "systemPrompt": "You are a music tag generator. Output ONLY comma-separated music tags, nothing else. No explanations."
+        "systemPrompt": "You are a music tag generator. Output ONLY comma-separated music tags, nothing else. No explanations.",
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
+        "model": "Qwen/Qwen3.5-9B",
+        "requestFormat": "openai"
       }
     },
     {

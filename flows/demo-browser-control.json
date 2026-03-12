@@ -99,9 +99,10 @@
         "y": 180
       },
       "data": {
-        "model": "gpt-4o-mini",
+        "model": "Qwen/Qwen3.5-9B",
         "systemPrompt": "You are a helpful assistant that analyzes web page content and provides clear, concise summaries.",
-        "requestFormat": "openai"
+        "requestFormat": "openai",
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions"
       }
     },
     {

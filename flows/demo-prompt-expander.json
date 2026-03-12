@@ -30,9 +30,9 @@
         "y": 100
       },
       "data": {
-        "model": "qwen/qwen3-vl-8b",
+        "model": "Qwen/Qwen3.5-9B",
         "systemPrompt": "You are an expert at writing image generation prompts. Take the user's concept and expand it into a detailed, vivid prompt for an AI image generator. Focus on visual details like lighting, style, composition, colors, and atmosphere. Output ONLY the prompt, no explanations.",
-        "endpoint": "http://localhost:1234/v1/chat/completions",
+        "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "requestFormat": "openai"
       }
     },
