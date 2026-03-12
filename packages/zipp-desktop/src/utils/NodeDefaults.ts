@@ -141,6 +141,7 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
         wan2gpModel: 'ltx2_22B_distilled',
         wan2gpDuration: 5,
         wan2gpSteps: 8,
+        wan2gpResolution: '832x480',
       };
     case 'video_frame_extractor':
       return {

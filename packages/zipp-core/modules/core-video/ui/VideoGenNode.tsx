@@ -21,6 +21,7 @@ interface VideoGenNodeData {
     wan2gpModel?: string;
     wan2gpSteps?: number;
     wan2gpDuration?: number;
+    wan2gpResolution?: string;
     wan2gpVram?: string;
     projectSettings?: ProjectSettings;
     // ComfyUI workflow (loaded from file)
@@ -60,6 +61,7 @@ interface VideoGenNodeData {
     onWan2gpModelChange?: (value: string) => void;
     onWan2gpStepsChange?: (value: number) => void;
     onWan2gpDurationChange?: (value: number) => void;
+    onWan2gpResolutionChange?: (value: string) => void;
     onWan2gpVramChange?: (value: string) => void;
     onCollapsedChange?: (value: boolean) => void;
     onComfyWorkflowChange?: (value: string) => void;
@@ -101,6 +103,7 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
     const onWan2gpModelChangeRef = useRef(data.onWan2gpModelChange);
     const onWan2gpStepsChangeRef = useRef(data.onWan2gpStepsChange);
     const onWan2gpDurationChangeRef = useRef(data.onWan2gpDurationChange);
+    const onWan2gpResolutionChangeRef = useRef(data.onWan2gpResolutionChange);
     const onWan2gpVramChangeRef = useRef(data.onWan2gpVramChange);
     const onCollapsedChangeRef = useRef(data.onCollapsedChange);
     const onComfyWorkflowChangeRef = useRef(data.onComfyWorkflowChange);
@@ -133,6 +136,7 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
         onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
         onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
         onWan2gpDurationChangeRef.current = data.onWan2gpDurationChange;
+        onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
         onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
         onCollapsedChangeRef.current = data.onCollapsedChange;
         onComfyWorkflowChangeRef.current = data.onComfyWorkflowChange;
@@ -465,6 +469,49 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
                                         onMouseDown={(e) => e.stopPropagation()}
                                     />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Resolution</label>
+                                <select
+                                    className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                                    value={data.wan2gpResolution || '832x480'}
+                                    onChange={(e) => onWan2gpResolutionChangeRef.current?.(e.target.value)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                    <option value="3840x2176">3840 x 2176 (16:9 4K)</option>
+                                    <option value="2176x3840">2176 x 3840 (9:16 4K)</option>
+                                    <option value="3840x1664">3840 x 1664 (21:9 4K)</option>
+                                    <option value="1664x3840">1664 x 3840 (9:21 4K)</option>
+                                    <option value="2560x1440">2560 x 1440 (16:9 1440p)</option>
+                                    <option value="1440x2560">1440 x 2560 (9:16 1440p)</option>
+                                    <option value="1920x1440">1920 x 1440 (4:3 1440p)</option>
+                                    <option value="1440x1920">1440 x 1920 (3:4 1440p)</option>
+                                    <option value="2160x1440">2160 x 1440 (3:2 1440p)</option>
+                                    <option value="1440x2160">1440 x 2160 (2:3 1440p)</option>
+                                    <option value="1440x1440">1440 x 1440 (1:1 1440p)</option>
+                                    <option value="2688x1152">2688 x 1152 (21:9 1440p)</option>
+                                    <option value="1152x2688">1152 x 2688 (9:21 1440p)</option>
+                                    <option value="1920x1088">1920 x 1088 (16:9 1080p)</option>
+                                    <option value="1088x1920">1088 x 1920 (9:16 1080p)</option>
+                                    <option value="1920x832">1920 x 832 (21:9)</option>
+                                    <option value="832x1920">832 x 1920 (9:21)</option>
+                                    <option value="1024x1024">1024 x 1024 (1:1)</option>
+                                    <option value="1280x720">1280 x 720 (16:9 720p)</option>
+                                    <option value="720x1280">720 x 1280 (9:16 720p)</option>
+                                    <option value="1280x544">1280 x 544 (21:9)</option>
+                                    <option value="544x1280">544 x 1280 (9:21)</option>
+                                    <option value="1104x832">1104 x 832 (4:3)</option>
+                                    <option value="832x1104">832 x 1104 (3:4)</option>
+                                    <option value="960x960">960 x 960 (1:1)</option>
+                                    <option value="960x544">960 x 544 (16:9 540p)</option>
+                                    <option value="544x960">544 x 960 (9:16 540p)</option>
+                                    <option value="832x624">832 x 624 (4:3 480p)</option>
+                                    <option value="624x832">624 x 832 (3:4)</option>
+                                    <option value="720x720">720 x 720 (1:1)</option>
+                                    <option value="832x480">832 x 480 (16:9 480p)</option>
+                                    <option value="480x832">480 x 832 (9:16)</option>
+                                    <option value="512x512">512 x 512 (1:1 Small)</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">VRAM</label>

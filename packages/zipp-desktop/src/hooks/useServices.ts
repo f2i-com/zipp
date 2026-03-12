@@ -24,6 +24,13 @@ export interface ServiceStatus {
   port: number;
 }
 
+export interface UpdateResult {
+  service_id: string;
+  success: boolean;
+  skipped: boolean;
+  message: string;
+}
+
 export interface ServiceOutputLine {
   service_id: string;
   line: string;
@@ -48,6 +55,7 @@ export function useServices(options: UseServicesOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<Record<string, boolean>>({});
   const [stopping, setStopping] = useState<Record<string, boolean>>({});
+  const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -179,6 +187,42 @@ export function useServices(options: UseServicesOptions = {}) {
     return `http://127.0.0.1:${status.port}`;
   }, [statuses]);
 
+  // Update a single service
+  const updateService = useCallback(async (serviceId: string): Promise<UpdateResult> => {
+    setUpdating(prev => ({ ...prev, [serviceId]: true }));
+    try {
+      const result = await invoke<UpdateResult>('update_service', { serviceId });
+      return result;
+    } catch (err) {
+      logger.error('Failed to update service', { error: err });
+      return {
+        service_id: serviceId,
+        success: false,
+        skipped: false,
+        message: err instanceof Error ? err.message : String(err),
+      };
+    } finally {
+      setUpdating(prev => ({ ...prev, [serviceId]: false }));
+    }
+  }, []);
+
+  // Update all installed services sequentially
+  const updateAllServices = useCallback(async (
+    onProgress?: (serviceId: string, index: number, total: number) => void
+  ): Promise<UpdateResult[]> => {
+    const installed = services.filter(s => s.installed);
+    const results: UpdateResult[] = [];
+
+    for (let i = 0; i < installed.length; i++) {
+      const service = installed[i];
+      onProgress?.(service.id, i, installed.length);
+      const result = await updateService(service.id);
+      results.push(result);
+    }
+
+    return results;
+  }, [services, updateService]);
+
   // Get all running services
   const runningServices = Object.values(statuses).filter(s => s.healthy);
   const runningCount = runningServices.length;
@@ -189,12 +233,15 @@ export function useServices(options: UseServicesOptions = {}) {
     loading,
     starting,
     stopping,
+    updating,
     error,
     runningCount,
     runningServices,
     loadServices,
     startService,
     stopService,
+    updateService,
+    updateAllServices,
     getServiceUrl,
   };
 }

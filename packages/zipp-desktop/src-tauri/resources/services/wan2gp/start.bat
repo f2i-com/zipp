@@ -144,6 +144,11 @@ if not exist "venv\Scripts\python.exe" (
     )
 )
 
+REM Ensure 4K resolutions are enabled in Wan2GP config
+if exist "!WAN2GP_PATH!\wgp_config.json" (
+    venv\Scripts\python.exe -c "import json,sys;p=sys.argv[1];f=open(p,'r');cfg=json.load(f);f.close();v=cfg.get('enable_4k_resolutions');cfg['enable_4k_resolutions']=1;f=open(p,'w');json.dump(cfg,f,indent=4);f.close();print('[Config] Enabled 4K resolutions') if v!=1 else None" "!WAN2GP_PATH!\wgp_config.json" 2>nul
+)
+
 echo.
 echo [Server] Starting Wan2GP API server on port !WAN2GP_PORT!...
 echo [Server] Wan2GP Gradio will start on internal port !WAN2GP_GRADIO_PORT!

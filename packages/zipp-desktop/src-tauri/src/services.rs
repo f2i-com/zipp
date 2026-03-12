@@ -136,6 +136,35 @@ fn get_service_command(service_path: &Path) -> (Command, PathBuf) {
     }
 }
 
+/// Get the shell command for updating a service based on platform
+#[cfg(target_os = "windows")]
+fn get_update_command(service_path: &Path) -> (Command, PathBuf) {
+    let update_script = service_path.join("update.bat");
+    let mut cmd = Command::new("cmd");
+    cmd.args(["/c", update_script.to_str().unwrap()]);
+    (cmd, update_script)
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn get_update_command(service_path: &Path) -> (Command, PathBuf) {
+    let update_sh = service_path.join("update.sh");
+    let update_bat = service_path.join("update.bat");
+
+    if update_sh.exists() {
+        let mut cmd = Command::new("bash");
+        cmd.arg(update_sh.to_str().unwrap());
+        (cmd, update_sh)
+    } else if update_bat.exists() {
+        let mut cmd = Command::new("bash");
+        cmd.arg(update_bat.to_str().unwrap());
+        (cmd, update_bat)
+    } else {
+        let mut cmd = Command::new("bash");
+        cmd.arg(update_sh.to_str().unwrap());
+        (cmd, update_sh)
+    }
+}
+
 // Maximum number of output lines to keep per service
 const MAX_OUTPUT_LINES: usize = 1000;
 
@@ -286,6 +315,14 @@ pub struct ServiceStatus {
     pub running: bool,
     pub healthy: bool,
     pub port: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateResult {
+    pub service_id: String,
+    pub success: bool,
+    pub skipped: bool,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -745,6 +782,178 @@ pub async fn stop_service(app: AppHandle, service_id: String) -> Result<ServiceS
         running: false,
         healthy: false,
         port,
+    })
+}
+
+/// Update a service by running its update script
+/// Returns the output lines and whether the update succeeded
+#[tauri::command]
+pub async fn update_service(
+    app: AppHandle,
+    service_id: String,
+) -> Result<UpdateResult, String> {
+    let services_dir = get_services_dir()?;
+    let service_path = services_dir.join(&service_id);
+
+    if !service_path.exists() {
+        return Err(format!("Service '{}' not found", service_id));
+    }
+
+    // Check for update script
+    let (_, update_script) = get_update_command(&service_path);
+    if !update_script.exists() {
+        return Err(format!(
+            "Update script not found for service '{}' (tried: {:?})",
+            service_id, update_script
+        ));
+    }
+
+    // Check if service is installed (venv exists)
+    let venv_path = service_path.join("venv");
+    if !venv_path.exists() {
+        return Ok(UpdateResult {
+            service_id,
+            success: true,
+            skipped: true,
+            message: "Service not installed. Skipping update.".to_string(),
+        });
+    }
+
+    println!(
+        "[Services] Updating service '{}' using {:?}",
+        service_id, update_script
+    );
+
+    // Emit start event
+    let _ = app.emit(
+        &format!("service-update:{}", service_id),
+        serde_json::json!({ "status": "started" }),
+    );
+
+    // Run the update script and capture output
+    let (mut cmd, _) = get_update_command(&service_path);
+    cmd.current_dir(&service_path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    // Set CREATE_NO_WINDOW on Windows to prevent console flashing
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = cmd.spawn().map_err(|e| {
+        format!(
+            "Failed to start update script for '{}': {}",
+            service_id, e
+        )
+    })?;
+
+    // Capture stdout in background thread
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let app_clone = app.clone();
+    let sid = service_id.clone();
+
+    let output_lines = Arc::new(Mutex::new(Vec::<String>::new()));
+    let output_lines_clone = output_lines.clone();
+
+    let stdout_handle = if let Some(stdout) = stdout {
+        let app = app_clone.clone();
+        let sid = sid.clone();
+        let lines = output_lines_clone.clone();
+        Some(thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    let _ = app.emit(
+                        &format!("service-update:{}", sid),
+                        serde_json::json!({ "line": line, "stream": "stdout" }),
+                    );
+                    if let Ok(mut l) = lines.lock() {
+                        l.push(line);
+                    }
+                }
+            }
+        }))
+    } else {
+        None
+    };
+
+    let stderr_handle = if let Some(stderr) = stderr {
+        let app = app_clone;
+        let sid = sid.clone();
+        let lines = output_lines_clone;
+        Some(thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    let _ = app.emit(
+                        &format!("service-update:{}", sid),
+                        serde_json::json!({ "line": line, "stream": "stderr" }),
+                    );
+                    if let Ok(mut l) = lines.lock() {
+                        l.push(line);
+                    }
+                }
+            }
+        }))
+    } else {
+        None
+    };
+
+    // Wait for the process to complete (in a blocking thread to not block async runtime)
+    let exit_status = tokio::task::spawn_blocking(move || child.wait())
+        .await
+        .map_err(|e| format!("Failed to wait for update process: {}", e))?
+        .map_err(|e| format!("Update process error: {}", e))?;
+
+    // Wait for output threads to finish
+    if let Some(h) = stdout_handle {
+        let _ = h.join();
+    }
+    if let Some(h) = stderr_handle {
+        let _ = h.join();
+    }
+
+    let success = exit_status.success();
+    let last_lines = output_lines
+        .lock()
+        .map(|l| {
+            l.iter()
+                .rev()
+                .take(5)
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+        .unwrap_or_default();
+
+    println!(
+        "[Services] Update for '{}' completed with status: {}",
+        service_id,
+        if success { "success" } else { "failed" }
+    );
+
+    // Emit completion event
+    let _ = app.emit(
+        &format!("service-update:{}", service_id),
+        serde_json::json!({ "status": if success { "completed" } else { "failed" } }),
+    );
+
+    Ok(UpdateResult {
+        service_id,
+        success,
+        skipped: false,
+        message: if success {
+            "Update complete".to_string()
+        } else {
+            format!("Update failed:\n{}", last_lines)
+        },
     })
 }
 

@@ -489,6 +489,7 @@ fn run_gui(args: CliArgs) {
             services::list_services,
             services::start_service,
             services::stop_service,
+            services::update_service,
             services::check_service_health,
             services::get_services_status,
             services::get_services_directory,

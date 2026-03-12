@@ -1894,8 +1894,10 @@ var __PLUGIN_EXPORTS__ = (() => {
           const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 8;
           const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
           const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
-          const comfyWidth2 = data.comfyWidth != null ? Number(data.comfyWidth) : void 0;
-          const comfyHeight2 = data.comfyHeight != null ? Number(data.comfyHeight) : void 0;
+          const wan2gpResolution = String(data.wan2gpResolution || "");
+          const resParts = wan2gpResolution.match(/^(\d+)x(\d+)$/);
+          const comfyWidth2 = resParts ? Number(resParts[1]) : data.comfyWidth != null ? Number(data.comfyWidth) : void 0;
+          const comfyHeight2 = resParts ? Number(resParts[2]) : data.comfyHeight != null ? Number(data.comfyHeight) : void 0;
           const comfyFrameRate2 = data.comfyFrameRate != null ? Number(data.comfyFrameRate) : void 0;
           const imageVar = inputs.get("image") || "null";
           const imageEndVar = inputs.get("image_end") || "null";
@@ -2549,6 +2551,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     const onWan2gpModelChangeRef = (0, import_react3.useRef)(data.onWan2gpModelChange);
     const onWan2gpStepsChangeRef = (0, import_react3.useRef)(data.onWan2gpStepsChange);
     const onWan2gpDurationChangeRef = (0, import_react3.useRef)(data.onWan2gpDurationChange);
+    const onWan2gpResolutionChangeRef = (0, import_react3.useRef)(data.onWan2gpResolutionChange);
     const onWan2gpVramChangeRef = (0, import_react3.useRef)(data.onWan2gpVramChange);
     const onCollapsedChangeRef = (0, import_react3.useRef)(data.onCollapsedChange);
     const onComfyWorkflowChangeRef = (0, import_react3.useRef)(data.onComfyWorkflowChange);
@@ -2577,6 +2580,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       onWan2gpModelChangeRef.current = data.onWan2gpModelChange;
       onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
       onWan2gpDurationChangeRef.current = data.onWan2gpDurationChange;
+      onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
       onWan2gpVramChangeRef.current = data.onWan2gpVramChange;
       onCollapsedChangeRef.current = data.onCollapsedChange;
       onComfyWorkflowChangeRef.current = data.onComfyWorkflowChange;
@@ -2865,6 +2869,53 @@ var __PLUGIN_EXPORTS__ = (() => {
                   }
                 )
               ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Resolution" }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+                "select",
+                {
+                  className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-orange-500",
+                  value: data.wan2gpResolution || "832x480",
+                  onChange: (e) => onWan2gpResolutionChangeRef.current?.(e.target.value),
+                  onMouseDown: (e) => e.stopPropagation(),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "3840x2176", children: "3840 x 2176 (16:9 4K)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "2176x3840", children: "2176 x 3840 (9:16 4K)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "3840x1664", children: "3840 x 1664 (21:9 4K)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1664x3840", children: "1664 x 3840 (9:21 4K)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "2560x1440", children: "2560 x 1440 (16:9 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1440x2560", children: "1440 x 2560 (9:16 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1920x1440", children: "1920 x 1440 (4:3 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1440x1920", children: "1440 x 1920 (3:4 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "2160x1440", children: "2160 x 1440 (3:2 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1440x2160", children: "1440 x 2160 (2:3 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1440x1440", children: "1440 x 1440 (1:1 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "2688x1152", children: "2688 x 1152 (21:9 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1152x2688", children: "1152 x 2688 (9:21 1440p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1920x1088", children: "1920 x 1088 (16:9 1080p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1088x1920", children: "1088 x 1920 (9:16 1080p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1920x832", children: "1920 x 832 (21:9)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "832x1920", children: "832 x 1920 (9:21)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1024x1024", children: "1024 x 1024 (1:1)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1280x720", children: "1280 x 720 (16:9 720p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "720x1280", children: "720 x 1280 (9:16 720p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1280x544", children: "1280 x 544 (21:9)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "544x1280", children: "544 x 1280 (9:21)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "1104x832", children: "1104 x 832 (4:3)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "832x1104", children: "832 x 1104 (3:4)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "960x960", children: "960 x 960 (1:1)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "960x544", children: "960 x 544 (16:9 540p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "544x960", children: "544 x 960 (9:16 540p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "832x624", children: "832 x 624 (4:3 480p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "624x832", children: "624 x 832 (3:4)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "720x720", children: "720 x 720 (1:1)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "832x480", children: "832 x 480 (16:9 480p)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "480x832", children: "480 x 832 (9:16)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "512x512", children: "512 x 512 (1:1 Small)" })
+                  ]
+                }
+              )
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "VRAM" }),

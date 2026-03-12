@@ -220,8 +220,11 @@ const CoreVideoCompiler: ModuleCompiler = {
         const wan2gpSteps = data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 8;
         const wan2gpDuration = data.wan2gpDuration != null ? Number(data.wan2gpDuration) : 5;
         const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
-        const comfyWidth = data.comfyWidth != null ? Number(data.comfyWidth) : undefined;
-        const comfyHeight = data.comfyHeight != null ? Number(data.comfyHeight) : undefined;
+        // Parse resolution from wan2gpResolution (e.g. "832x480") or fall back to comfyWidth/comfyHeight
+        const wan2gpResolution = String(data.wan2gpResolution || '');
+        const resParts = wan2gpResolution.match(/^(\d+)x(\d+)$/);
+        const comfyWidth = resParts ? Number(resParts[1]) : (data.comfyWidth != null ? Number(data.comfyWidth) : undefined);
+        const comfyHeight = resParts ? Number(resParts[2]) : (data.comfyHeight != null ? Number(data.comfyHeight) : undefined);
         const comfyFrameRate = data.comfyFrameRate != null ? Number(data.comfyFrameRate) : undefined;
 
         // Collect image inputs (start image + end image)

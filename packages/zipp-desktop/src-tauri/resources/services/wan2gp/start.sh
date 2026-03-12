@@ -82,6 +82,20 @@ else
     }
 fi
 
+# Ensure 4K resolutions are enabled in Wan2GP config
+WGP_CONFIG="$WAN2GP_PATH/wgp_config.json"
+if [ -f "$WGP_CONFIG" ]; then
+    python -c "
+import json, sys
+p = sys.argv[1]
+with open(p, 'r') as f: cfg = json.load(f)
+if cfg.get('enable_4k_resolutions') != 1:
+    cfg['enable_4k_resolutions'] = 1
+    with open(p, 'w') as f: json.dump(cfg, f, indent=4)
+    print('[Config] Enabled 4K resolutions')
+" "$WGP_CONFIG" 2>/dev/null || true
+fi
+
 echo ""
 echo "[Server] Starting Wan2GP API server on port $WAN2GP_PORT..."
 echo "[Server] Wan2GP Gradio will start on internal port $WAN2GP_GRADIO_PORT"

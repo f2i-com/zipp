@@ -70,11 +70,18 @@ export default function ServicesTab({ isOpen, settings, constants, onUpdateSetti
     loading: servicesLoading,
     starting: servicesStarting,
     stopping: servicesStopping,
+    updating: servicesUpdating,
     runningCount,
     startService,
     stopService,
+    updateAllServices,
     loadServices,
   } = useServices({ autoRefresh: isOpen, refreshInterval: 3000 });
+
+  // Update all services state
+  const [isUpdatingAll, setIsUpdatingAll] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<{ current: string; index: number; total: number } | null>(null);
+  const [updateResults, setUpdateResults] = useState<{ service_id: string; success: boolean; skipped: boolean; message: string }[] | null>(null);
 
   // Service output viewer state
   const [viewingOutputServiceId, setViewingOutputServiceId] = useState<string | null>(null);
@@ -120,6 +127,22 @@ export default function ServicesTab({ isOpen, settings, constants, onUpdateSetti
     return envVars;
   }, [constants]);
 
+  const handleUpdateAll = async () => {
+    setIsUpdatingAll(true);
+    setUpdateResults(null);
+    setUpdateProgress(null);
+    try {
+      const results = await updateAllServices((serviceId, index, total) => {
+        const service = services.find(s => s.id === serviceId);
+        setUpdateProgress({ current: service?.name || serviceId, index, total });
+      });
+      setUpdateResults(results);
+      setUpdateProgress(null);
+    } finally {
+      setIsUpdatingAll(false);
+    }
+  };
+
   // Auto-scroll output to bottom when new lines appear
   useEffect(() => {
     if (outputContainerRef.current && viewingOutputServiceId) {
@@ -156,16 +179,28 @@ export default function ServicesTab({ isOpen, settings, constants, onUpdateSetti
               </span>
             )}
           </h3>
-          <button
-            onClick={loadServices}
-            disabled={servicesLoading}
-            className="btn btn-secondary btn-sm flex items-center gap-2"
-          >
-            <svg className={`w-4 h-4 ${servicesLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {servicesLoading ? 'Refreshing...' : 'Refresh'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUpdateAll}
+              disabled={isUpdatingAll || servicesLoading}
+              className="btn btn-sm bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30 flex items-center gap-2 disabled:opacity-50"
+            >
+              <svg className={`w-4 h-4 ${isUpdatingAll ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {isUpdatingAll ? 'Updating...' : 'Update All'}
+            </button>
+            <button
+              onClick={loadServices}
+              disabled={servicesLoading}
+              className="btn btn-secondary btn-sm flex items-center gap-2"
+            >
+              <svg className={`w-4 h-4 ${servicesLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {servicesLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
         </div>
 
         {/* Search Box */}
@@ -200,6 +235,69 @@ export default function ServicesTab({ isOpen, settings, constants, onUpdateSetti
           </div>
         )}
       </div>
+
+      {/* Update Progress / Results */}
+      {(updateProgress || updateResults) && (
+        <div className="bg-slate-100/50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-lg p-4">
+          {updateProgress && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <svg className="w-4 h-4 animate-spin text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Updating <strong>{updateProgress.current}</strong> ({updateProgress.index + 1}/{updateProgress.total})</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-1.5">
+                <div
+                  className="bg-blue-500 h-1.5 rounded-full transition-all"
+                  style={{ width: `${((updateProgress.index) / updateProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {updateResults && !updateProgress && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  {updateResults.every(r => r.success) ? (
+                    <>
+                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-green-400">All services updated successfully</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <span className="text-yellow-400">
+                        {updateResults.filter(r => r.success).length}/{updateResults.length} updated,{' '}
+                        {updateResults.filter(r => !r.success).length} failed
+                      </span>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setUpdateResults(null)}
+                  className="text-slate-500 hover:text-slate-400 text-xs"
+                >
+                  Dismiss
+                </button>
+              </div>
+              {updateResults.some(r => !r.success && !r.skipped) && (
+                <div className="text-xs text-red-400 space-y-1 mt-1">
+                  {updateResults.filter(r => !r.success && !r.skipped).map(r => (
+                    <div key={r.service_id}>
+                      <span className="font-medium">{r.service_id}:</span> {r.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Services List */}
       {services.length === 0 && !servicesLoading ? (
