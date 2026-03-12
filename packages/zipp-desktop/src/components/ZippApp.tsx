@@ -341,10 +341,10 @@ export default function ZippApp() {
             ...node,
             data: {
               ...node.data,
-              provider: settings.defaultAIProvider || 'openai',
+              provider: settings.defaultAIProvider || 'huggingface',
               endpoint: settings.defaultAIEndpoint || '',
               model: settings.defaultAIModel || '',
-              requestFormat: getRequestFormatForProvider(settings.defaultAIProvider || 'openai'),
+              requestFormat: getRequestFormatForProvider(settings.defaultAIProvider || 'huggingface'),
               apiKeyConstant: settings.defaultAIApiKeyConstant || '',
             },
           };
@@ -355,7 +355,7 @@ export default function ZippApp() {
             ...node,
             data: {
               ...node.data,
-              apiFormat: settings.defaultImageProvider || 'openai',
+              apiFormat: settings.defaultImageProvider || 'wan2gp',
               endpoint: settings.defaultImageEndpoint || '',
               model: settings.defaultImageModel || '',
               apiKeyConstant: settings.defaultImageApiKeyConstant || '',

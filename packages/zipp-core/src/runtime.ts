@@ -576,11 +576,8 @@ function __step(val) {
              }
           });
        } else {
-          if (!item.value) {
-             __step();
-          } else {
-             host.call("__system.finish_error", ["Unknown yield: " + JSON.stringify(item.value)], function(){});
-          }
+          // Non-host-call yield (null, undefined, or unknown object) - skip and continue
+          __step();
        }
    } catch(e) {
        host.call("__system.finish_error", ["" + e], function(){});

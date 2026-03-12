@@ -197,6 +197,28 @@ var __PLUGIN_EXPORTS__ = (() => {
           const conditionType = String(data.operator || data.conditionType || "contains");
           const conditionValue = escapeString(String(data.compareValue || data.conditionValue || ""));
           const conditionField = escapeString(String(data.conditionField || ""));
+          if (data.expression && typeof data.expression === "string") {
+            const expr = data.expression;
+            code += `
+  // Condition evaluation (expression mode)
+  let _cond_val_${sanitizedId} = ${inputVar};
+  let _cond_result_${sanitizedId} = false;
+  try {
+    _cond_result_${sanitizedId} = !!(${expr});
+  } catch(e) {
+    console.warn("[Condition] (${node.id}) expression error:", e.message);
+    _cond_result_${sanitizedId} = false;
+  }`;
+            const branchLetOrAssign2 = ctx2.isInLoop ? "" : "let ";
+            code += `
+  ${letOrAssign}${outputVar} = ${inputVar};
+  console.log("[Condition] (${node.id}): expression result=" + _cond_result_${sanitizedId});
+  ${branchLetOrAssign2}${outputVar}_true = _cond_result_${sanitizedId} ? ${inputVar} : null;
+  ${branchLetOrAssign2}${outputVar}_false = _cond_result_${sanitizedId} ? null : ${inputVar};
+  console.log("[Condition] (${node.id}): true=" + (${outputVar}_true ? "has value" : "null") + ", false=" + (${outputVar}_false ? "has value" : "null"));
+  workflow_context["${node.id}"] = _cond_result_${sanitizedId};`;
+            break;
+          }
           code += `
   // Condition evaluation (operator: ${conditionType}, compareValue: ${conditionValue})
   let _cond_val_${sanitizedId} = ${inputVar};

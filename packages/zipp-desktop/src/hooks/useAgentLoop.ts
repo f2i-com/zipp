@@ -128,6 +128,7 @@ const AI_PROVIDERS = [
   { id: 'groq', name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile' },
   { id: 'ollama', name: 'Ollama (Local)', endpoint: 'http://localhost:11434/v1/chat/completions', model: 'llama3.2' },
   { id: 'lmstudio', name: 'LM Studio (Local)', endpoint: 'http://localhost:1234/v1/chat/completions', model: 'local-model' },
+  { id: 'huggingface', name: 'HuggingFace LLM (Local)', endpoint: 'http://127.0.0.1:8774/v1/chat/completions', model: 'Qwen/Qwen3.5-9B' },
   { id: 'custom', name: 'Custom', endpoint: '', model: '' },
 ] as const;
 
@@ -479,7 +480,7 @@ export function useAgentLoop({
     systemPrompt: string,
     messages: Array<{ role: 'user' | 'assistant'; content: string }>
   ): Promise<string> => {
-    const providerId = projectSettings?.defaultAIProvider || 'openai';
+    const providerId = projectSettings?.defaultAIProvider || 'huggingface';
     const provider = AI_PROVIDERS.find(p => p.id === providerId) || AI_PROVIDERS[0];
     // Use provider.id for lookup to handle case where providerId doesn't match exactly
     const apiKeyConstant = projectSettings?.defaultAIApiKeyConstant || DEFAULT_API_KEY_CONSTANTS[provider.id] || '';
@@ -487,7 +488,7 @@ export function useAgentLoop({
     const model = projectSettings?.defaultAIModel || provider.model;
 
     // Check if this is a local/custom provider that doesn't require an API key
-    const isLocalProvider = ['ollama', 'lmstudio', 'custom'].includes(provider.id);
+    const isLocalProvider = ['ollama', 'lmstudio', 'huggingface', 'custom'].includes(provider.id);
 
     // Get endpoint - use custom endpoint from settings if configured, otherwise use provider default
     const endpoint = projectSettings?.defaultAIEndpoint || provider.endpoint;
@@ -661,7 +662,7 @@ export function useAgentLoop({
           }
 
           // Get compiler options
-          const providerId = projectSettings?.defaultAIProvider || 'openai';
+          const providerId = projectSettings?.defaultAIProvider || 'huggingface';
           const provider = AI_PROVIDERS.find(p => p.id === providerId) || AI_PROVIDERS[0];
           const compilerOptions = {
             aiModel: projectSettings?.defaultAIModel || provider.model,
@@ -823,7 +824,7 @@ export function useAgentLoop({
             }
           }
 
-          const providerId = projectSettings?.defaultAIProvider || 'openai';
+          const providerId = projectSettings?.defaultAIProvider || 'huggingface';
           const provider = AI_PROVIDERS.find(p => p.id === providerId) || AI_PROVIDERS[0];
           const compilerOptions = {
             aiModel: projectSettings?.defaultAIModel || provider.model,

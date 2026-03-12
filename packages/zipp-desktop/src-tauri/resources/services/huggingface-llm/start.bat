@@ -94,6 +94,38 @@ if not exist "venv\Scripts\python.exe" (
     pip install -r requirements.txt
 
     echo.
+    echo [Setup] Installing Flash Attention 2, may take a few minutes...
+    pip install flash-attn --no-build-isolation 2>nul
+    if !errorlevel! neq 0 (
+        echo [Setup] Pre-built flash-attn not available, trying wheel...
+        pip install flash-attn 2>nul
+        if !errorlevel! neq 0 (
+            echo [Setup] Flash Attention not available for this system, will use SDPA fallback
+        )
+    )
+
+    echo.
+    echo [Setup] Installing llama-cpp-python with CUDA for fast GGUF inference...
+    set LCPP_INSTALLED=0
+    pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/!CUDA_VERSION! 2>nul && set LCPP_INSTALLED=1
+    if !LCPP_INSTALLED! equ 0 (
+        echo [Setup] !CUDA_VERSION! wheel not found, trying cu124...
+        pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 2>nul && set LCPP_INSTALLED=1
+    )
+    if !LCPP_INSTALLED! equ 0 (
+        echo [Setup] No CUDA wheel available, trying CPU version...
+        pip install llama-cpp-python 2>nul && set LCPP_INSTALLED=1
+    )
+    if !LCPP_INSTALLED! equ 0 (
+        echo [Setup] llama-cpp-python not available, will use transformers backend
+    )
+
+    echo.
+    echo [Setup] Installing fast-path libraries...
+    pip install causal-conv1d 2>nul
+    pip install triton 2>nul
+
+    echo.
     echo [Setup] Installation complete!
     echo ========================================
 ) else (

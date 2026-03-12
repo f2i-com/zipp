@@ -171,14 +171,17 @@ export const defaultConstants: ProjectConstant[] = [
 
 // Default project settings
 export const defaultSettings: ProjectSettings = {
-  defaultAIProvider: 'openai',
-  defaultAIEndpoint: 'https://api.openai.com/v1/chat/completions',
-  defaultAIModel: 'gpt-4o',
-  defaultAIApiKeyConstant: 'OPENAI_API_KEY',
-  defaultImageProvider: 'openai',
-  defaultImageEndpoint: 'https://api.openai.com/v1/images/generations',
-  defaultImageModel: 'gpt-image-1',
-  defaultImageApiKeyConstant: 'OPENAI_API_KEY',
+  defaultAIProvider: 'huggingface',
+  defaultAIEndpoint: 'http://127.0.0.1:8774/v1/chat/completions',
+  defaultAIModel: 'Qwen/Qwen3.5-9B',
+  defaultAIApiKeyConstant: '',
+  defaultImageProvider: 'wan2gp',
+  defaultImageEndpoint: 'http://127.0.0.1:8773',
+  defaultImageModel: 'qwen',
+  defaultImageApiKeyConstant: '',
+  defaultVideoProvider: 'wan2gp',
+  defaultVideoEndpoint: 'http://127.0.0.1:8773',
+  defaultVideoModel: 'ltx2_22B_distilled',
 };
 
 // Create empty project

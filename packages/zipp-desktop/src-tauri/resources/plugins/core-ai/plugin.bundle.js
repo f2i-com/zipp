@@ -874,6 +874,7 @@ ${histStr}`;
       !!(data.headers || data.imageFormat || data.imageInputCount && data.imageInputCount > 0)
     );
     const callbackRefs = useCallbackRefs(data);
+    const isUserProviderChange = (0, import_react.useRef)(false);
     const imageInputCount = data.imageInputCount || 0;
     (0, import_react.useEffect)(() => {
       if (nodeId) {
@@ -881,6 +882,8 @@ ${histStr}`;
       }
     }, [nodeId, updateNodeInternals, imageInputCount]);
     (0, import_react.useEffect)(() => {
+      if (!isUserProviderChange.current) return;
+      isUserProviderChange.current = false;
       const providerValue = data.provider;
       if (!providerValue) return;
       const providerConfig = AI_PROVIDERS.find((p) => p.value === providerValue);
@@ -949,12 +952,13 @@ ${histStr}`;
     }, []);
     const handleProviderChange = (0, import_react.useCallback)((e) => {
       const providerValue = e.target.value;
+      isUserProviderChange.current = true;
       callbackRefs.onProviderChange.current?.(providerValue);
     }, []);
     const handleCollapsedChange = (0, import_react.useCallback)((collapsed) => {
       callbackRefs.onCollapsedChange.current?.(collapsed);
     }, []);
-    const defaultProvider = data.projectSettings?.defaultAIProvider || "openai";
+    const defaultProvider = data.projectSettings?.defaultAIProvider || "huggingface";
     const defaultEndpoint = data.projectSettings?.defaultAIEndpoint || "";
     const defaultModel = data.projectSettings?.defaultAIModel || "";
     const defaultApiKeyConstant = data.projectSettings?.defaultAIApiKeyConstant || "";

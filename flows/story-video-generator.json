@@ -130,7 +130,9 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false,
+        "maxTokens": 32000
       }
     },
     {
@@ -276,14 +278,15 @@
       "data": {
         "systemPrompt": "Rate character images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces (missing eyes, melted features), or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
         "temperature": 0.1,
-        "maxTokens": 300,
+        "maxTokens": 0,
         "imageInputCount": 2,
         "imageFormat": "base64_inline",
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -391,14 +394,15 @@
       "data": {
         "systemPrompt": "Rate character images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces (missing eyes, melted features), or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
         "temperature": 0.1,
-        "maxTokens": 300,
+        "maxTokens": 0,
         "imageInputCount": 2,
         "imageFormat": "base64_inline",
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -571,6 +575,18 @@
       }
     },
     {
+      "id": "gate-chars-complete",
+      "type": "logic_block",
+      "position": {
+        "x": 2050,
+        "y": 150
+      },
+      "data": {
+        "inputCount": 2,
+        "code": "// Gate: wait for character generation to complete before starting scene image generation\n// input = scenes array, input2 = character loop results (used as sync point)\nlet scenes = workflow_context[\"scenes\"] || [];\nconsole.log(\"[gate-chars-complete] Characters ready, passing\", scenes.length, \"scenes to image loop\");\nreturn scenes;"
+      }
+    },
+    {
       "id": "image-loop-start",
       "type": "loop_start",
       "position": {
@@ -624,6 +640,7 @@
       "data": {
         "size": "1792x1024",
         "quality": "high",
+        "imageInputCount": 2,
         "maxImageDimension": 768,
         "comfyWorkflow": "",
         "comfyWorkflowName": "",
@@ -662,14 +679,15 @@
       "data": {
         "systemPrompt": "Rate scene images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces, or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
         "temperature": 0.1,
-        "maxTokens": 300,
+        "maxTokens": 0,
         "imageInputCount": 3,
         "imageFormat": "base64_inline",
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -788,14 +806,15 @@
       "data": {
         "systemPrompt": "Rate scene images. Be LENIENT - only flag OBVIOUS, CLEARLY VISIBLE defects. Output JSON: {\"rating\": 1-10, \"issues\": \"what's wrong\", \"fixPrompt\": \"fix prompt\"}. Only deduct points for: clearly visible extra limbs (3+ arms/legs clearly shown), severely distorted faces, or major quality issues. Artistic stylization is fine. When in doubt, approve. Default to rating 8+ unless there's an obvious problem.",
         "temperature": 0.1,
-        "maxTokens": 300,
+        "maxTokens": 0,
         "imageInputCount": 3,
         "imageFormat": "base64_inline",
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -988,6 +1007,17 @@
       }
     },
     {
+      "id": "get-scene-duration",
+      "type": "logic_block",
+      "position": {
+        "x": 4100,
+        "y": 460
+      },
+      "data": {
+        "code": "// Get duration for this scene based on narration length\nlet durations = workflow_context[\"sceneDurations\"];\nif (durations && durations[loop_index] !== undefined) {\n  return Math.ceil(durations[loop_index]);\n}\nreturn 5;"
+      }
+    },
+    {
       "id": "refine-video-prompt-template",
       "type": "template",
       "position": {
@@ -1012,14 +1042,15 @@
       },
       "data": {
         "systemPrompt": "You are a video prompt engineer. Analyze the provided image and refine the prompt to accurately describe the scene. Output only the refined prompt, no explanations or formatting.",
-        "maxTokens": 500,
+        "maxTokens": 0,
         "imageInputCount": 1,
         "imageFormat": "base64_inline",
         "maxImageDimension": 768,
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -1161,7 +1192,8 @@
         "y": 200
       },
       "data": {
-        "code": "// Select video based on whether avatar PiP was generated\nlet avatarVideo = workflow_context[\"video-pip\"];\nlet plainVideo = workflow_context[\"no-avatar-audio-mix\"];\n\nif (avatarVideo && avatarVideo.path && avatarVideo.path !== \"\") {\n  return avatarVideo;\n}\n\nif (plainVideo && plainVideo.path) {\n  return plainVideo;\n}\n\nreturn workflow_context[\"video-append\"];"
+        "inputCount": 2,
+        "code": "// Select video based on whether avatar PiP was generated\n// input = avatar PiP result, input2 = no-avatar audio mix result\nlet avatarVideo = input || workflow_context[\"video-pip\"];\nlet plainVideo = input2 || workflow_context[\"no-avatar-audio-mix\"];\n\nif (avatarVideo && avatarVideo.path && avatarVideo.path !== \"\") {\n  return avatarVideo;\n}\n\nif (plainVideo && plainVideo.path) {\n  return plainVideo;\n}\n\nreturn workflow_context[\"video-append\"];"
       }
     },
     {
@@ -1172,7 +1204,8 @@
         "y": 350
       },
       "data": {
-        "code": "// Only pass narration text if captions are enabled\nlet captionsEnabled = workflow_context[\"input-enable-captions\"];\nlet narrationText = workflow_context[\"extract-narration\"];\n\nif (captionsEnabled === \"true\" || captionsEnabled === true) {\n  return narrationText || \"\";\n}\n\nreturn \"\";"
+        "inputCount": 2,
+        "code": "// Only pass narration text if captions are enabled\n// input = captions enabled flag, input2 = narration text\nlet captionsEnabled = input || workflow_context[\"input-enable-captions\"];\nlet narrationText = input2 || workflow_context[\"extract-narration\"];\n\nif (captionsEnabled === \"true\" || captionsEnabled === true) {\n  return narrationText || \"\";\n}\n\nreturn \"\";"
       }
     },
     {
@@ -1320,30 +1353,37 @@
     {
       "source": "input-topic",
       "target": "story-prompt",
-      "targetHandle": "topic",
-      "id": "e-topic-story"
+      "targetHandle": "input",
+      "id": "e-topic-story",
+      "sourceHandle": "text"
     },
     {
       "source": "input-style",
       "target": "normalize-style",
-      "id": "e-style-normalize"
+      "id": "e-style-normalize",
+      "sourceHandle": "text",
+      "targetHandle": "input"
     },
     {
       "source": "input-num-characters",
       "target": "story-prompt",
-      "targetHandle": "numCharacters",
-      "id": "e-numchars-story"
+      "targetHandle": "input3",
+      "id": "e-numchars-story",
+      "sourceHandle": "text"
     },
     {
       "source": "normalize-style",
       "target": "story-prompt",
-      "targetHandle": "style",
-      "id": "e-normstyle-story"
+      "targetHandle": "input2",
+      "id": "e-normstyle-story",
+      "sourceHandle": "output"
     },
     {
       "source": "story-prompt",
       "target": "ai-story",
-      "id": "e-story-ai"
+      "id": "e-story-ai",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "input-reference-image",
@@ -1355,59 +1395,72 @@
     {
       "source": "ai-story",
       "target": "debug-ai-output",
-      "id": "e-ai-debug"
+      "id": "e-ai-debug",
+      "sourceHandle": "response",
+      "targetHandle": "input"
     },
     {
       "source": "debug-ai-output",
       "target": "parse-story",
-      "id": "e-debug-parse"
+      "id": "e-debug-parse",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "parse-story",
       "target": "extract-characters",
-      "id": "e-parse-chars"
+      "id": "e-parse-chars",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "extract-characters",
       "target": "character-gen-loop-start",
       "targetHandle": "array",
-      "id": "e-chars-loopstart"
+      "id": "e-chars-loopstart",
+      "sourceHandle": "output"
     },
     {
       "source": "character-gen-loop-start",
       "target": "extract-char-name",
       "sourceHandle": "item",
-      "id": "e-charloop-name"
+      "id": "e-charloop-name",
+      "targetHandle": "input"
     },
     {
       "source": "character-gen-loop-start",
       "target": "extract-char-desc",
       "sourceHandle": "item",
-      "id": "e-charloop-desc"
+      "id": "e-charloop-desc",
+      "targetHandle": "input"
     },
     {
       "source": "extract-char-name",
       "target": "character-prompt-template",
-      "targetHandle": "name",
-      "id": "e-charname-template"
+      "targetHandle": "input",
+      "id": "e-charname-template",
+      "sourceHandle": "output"
     },
     {
       "source": "extract-char-desc",
       "target": "character-prompt-template",
-      "targetHandle": "description",
-      "id": "e-chardesc-template"
+      "targetHandle": "input2",
+      "id": "e-chardesc-template",
+      "sourceHandle": "output"
     },
     {
       "source": "normalize-style",
       "target": "character-prompt-template",
-      "targetHandle": "style",
-      "id": "e-style-chartemplate"
+      "targetHandle": "input3",
+      "id": "e-style-chartemplate",
+      "sourceHandle": "output"
     },
     {
       "source": "character-prompt-template",
       "target": "character-image-gen",
       "targetHandle": "prompt",
-      "id": "e-chartemplate-gen"
+      "id": "e-chartemplate-gen",
+      "sourceHandle": "result"
     },
     {
       "source": "character-gen-loop-start",
@@ -1419,228 +1472,275 @@
     {
       "source": "get-style-reference",
       "target": "character-image-gen",
-      "targetHandle": "image",
-      "id": "e-styleref-chargen"
+      "targetHandle": "image_0",
+      "id": "e-styleref-chargen",
+      "sourceHandle": "output"
     },
     {
       "source": "character-prompt-template",
       "target": "build-char-val-prompt-1",
-      "targetHandle": "prompt",
-      "id": "e-charprompt-valprompt1"
+      "targetHandle": "input",
+      "id": "e-charprompt-valprompt1",
+      "sourceHandle": "result"
     },
     {
       "source": "build-char-val-prompt-1",
       "target": "char-validate-1",
-      "id": "e-valprompt1-validate1"
+      "id": "e-valprompt1-validate1",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "character-image-gen",
       "target": "char-validate-1",
       "targetHandle": "image",
-      "id": "e-chargen-validate1-img"
+      "id": "e-chargen-validate1-img",
+      "sourceHandle": "image"
     },
     {
       "source": "get-style-reference",
       "target": "char-validate-1",
       "targetHandle": "image_1",
-      "id": "e-styleref-validate1"
+      "id": "e-styleref-validate1",
+      "sourceHandle": "output"
     },
     {
       "source": "char-validate-1",
       "target": "process-char-val-1",
-      "id": "e-validate1-process1"
+      "id": "e-validate1-process1",
+      "sourceHandle": "response",
+      "targetHandle": "input"
     },
     {
       "source": "character-image-gen",
       "target": "process-char-val-1",
       "targetHandle": "input2",
-      "id": "e-chargen-process1-img"
+      "id": "e-chargen-process1-img",
+      "sourceHandle": "image"
     },
     {
       "source": "character-prompt-template",
       "target": "process-char-val-1",
       "targetHandle": "input3",
-      "id": "e-charprompt-process1"
+      "id": "e-charprompt-process1",
+      "sourceHandle": "result"
     },
     {
       "source": "get-style-reference",
       "target": "process-char-val-1",
       "targetHandle": "input4",
-      "id": "e-styleref-process1"
+      "id": "e-styleref-process1",
+      "sourceHandle": "output"
     },
     {
       "source": "process-char-val-1",
       "target": "char-retry-needed-1",
-      "id": "e-process1-condition1"
+      "id": "e-process1-condition1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-retry-1-prompt",
-      "id": "e-condition1-retry1prompt"
+      "id": "e-condition1-retry1prompt",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-retry-1-ref",
-      "id": "e-condition1-retry1ref"
+      "id": "e-condition1-retry1ref",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-retry-1-failed-image",
-      "id": "e-condition1-retry1failed"
+      "id": "e-condition1-retry1failed",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-1",
       "sourceHandle": "false",
       "target": "select-final-char-image",
-      "id": "e-condition1-select"
+      "id": "e-condition1-select",
+      "targetHandle": "input"
     },
     {
       "source": "get-retry-1-prompt",
       "target": "retry-char-gen-1",
       "targetHandle": "prompt",
-      "id": "e-retry1prompt-gen"
+      "id": "e-retry1prompt-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-1-failed-image",
       "target": "retry-char-gen-1",
       "targetHandle": "image_0",
-      "id": "e-retry1failed-gen"
+      "id": "e-retry1failed-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-1-ref",
       "target": "retry-char-gen-1",
       "targetHandle": "image_1",
-      "id": "e-retry1ref-gen"
+      "id": "e-retry1ref-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-1-prompt",
       "target": "build-char-val-prompt-2",
-      "targetHandle": "prompt",
-      "id": "e-retry1prompt-valprompt2"
+      "targetHandle": "input",
+      "id": "e-retry1prompt-valprompt2",
+      "sourceHandle": "output"
     },
     {
       "source": "build-char-val-prompt-2",
       "target": "char-validate-2",
-      "id": "e-valprompt2-validate2"
+      "id": "e-valprompt2-validate2",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "retry-char-gen-1",
       "target": "char-validate-2",
       "targetHandle": "image",
-      "id": "e-retry1gen-validate2-img"
+      "id": "e-retry1gen-validate2-img",
+      "sourceHandle": "image"
     },
     {
       "source": "get-retry-1-ref",
       "target": "char-validate-2",
       "targetHandle": "image_1",
-      "id": "e-retry1ref-validate2"
+      "id": "e-retry1ref-validate2",
+      "sourceHandle": "output"
     },
     {
       "source": "char-validate-2",
       "target": "process-char-val-2",
-      "id": "e-validate2-process2"
+      "id": "e-validate2-process2",
+      "sourceHandle": "response",
+      "targetHandle": "input"
     },
     {
       "source": "retry-char-gen-1",
       "target": "process-char-val-2",
       "targetHandle": "input2",
-      "id": "e-retry1gen-process2-img"
+      "id": "e-retry1gen-process2-img",
+      "sourceHandle": "image"
     },
     {
       "source": "get-retry-1-prompt",
       "target": "process-char-val-2",
       "targetHandle": "input3",
-      "id": "e-retry1prompt-process2"
+      "id": "e-retry1prompt-process2",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-1-ref",
       "target": "process-char-val-2",
       "targetHandle": "input4",
-      "id": "e-retry1ref-process2"
+      "id": "e-retry1ref-process2",
+      "sourceHandle": "output"
     },
     {
       "source": "process-char-val-2",
       "target": "char-retry-needed-2",
-      "id": "e-process2-condition2"
+      "id": "e-process2-condition2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-retry-2-prompt",
-      "id": "e-condition2-retry2prompt"
+      "id": "e-condition2-retry2prompt",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-retry-2-ref",
-      "id": "e-condition2-retry2ref"
+      "id": "e-condition2-retry2ref",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-retry-2-failed-image",
-      "id": "e-condition2-retry2failed"
+      "id": "e-condition2-retry2failed",
+      "targetHandle": "input"
     },
     {
       "source": "char-retry-needed-2",
       "sourceHandle": "false",
       "target": "select-final-char-image",
-      "id": "e-condition2-select"
+      "id": "e-condition2-select",
+      "targetHandle": "input"
     },
     {
       "source": "get-retry-2-prompt",
       "target": "retry-char-gen-2",
       "targetHandle": "prompt",
-      "id": "e-retry2prompt-gen"
+      "id": "e-retry2prompt-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-2-failed-image",
       "target": "retry-char-gen-2",
       "targetHandle": "image_0",
-      "id": "e-retry2failed-gen"
+      "id": "e-retry2failed-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-retry-2-ref",
       "target": "retry-char-gen-2",
       "targetHandle": "image_1",
-      "id": "e-retry2ref-gen"
+      "id": "e-retry2ref-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "retry-char-gen-2",
       "target": "select-final-char-image",
-      "id": "e-retry2gen-select"
+      "id": "e-retry2gen-select",
+      "sourceHandle": "image",
+      "targetHandle": "input"
     },
     {
       "source": "select-final-char-image",
       "target": "store-character-image",
-      "id": "e-select-store"
+      "id": "e-select-store",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "store-character-image",
       "target": "character-gen-loop-end",
       "targetHandle": "input",
-      "id": "e-storechar-loopend"
+      "id": "e-storechar-loopend",
+      "sourceHandle": "output"
     },
     {
       "source": "parse-story",
       "target": "tts-loop-start",
       "targetHandle": "array",
-      "id": "e-parse-ttsloop"
+      "id": "e-parse-ttsloop",
+      "sourceHandle": "output"
     },
     {
       "source": "tts-loop-start",
       "target": "extract-scene-narration",
       "sourceHandle": "item",
-      "id": "e-ttsloop-narration"
+      "id": "e-ttsloop-narration",
+      "targetHandle": "input"
     },
     {
       "source": "extract-scene-narration",
       "target": "scene-tts",
       "targetHandle": "text",
-      "id": "e-narration-tts"
+      "id": "e-narration-tts",
+      "sourceHandle": "output"
     },
     {
       "source": "input-voice-reference",
@@ -1653,292 +1753,365 @@
       "source": "scene-tts",
       "target": "tts-loop-end",
       "targetHandle": "input",
-      "id": "e-tts-loopend"
+      "id": "e-tts-loopend",
+      "sourceHandle": "audio"
     },
     {
       "source": "tts-loop-end",
       "target": "process-tts-results",
       "sourceHandle": "results",
-      "id": "e-ttsloopend-process"
+      "id": "e-ttsloopend-process",
+      "targetHandle": "input"
     },
     {
       "source": "parse-story",
+      "target": "gate-chars-complete",
+      "id": "e-parse-gate",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "source": "character-gen-loop-end",
+      "sourceHandle": "results",
+      "target": "gate-chars-complete",
+      "targetHandle": "input2",
+      "id": "e-charloopend-gate"
+    },
+    {
+      "source": "gate-chars-complete",
       "target": "image-loop-start",
       "targetHandle": "array",
-      "id": "e-parse-imgloop"
+      "id": "e-gate-imgloop",
+      "sourceHandle": "output"
     },
     {
       "source": "image-loop-start",
       "target": "get-char-image-1",
       "sourceHandle": "item",
-      "id": "e-imgloop-char1"
+      "id": "e-imgloop-char1",
+      "targetHandle": "input"
     },
     {
       "source": "image-loop-start",
       "target": "get-char-image-2",
       "sourceHandle": "item",
-      "id": "e-imgloop-char2"
+      "id": "e-imgloop-char2",
+      "targetHandle": "input"
     },
     {
       "source": "image-loop-start",
       "target": "extract-end-prompt",
       "sourceHandle": "item",
-      "id": "e-imgloop-endprompt"
+      "id": "e-imgloop-endprompt",
+      "targetHandle": "input"
     },
     {
       "source": "extract-end-prompt",
       "target": "end-image-gen",
       "targetHandle": "prompt",
-      "id": "e-endprompt-gen"
+      "id": "e-endprompt-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-char-image-1",
       "target": "end-image-gen",
       "targetHandle": "image_0",
-      "id": "e-char1-endgen"
+      "id": "e-char1-endgen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-char-image-2",
       "target": "end-image-gen",
       "targetHandle": "image_1",
-      "id": "e-char2-endgen"
+      "id": "e-char2-endgen",
+      "sourceHandle": "output"
     },
     {
       "source": "extract-end-prompt",
       "target": "build-scene-val-prompt-1",
-      "targetHandle": "prompt",
-      "id": "e-endprompt-scenevalp1"
+      "targetHandle": "input",
+      "id": "e-endprompt-scenevalp1",
+      "sourceHandle": "output"
     },
     {
       "source": "build-scene-val-prompt-1",
       "target": "scene-validate-1",
-      "id": "e-scenevalprompt1-val1"
+      "id": "e-scenevalprompt1-val1",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "end-image-gen",
       "target": "scene-validate-1",
       "targetHandle": "image",
-      "id": "e-endgen-sceneval1-img"
+      "id": "e-endgen-sceneval1-img",
+      "sourceHandle": "image"
     },
     {
       "source": "get-char-image-1",
       "target": "scene-validate-1",
       "targetHandle": "image_1",
-      "id": "e-char1-sceneval1"
+      "id": "e-char1-sceneval1",
+      "sourceHandle": "output"
     },
     {
       "source": "get-char-image-2",
       "target": "scene-validate-1",
       "targetHandle": "image_2",
-      "id": "e-char2-sceneval1"
+      "id": "e-char2-sceneval1",
+      "sourceHandle": "output"
     },
     {
       "source": "scene-validate-1",
       "target": "process-scene-val-1",
-      "id": "e-sceneval1-process1"
+      "id": "e-sceneval1-process1",
+      "sourceHandle": "response",
+      "targetHandle": "input"
     },
     {
       "source": "end-image-gen",
       "target": "process-scene-val-1",
       "targetHandle": "input2",
-      "id": "e-endgen-sceneprocess1-img"
+      "id": "e-endgen-sceneprocess1-img",
+      "sourceHandle": "image"
     },
     {
       "source": "extract-end-prompt",
       "target": "process-scene-val-1",
       "targetHandle": "input3",
-      "id": "e-endprompt-sceneprocess1"
+      "id": "e-endprompt-sceneprocess1",
+      "sourceHandle": "output"
     },
     {
       "source": "get-char-image-1",
       "target": "process-scene-val-1",
       "targetHandle": "input4",
-      "id": "e-char1-sceneprocess1"
+      "id": "e-char1-sceneprocess1",
+      "sourceHandle": "output"
     },
     {
       "source": "get-char-image-2",
       "target": "process-scene-val-1",
       "targetHandle": "input5",
-      "id": "e-char2-sceneprocess1"
+      "id": "e-char2-sceneprocess1",
+      "sourceHandle": "output"
     },
     {
       "source": "process-scene-val-1",
       "target": "scene-retry-needed-1",
-      "id": "e-sceneprocess1-condition1"
+      "id": "e-sceneprocess1-condition1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-scene-retry-1-prompt",
-      "id": "e-scenecondition1-retryprompt"
+      "id": "e-scenecondition1-retryprompt",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-scene-retry-1-char1",
-      "id": "e-scenecondition1-retrychar1"
+      "id": "e-scenecondition1-retrychar1",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-scene-retry-1-char2",
-      "id": "e-scenecondition1-retrychar2"
+      "id": "e-scenecondition1-retrychar2",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-1",
       "sourceHandle": "true",
       "target": "get-scene-retry-1-failed",
-      "id": "e-scenecondition1-retryfailed"
+      "id": "e-scenecondition1-retryfailed",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-1",
       "sourceHandle": "false",
       "target": "select-final-scene-image",
-      "id": "e-scenecondition1-select"
+      "id": "e-scenecondition1-select",
+      "targetHandle": "input"
     },
     {
       "source": "get-scene-retry-1-prompt",
       "target": "retry-scene-gen-1",
       "targetHandle": "prompt",
-      "id": "e-sceneretryprompt1-gen"
+      "id": "e-sceneretryprompt1-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-1-failed",
       "target": "retry-scene-gen-1",
       "targetHandle": "image_0",
-      "id": "e-sceneretry1failed-gen"
+      "id": "e-sceneretry1failed-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-1-char1",
       "target": "retry-scene-gen-1",
       "targetHandle": "image_1",
-      "id": "e-sceneretrychar1-gen1"
+      "id": "e-sceneretrychar1-gen1",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-1-char2",
       "target": "retry-scene-gen-1",
       "targetHandle": "image_2",
-      "id": "e-sceneretrychar2-gen1"
+      "id": "e-sceneretrychar2-gen1",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-1-prompt",
       "target": "build-scene-val-prompt-2",
-      "targetHandle": "prompt",
-      "id": "e-sceneretryprompt1-valp2"
+      "targetHandle": "input",
+      "id": "e-sceneretryprompt1-valp2",
+      "sourceHandle": "output"
     },
     {
       "source": "build-scene-val-prompt-2",
       "target": "scene-validate-2",
-      "id": "e-scenevalprompt2-val2"
+      "id": "e-scenevalprompt2-val2",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "retry-scene-gen-1",
       "target": "scene-validate-2",
       "targetHandle": "image",
-      "id": "e-sceneretry1-val2-img"
+      "id": "e-sceneretry1-val2-img",
+      "sourceHandle": "image"
     },
     {
       "source": "get-scene-retry-1-char1",
       "target": "scene-validate-2",
       "targetHandle": "image_1",
-      "id": "e-sceneretrychar1-val2"
+      "id": "e-sceneretrychar1-val2",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-1-char2",
       "target": "scene-validate-2",
       "targetHandle": "image_2",
-      "id": "e-sceneretrychar2-val2"
+      "id": "e-sceneretrychar2-val2",
+      "sourceHandle": "output"
     },
     {
       "source": "scene-validate-2",
       "target": "process-scene-val-2",
-      "id": "e-sceneval2-process2"
+      "id": "e-sceneval2-process2",
+      "sourceHandle": "response",
+      "targetHandle": "input"
     },
     {
       "source": "retry-scene-gen-1",
       "target": "process-scene-val-2",
       "targetHandle": "input2",
-      "id": "e-sceneretry1-process2-img"
+      "id": "e-sceneretry1-process2-img",
+      "sourceHandle": "image"
     },
     {
       "source": "process-scene-val-2",
       "target": "scene-retry-needed-2",
-      "id": "e-sceneprocess2-condition2"
+      "id": "e-sceneprocess2-condition2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-scene-retry-2-prompt",
-      "id": "e-scenecondition2-retryprompt"
+      "id": "e-scenecondition2-retryprompt",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-scene-retry-2-char1",
-      "id": "e-scenecondition2-retrychar1"
+      "id": "e-scenecondition2-retrychar1",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-scene-retry-2-char2",
-      "id": "e-scenecondition2-retrychar2"
+      "id": "e-scenecondition2-retrychar2",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-2",
       "sourceHandle": "true",
       "target": "get-scene-retry-2-failed",
-      "id": "e-scenecondition2-retryfailed"
+      "id": "e-scenecondition2-retryfailed",
+      "targetHandle": "input"
     },
     {
       "source": "scene-retry-needed-2",
       "sourceHandle": "false",
       "target": "select-final-scene-image",
-      "id": "e-scenecondition2-select"
+      "id": "e-scenecondition2-select",
+      "targetHandle": "input"
     },
     {
       "source": "get-scene-retry-2-prompt",
       "target": "retry-scene-gen-2",
       "targetHandle": "prompt",
-      "id": "e-sceneretryprompt2-gen"
+      "id": "e-sceneretryprompt2-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-2-failed",
       "target": "retry-scene-gen-2",
       "targetHandle": "image_0",
-      "id": "e-sceneretry2failed-gen"
+      "id": "e-sceneretry2failed-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-2-char1",
       "target": "retry-scene-gen-2",
       "targetHandle": "image_1",
-      "id": "e-sceneretrychar1-gen2"
+      "id": "e-sceneretrychar1-gen2",
+      "sourceHandle": "output"
     },
     {
       "source": "get-scene-retry-2-char2",
       "target": "retry-scene-gen-2",
       "targetHandle": "image_2",
-      "id": "e-sceneretrychar2-gen2"
+      "id": "e-sceneretrychar2-gen2",
+      "sourceHandle": "output"
     },
     {
       "source": "retry-scene-gen-2",
       "target": "select-final-scene-image",
-      "id": "e-sceneretry2-select"
+      "id": "e-sceneretry2-select",
+      "sourceHandle": "image",
+      "targetHandle": "input"
     },
     {
       "source": "select-final-scene-image",
       "target": "store-chain-end",
-      "id": "e-sceneselectfinal-storeend"
+      "id": "e-sceneselectfinal-storeend",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "store-chain-end",
       "target": "combine-image-pair",
-      "id": "e-storeend-combine"
+      "id": "e-storeend-combine",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "combine-image-pair",
       "target": "image-loop-end",
       "targetHandle": "input",
-      "id": "e-combine-imgloopend"
+      "id": "e-combine-imgloopend",
+      "sourceHandle": "output"
     },
     {
       "source": "image-loop-end",
@@ -1951,82 +2124,113 @@
       "source": "free-gpu-memory",
       "target": "video-loop-start",
       "targetHandle": "array",
-      "id": "e-free-vidloop"
+      "id": "e-free-vidloop",
+      "sourceHandle": "default"
     },
     {
       "source": "video-loop-start",
       "target": "extract-scene-image",
       "sourceHandle": "item",
-      "id": "e-vidloop-startimg"
+      "id": "e-vidloop-startimg",
+      "targetHandle": "input"
     },
     {
       "source": "video-loop-start",
       "target": "get-video-prompt",
       "sourceHandle": "item",
-      "id": "e-vidloop-prompt"
+      "id": "e-vidloop-prompt",
+      "targetHandle": "input"
     },
     {
       "source": "video-loop-start",
       "target": "get-scene-frames",
       "sourceHandle": "item",
-      "id": "e-vidloop-frames"
+      "id": "e-vidloop-frames",
+      "targetHandle": "input"
     },
     {
       "source": "process-tts-results",
       "target": "get-scene-frames",
-      "id": "e-process-frames"
+      "id": "e-process-frames",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "extract-scene-image",
       "target": "video-gen",
-      "targetHandle": "image_0",
-      "id": "e-startimg-vidgen"
+      "targetHandle": "image",
+      "id": "e-startimg-vidgen",
+      "sourceHandle": "output"
     },
     {
       "source": "get-video-prompt",
       "target": "refine-video-prompt-template",
-      "targetHandle": "rawPrompt",
-      "id": "e-vidprompt-refine"
+      "targetHandle": "input",
+      "id": "e-vidprompt-refine",
+      "sourceHandle": "output"
     },
     {
       "source": "normalize-style",
       "target": "refine-video-prompt-template",
-      "targetHandle": "style",
-      "id": "e-style-refine"
+      "targetHandle": "input2",
+      "id": "e-style-refine",
+      "sourceHandle": "output"
     },
     {
       "source": "refine-video-prompt-template",
       "target": "ai-refine-video-prompt",
-      "id": "e-refinetemplate-ai"
+      "id": "e-refinetemplate-ai",
+      "sourceHandle": "result",
+      "targetHandle": "prompt"
     },
     {
       "source": "extract-scene-image",
       "target": "ai-refine-video-prompt",
       "targetHandle": "image",
-      "id": "e-startimg-refine"
+      "id": "e-startimg-refine",
+      "sourceHandle": "output"
     },
     {
       "source": "ai-refine-video-prompt",
       "target": "video-gen",
       "targetHandle": "prompt",
-      "id": "e-refinedprompt-gen"
+      "id": "e-refinedprompt-gen",
+      "sourceHandle": "response"
     },
     {
       "source": "get-scene-frames",
       "target": "video-gen",
       "targetHandle": "frameCount",
-      "id": "e-frames-vidgen"
+      "id": "e-frames-vidgen",
+      "sourceHandle": "output"
+    },
+    {
+      "source": "video-loop-start",
+      "target": "get-scene-duration",
+      "sourceHandle": "item",
+      "id": "e-vidloop-duration",
+      "targetHandle": "input"
+    },
+    {
+      "source": "get-scene-duration",
+      "target": "video-gen",
+      "targetHandle": "duration",
+      "id": "e-duration-vidgen",
+      "sourceHandle": "output"
     },
     {
       "source": "video-gen",
       "target": "video-loop-end",
       "targetHandle": "input",
-      "id": "e-vidgen-loopend"
+      "id": "e-vidgen-loopend",
+      "sourceHandle": "video"
     },
     {
       "source": "process-tts-results",
       "target": "get-target-durations",
-      "id": "e-process-durations"
+      "id": "e-process-durations",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "video-loop-end",
@@ -2039,7 +2243,8 @@
       "source": "get-target-durations",
       "target": "extend-scene-videos",
       "targetHandle": "durations",
-      "id": "e-durations-extend"
+      "id": "e-durations-extend",
+      "sourceHandle": "output"
     },
     {
       "source": "extend-scene-videos",
@@ -2058,7 +2263,9 @@
     {
       "source": "video-append",
       "target": "extract-narration",
-      "id": "e-vidappend-narration"
+      "id": "e-vidappend-narration",
+      "sourceHandle": "video",
+      "targetHandle": "input"
     },
     {
       "source": "input-avatar",
@@ -2105,68 +2312,100 @@
     {
       "source": "video-pip",
       "target": "select-video-path",
-      "id": "e-pip-select"
+      "id": "e-pip-select",
+      "sourceHandle": "video",
+      "targetHandle": "input"
+    },
+    {
+      "source": "no-avatar-audio-mix",
+      "sourceHandle": "video",
+      "target": "select-video-path",
+      "targetHandle": "input2",
+      "id": "e-noavatar-select"
     },
     {
       "source": "input-enable-captions",
       "target": "gate-captions-text",
-      "id": "e-captions-gate"
+      "id": "e-captions-gate",
+      "sourceHandle": "text",
+      "targetHandle": "input"
+    },
+    {
+      "source": "extract-narration",
+      "target": "gate-captions-text",
+      "targetHandle": "input2",
+      "id": "e-narration-gate",
+      "sourceHandle": "output"
     },
     {
       "source": "input-enable-captions",
       "target": "get-caption-durations",
-      "id": "e-captions-durations"
+      "id": "e-captions-durations",
+      "sourceHandle": "text",
+      "targetHandle": "input"
     },
     {
       "source": "select-video-path",
       "target": "video-captions",
       "targetHandle": "video",
-      "id": "e-select-captions"
+      "id": "e-select-captions",
+      "sourceHandle": "output"
     },
     {
       "source": "gate-captions-text",
       "target": "video-captions",
       "targetHandle": "text",
-      "id": "e-gatetext-captions"
+      "id": "e-gatetext-captions",
+      "sourceHandle": "output"
     },
     {
       "source": "get-caption-durations",
       "target": "video-captions",
       "targetHandle": "durations",
-      "id": "e-durations-captions"
+      "id": "e-durations-captions",
+      "sourceHandle": "output"
     },
     {
       "source": "video-captions",
       "target": "select-final-video",
-      "id": "e-captions-final"
+      "id": "e-captions-final",
+      "sourceHandle": "video",
+      "targetHandle": "input"
     },
     {
       "source": "select-final-video",
       "target": "music-prompt",
-      "id": "e-final-musicprompt"
+      "id": "e-final-musicprompt",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "music-prompt",
       "target": "music-gen",
       "targetHandle": "prompt",
-      "id": "e-musicprompt-gen"
+      "id": "e-musicprompt-gen",
+      "sourceHandle": "output"
     },
     {
       "source": "process-tts-results",
       "target": "get-music-duration",
-      "id": "e-process-musicduration"
+      "id": "e-process-musicduration",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "source": "get-music-duration",
       "target": "music-gen",
       "targetHandle": "duration",
-      "id": "e-duration-musicgen"
+      "id": "e-duration-musicgen",
+      "sourceHandle": "output"
     },
     {
       "source": "select-final-video",
       "target": "audio-mixer",
       "targetHandle": "video",
-      "id": "e-final-mixer"
+      "id": "e-final-mixer",
+      "sourceHandle": "output"
     },
     {
       "source": "music-gen",
@@ -2186,12 +2425,15 @@
       "source": "video-save",
       "target": "output-video",
       "sourceHandle": "path",
-      "id": "e-save-output"
+      "id": "e-save-output",
+      "targetHandle": "result"
     },
     {
       "source": "ai-story",
       "target": "output-story",
-      "id": "e-ai-storyoutput"
+      "id": "e-ai-storyoutput",
+      "sourceHandle": "response",
+      "targetHandle": "result"
     }
   ],
   "version": "1.0"

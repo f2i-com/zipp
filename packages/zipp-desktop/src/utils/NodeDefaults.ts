@@ -19,6 +19,7 @@ export const AI_PROVIDER_CONFIGS: Record<string, { endpoint: string; model: stri
   'groq': { endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', requestFormat: 'openai' },
   'ollama': { endpoint: 'http://localhost:11434/v1/chat/completions', model: 'llama3.2', requestFormat: 'openai' },
   'lmstudio': { endpoint: 'http://localhost:1234/v1/chat/completions', model: 'local-model', requestFormat: 'openai' },
+  'huggingface': { endpoint: 'http://127.0.0.1:8774/v1/chat/completions', model: 'Qwen/Qwen3.5-9B', requestFormat: 'openai' },
   'custom': { endpoint: '', model: '', requestFormat: 'openai' },
 };
 
@@ -32,6 +33,7 @@ export const IMAGE_PROVIDER_CONFIGS: Record<string, { endpoint: string; model: s
   'gemini-3-pro': { endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent', model: 'gemini-3-pro-image-preview' },
   'gemini-flash': { endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent', model: 'gemini-2.5-flash-preview-05-20' },
   'gemini-2-flash': { endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent', model: 'gemini-2.0-flash-exp' },
+  'wan2gp': { endpoint: 'http://127.0.0.1:8773', model: 'qwen' },
   'comfyui': { endpoint: 'http://localhost:8188', model: '' },
   'custom': { endpoint: '', model: '' },
 };
@@ -52,8 +54,8 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
       return { fileName: '', fileType: '', fileContent: '', filePath: '' };
     case 'ai_llm': {
       // Use project settings defaults if available
-      const provider = projectSettings?.defaultAIProvider || 'openai';
-      const providerConfig = AI_PROVIDER_CONFIGS[provider] || AI_PROVIDER_CONFIGS['openai'];
+      const provider = projectSettings?.defaultAIProvider || 'huggingface';
+      const providerConfig = AI_PROVIDER_CONFIGS[provider] || AI_PROVIDER_CONFIGS['huggingface'];
       return {
         provider: provider,
         model: projectSettings?.defaultAIModel || providerConfig.model,
@@ -70,8 +72,8 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
       return { mode: 'read', key: 'myValue', defaultValue: '' };
     case 'image_gen': {
       // Use project settings defaults if available
-      const imgProvider = projectSettings?.defaultImageProvider || 'openai';
-      const imgConfig = IMAGE_PROVIDER_CONFIGS[imgProvider] || IMAGE_PROVIDER_CONFIGS['openai'];
+      const imgProvider = projectSettings?.defaultImageProvider || 'wan2gp';
+      const imgConfig = IMAGE_PROVIDER_CONFIGS[imgProvider] || IMAGE_PROVIDER_CONFIGS['wan2gp'];
       return {
         apiFormat: imgProvider,
         endpoint: projectSettings?.defaultImageEndpoint || imgConfig.endpoint,
@@ -135,14 +137,17 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
         chunkSize: 2000,
         overlap: 200,
       };
-    case 'video_gen':
+    case 'video_gen': {
+      const vidProvider = projectSettings?.defaultVideoProvider || 'wan2gp';
       return {
-        apiFormat: 'comfyui',
-        wan2gpModel: 'ltx2_22B_distilled',
+        apiFormat: vidProvider,
+        endpoint: projectSettings?.defaultVideoEndpoint || (vidProvider === 'wan2gp' ? 'http://127.0.0.1:8773' : 'http://localhost:8188'),
+        wan2gpModel: projectSettings?.defaultVideoModel || 'ltx2_22B_distilled',
         wan2gpDuration: 5,
         wan2gpSteps: 8,
         wan2gpResolution: '832x480',
       };
+    }
     case 'video_frame_extractor':
       return {
         fps: 1,  // 1 frame per second
@@ -160,8 +165,8 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
       };
     case 'terminal_ai_control': {
       // Use project settings defaults for AI provider if available
-      const aiProvider = projectSettings?.defaultAIProvider || 'openai';
-      const aiConfig = AI_PROVIDER_CONFIGS[aiProvider] || AI_PROVIDER_CONFIGS['openai'];
+      const aiProvider = projectSettings?.defaultAIProvider || 'huggingface';
+      const aiConfig = AI_PROVIDER_CONFIGS[aiProvider] || AI_PROVIDER_CONFIGS['huggingface'];
       return {
         provider: aiProvider,
         model: projectSettings?.defaultAIModel || aiConfig.model,
@@ -187,15 +192,15 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
  * @returns Provider configuration or the openai config as fallback
  */
 export function getAIProviderConfig(provider: string): { endpoint: string; model: string; requestFormat: string } {
-  return AI_PROVIDER_CONFIGS[provider] || AI_PROVIDER_CONFIGS['openai'];
+  return AI_PROVIDER_CONFIGS[provider] || AI_PROVIDER_CONFIGS['huggingface'];
 }
 
 /**
  * Get the configuration for a specific image provider.
  *
  * @param provider - The provider name
- * @returns Provider configuration or the openai config as fallback
+ * @returns Provider configuration or the wan2gp config as fallback
  */
 export function getImageProviderConfig(provider: string): { endpoint: string; model: string } {
-  return IMAGE_PROVIDER_CONFIGS[provider] || IMAGE_PROVIDER_CONFIGS['openai'];
+  return IMAGE_PROVIDER_CONFIGS[provider] || IMAGE_PROVIDER_CONFIGS['wan2gp'];
 }

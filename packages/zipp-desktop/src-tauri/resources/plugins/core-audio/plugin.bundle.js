@@ -421,7 +421,7 @@ var __PLUGIN_EXPORTS__ = (() => {
       guidance_scale: settings.guidanceScale ?? 15,
       // Enable thinking mode when lyrics are provided - this uses the 5Hz LM to generate
       // audio codes that incorporate the vocals/lyrics
-      thinking: hasLyrics,
+      thinking: !!hasLyrics,
       vocal_language: "en"
       // Default to English for now
     };
@@ -1679,7 +1679,8 @@ var __PLUGIN_EXPORTS__ = (() => {
     const outputHandles = (0, import_react5.useMemo)(() => [
       { id: "text", type: "source", position: import_react6.Position.Right, color: "!bg-amber-500", size: "lg", label: "text" },
       { id: "segments", type: "source", position: import_react6.Position.Right, color: "!bg-blue-500", size: "md", label: "segments" },
-      { id: "language", type: "source", position: import_react6.Position.Right, color: "!bg-purple-500", size: "sm", label: "lang" }
+      { id: "language", type: "source", position: import_react6.Position.Right, color: "!bg-purple-500", size: "sm", label: "lang" },
+      { id: "duration", type: "source", position: import_react6.Position.Right, color: "!bg-green-500", size: "sm", label: "duration" }
     ], []);
     const formatDuration = (seconds) => {
       const mins = Math.floor(seconds / 60);

@@ -604,7 +604,7 @@ async function generateMusicAceStep15(
         guidance_scale: settings.guidanceScale ?? 15.0,
         // Enable thinking mode when lyrics are provided - this uses the 5Hz LM to generate
         // audio codes that incorporate the vocals/lyrics
-        thinking: hasLyrics,
+        thinking: !!hasLyrics,
         vocal_language: 'en',  // Default to English for now
     };
 

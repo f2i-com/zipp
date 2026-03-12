@@ -78,6 +78,7 @@ function SpeechToTextNode({ data }: SpeechToTextNodeProps) {
         { id: 'text', type: 'source', position: Position.Right, color: '!bg-amber-500', size: 'lg', label: 'text' },
         { id: 'segments', type: 'source', position: Position.Right, color: '!bg-blue-500', size: 'md', label: 'segments' },
         { id: 'language', type: 'source', position: Position.Right, color: '!bg-purple-500', size: 'sm', label: 'lang' },
+        { id: 'duration', type: 'source', position: Position.Right, color: '!bg-green-500', size: 'sm', label: 'duration' },
     ], []);
 
     // Format duration as mm:ss

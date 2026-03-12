@@ -83,7 +83,8 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -171,7 +172,8 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -284,7 +286,8 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai",
+        "enableThinking": false
       }
     },
     {
@@ -490,7 +493,7 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai"
       }
     },
     {
@@ -573,7 +576,7 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai"
       }
     },
     {
@@ -800,6 +803,32 @@
         "filename": "music_video_output",
         "format": "mp4"
       }
+    },
+    {
+      "id": "output-video",
+      "type": "output",
+      "position": {
+        "x": 6250,
+        "y": 300
+      },
+      "data": {
+        "name": "video",
+        "outputType": "video",
+        "label": "video"
+      }
+    },
+    {
+      "id": "output-music",
+      "type": "output",
+      "position": {
+        "x": 6250,
+        "y": 450
+      },
+      "data": {
+        "name": "music",
+        "outputType": "audio",
+        "label": "music"
+      }
     }
   ],
   "edges": [
@@ -808,14 +837,14 @@
       "source": "input-prompt",
       "target": "expand-prompt-template",
       "sourceHandle": "text",
-      "targetHandle": "idea"
+      "targetHandle": "input"
     },
     {
       "id": "e0b",
       "source": "input-duration",
       "target": "expand-prompt-template",
       "sourceHandle": "text",
-      "targetHandle": "duration"
+      "targetHandle": "input2"
     },
     {
       "id": "e0c",
@@ -842,43 +871,43 @@
       "id": "e0f",
       "source": "parse-config",
       "target": "get-theme",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e0g",
       "source": "parse-config",
       "target": "get-genre",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e0h",
       "source": "parse-config",
       "target": "get-visual-style",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e0i",
       "source": "parse-config",
       "target": "get-num-characters",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e1",
       "source": "get-theme",
       "target": "lyrics-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "theme"
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "id": "e2",
       "source": "get-genre",
       "target": "lyrics-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "genre"
+      "sourceHandle": "output",
+      "targetHandle": "input2"
     },
     {
       "id": "e3",
@@ -898,14 +927,14 @@
       "id": "e5",
       "source": "get-genre",
       "target": "music-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "prompt"
     },
     {
       "id": "e6",
       "source": "store-lyrics",
       "target": "music-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "lyrics"
     },
     {
@@ -940,36 +969,36 @@
       "id": "e12",
       "source": "store-lyrics",
       "target": "scene-planning-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "lyrics"
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "id": "e13",
       "source": "get-num-characters",
       "target": "scene-planning-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "numCharacters"
+      "sourceHandle": "output",
+      "targetHandle": "input2"
     },
     {
       "id": "e14",
       "source": "get-visual-style",
       "target": "scene-planning-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "style"
+      "sourceHandle": "output",
+      "targetHandle": "input3"
     },
     {
       "id": "e15",
       "source": "process-segments",
       "target": "get-num-scenes",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e16",
       "source": "get-num-scenes",
       "target": "scene-planning-prompt",
-      "sourceHandle": "default",
-      "targetHandle": "numScenes"
+      "sourceHandle": "output",
+      "targetHandle": "input4"
     },
     {
       "id": "e17",
@@ -996,14 +1025,14 @@
       "id": "e20",
       "source": "parse-storyboard",
       "target": "extract-characters",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e21",
       "source": "extract-characters",
       "target": "character-loop-start",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "array"
     },
     {
@@ -1024,22 +1053,22 @@
       "id": "e24",
       "source": "char-name",
       "target": "char-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "name"
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "id": "e25",
       "source": "char-desc",
       "target": "char-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "description"
+      "sourceHandle": "output",
+      "targetHandle": "input2"
     },
     {
       "id": "e26",
       "source": "get-visual-style",
       "target": "char-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "style"
+      "sourceHandle": "output",
+      "targetHandle": "input3"
     },
     {
       "id": "e27",
@@ -1053,7 +1082,7 @@
       "source": "input-reference-image",
       "target": "char-image-gen",
       "sourceHandle": "content",
-      "targetHandle": "image"
+      "targetHandle": "image_0"
     },
     {
       "id": "e29",
@@ -1066,14 +1095,14 @@
       "id": "e30",
       "source": "store-char-image",
       "target": "character-loop-end",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e31",
       "source": "parse-storyboard",
       "target": "extract-scene-prompts",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
@@ -1087,7 +1116,7 @@
       "id": "e33",
       "source": "extract-scene-prompts",
       "target": "image-loop-start",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "array"
     },
     {
@@ -1122,22 +1151,22 @@
       "id": "e35d",
       "source": "get-scene-text",
       "target": "image-ai-template",
-      "sourceHandle": "default",
-      "targetHandle": "lyrics"
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "id": "e35e",
       "source": "get-scene-context",
       "target": "image-ai-template",
-      "sourceHandle": "default",
-      "targetHandle": "characters"
+      "sourceHandle": "output",
+      "targetHandle": "input2"
     },
     {
       "id": "e35f",
       "source": "get-visual-style",
       "target": "image-ai-template",
-      "sourceHandle": "default",
-      "targetHandle": "style"
+      "sourceHandle": "output",
+      "targetHandle": "input3"
     },
     {
       "id": "e35g",
@@ -1157,36 +1186,36 @@
       "id": "e36",
       "source": "extract-image-prompt",
       "target": "scene-image-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "prompt"
     },
     {
       "id": "e37",
       "source": "get-char-reference",
       "target": "scene-image-gen",
-      "sourceHandle": "default",
-      "targetHandle": "image"
+      "sourceHandle": "output",
+      "targetHandle": "image_0"
     },
     {
       "id": "e60",
       "source": "extract-image-prompt",
       "target": "video-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "imageDescription"
+      "sourceHandle": "output",
+      "targetHandle": "input"
     },
     {
       "id": "e61",
       "source": "get-scene-text",
       "target": "video-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "lyrics"
+      "sourceHandle": "output",
+      "targetHandle": "input2"
     },
     {
       "id": "e62",
       "source": "get-visual-style",
       "target": "video-prompt-template",
-      "sourceHandle": "default",
-      "targetHandle": "style"
+      "sourceHandle": "output",
+      "targetHandle": "input3"
     },
     {
       "id": "e63",
@@ -1220,28 +1249,28 @@
       "id": "e67",
       "source": "extract-video-prompt",
       "target": "store-scene-data",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input2"
     },
     {
       "id": "e68",
       "source": "get-scene-duration",
       "target": "store-scene-data",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input3"
     },
     {
       "id": "e69",
       "source": "extract-image-prompt",
       "target": "store-scene-data",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input4"
     },
     {
       "id": "e70",
       "source": "store-scene-data",
       "target": "image-loop-end",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
@@ -1255,7 +1284,7 @@
       "id": "e72",
       "source": "extract-scene-data",
       "target": "video-loop-start",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "array"
     },
     {
@@ -1283,28 +1312,28 @@
       "id": "e76",
       "source": "get-video-image",
       "target": "scene-video-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "image"
     },
     {
       "id": "e77",
       "source": "get-video-prompt",
       "target": "scene-video-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "prompt"
     },
     {
       "id": "e77b",
       "source": "get-video-duration",
       "target": "calc-video-frames",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
       "id": "e77c",
       "source": "calc-video-frames",
       "target": "scene-video-gen",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "frameCount"
     },
     {
@@ -1318,14 +1347,14 @@
       "id": "e79",
       "source": "get-video-duration",
       "target": "store-video",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input2"
     },
     {
       "id": "e80",
       "source": "store-video",
       "target": "video-loop-end",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
@@ -1346,7 +1375,7 @@
       "id": "e83",
       "source": "get-scene-durations",
       "target": "extend-videos",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "durations"
     },
     {
@@ -1360,7 +1389,7 @@
       "id": "e85",
       "source": "store-music-path",
       "target": "get-music-path",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "input"
     },
     {
@@ -1374,7 +1403,7 @@
       "id": "e87",
       "source": "get-music-path",
       "target": "audio-mixer",
-      "sourceHandle": "default",
+      "sourceHandle": "output",
       "targetHandle": "audio"
     },
     {
@@ -1390,6 +1419,27 @@
       "target": "video-save",
       "sourceHandle": "video",
       "targetHandle": "video"
+    },
+    {
+      "id": "e90",
+      "source": "input-duration",
+      "target": "music-gen",
+      "sourceHandle": "text",
+      "targetHandle": "duration"
+    },
+    {
+      "id": "e91",
+      "source": "video-save",
+      "target": "output-video",
+      "sourceHandle": "path",
+      "targetHandle": "result"
+    },
+    {
+      "id": "e92",
+      "source": "store-music-path",
+      "target": "output-music",
+      "sourceHandle": "output",
+      "targetHandle": "result"
     }
   ]
 }

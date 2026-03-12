@@ -23,6 +23,7 @@ const AI_PROVIDERS = [
   { id: 'groq', name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile' },
   { id: 'ollama', name: 'Ollama (Local)', endpoint: 'http://localhost:11434/v1/chat/completions', model: 'llama3.2' },
   { id: 'lmstudio', name: 'LM Studio (Local)', endpoint: 'http://localhost:1234/v1/chat/completions', model: 'local-model' },
+  { id: 'huggingface', name: 'HuggingFace LLM (Local)', endpoint: 'http://127.0.0.1:8774/v1/chat/completions', model: 'Qwen/Qwen3.5-9B' },
   { id: 'custom', name: 'Custom', endpoint: '', model: '' },
 ] as const;
 
@@ -222,7 +223,7 @@ export function useAIFlowBuilder({
 
   // Settings - initialize from project defaults
   const [settings, setSettings] = useState<AIFlowBuilderSettings>(() => {
-    const defaultProvider = projectSettings?.defaultAIProvider || 'openai';
+    const defaultProvider = projectSettings?.defaultAIProvider || 'huggingface';
     return {
       provider: defaultProvider,
       model: projectSettings?.defaultAIModel || AI_PROVIDERS.find(p => p.id === defaultProvider)?.model || '',
@@ -235,7 +236,7 @@ export function useAIFlowBuilder({
   // Update settings when project defaults change
   useEffect(() => {
     if (settings.useProjectDefaults && projectSettings) {
-      const defaultProvider = projectSettings.defaultAIProvider || 'openai';
+      const defaultProvider = projectSettings.defaultAIProvider || 'huggingface';
       setSettings(prev => ({
         ...prev,
         provider: defaultProvider,
@@ -274,7 +275,7 @@ export function useAIFlowBuilder({
     const provider = AI_PROVIDERS.find(p => p.id === settings.provider) || AI_PROVIDERS[0];
     const apiKey = getApiKey(settings.apiKeyConstant);
 
-    const isLocalProvider = ['ollama', 'lmstudio'].includes(settings.provider);
+    const isLocalProvider = ['ollama', 'lmstudio', 'huggingface'].includes(settings.provider);
     const isCustomProvider = settings.provider === 'custom';
     const endpoint = settings.customEndpoint || provider.endpoint;
     const model = settings.model || provider.model;
@@ -471,7 +472,7 @@ You are helping the user build or modify a workflow. Based on the conversation:
 
       // Get compiler options from settings
       const provider = AI_PROVIDERS.find(p => p.id === settings.provider) || AI_PROVIDERS[0];
-      const isLocalProvider = ['ollama', 'lmstudio'].includes(settings.provider);
+      const isLocalProvider = ['ollama', 'lmstudio', 'huggingface'].includes(settings.provider);
       const isCustomProvider = settings.provider === 'custom';
       const resolvedEndpoint = (isLocalProvider || isCustomProvider)
         ? (settings.customEndpoint || provider.endpoint)

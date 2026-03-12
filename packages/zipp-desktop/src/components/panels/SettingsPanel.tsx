@@ -30,6 +30,7 @@ const AI_PROVIDERS: { value: AIProvider; label: string; endpoint: string; model:
   { value: 'groq', label: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', apiKeyConstant: 'GROQ_API_KEY' },
   { value: 'ollama', label: 'Ollama (Local)', endpoint: 'http://localhost:11434/v1/chat/completions', model: 'llama3', apiKeyConstant: '' },
   { value: 'lmstudio', label: 'LM Studio (Local)', endpoint: 'http://localhost:1234/v1/chat/completions', model: '', apiKeyConstant: '' },
+  { value: 'huggingface', label: 'HuggingFace LLM (Local)', endpoint: 'http://127.0.0.1:8774/v1/chat/completions', model: 'Qwen/Qwen3.5-9B', apiKeyConstant: '' },
   { value: 'custom', label: 'Custom', endpoint: '', model: '', apiKeyConstant: '' },
 ];
 
@@ -38,12 +39,14 @@ const IMAGE_PROVIDERS: { value: string; label: string; endpoint: string; model: 
   { value: 'gemini-3-pro', label: 'Gemini 3 Pro', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent', model: 'gemini-3-pro-image-preview', apiKeyConstant: 'GOOGLE_API_KEY' },
   { value: 'gemini-flash', label: 'Gemini 2.5 Flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent', model: 'gemini-2.5-flash-preview-05-20', apiKeyConstant: 'GOOGLE_API_KEY' },
   { value: 'gemini-2-flash', label: 'Gemini 2.0 Flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent', model: 'gemini-2.0-flash-exp', apiKeyConstant: 'GOOGLE_API_KEY' },
+  { value: 'wan2gp', label: 'Wan2GP (Local)', endpoint: 'http://127.0.0.1:8773', model: 'qwen', apiKeyConstant: '' },
   { value: 'comfyui', label: 'ComfyUI (Local)', endpoint: 'http://localhost:8188', model: '', apiKeyConstant: '' },
   { value: 'custom', label: 'Custom', endpoint: '', model: '', apiKeyConstant: '' },
 ];
 
-const VIDEO_PROVIDERS: { value: string; label: string; endpoint: string }[] = [
-  { value: 'comfyui', label: 'ComfyUI (Local)', endpoint: 'http://localhost:8188' },
+const VIDEO_PROVIDERS: { value: string; label: string; endpoint: string; model: string }[] = [
+  { value: 'wan2gp', label: 'Wan2GP (Local)', endpoint: 'http://127.0.0.1:8773', model: 'ltx2_22B_distilled' },
+  { value: 'comfyui', label: 'ComfyUI (Local)', endpoint: 'http://localhost:8188', model: '' },
 ];
 
 export default function SettingsPanel({
@@ -281,6 +284,7 @@ export default function SettingsPanel({
 
       const updates: Partial<typeof settings> = {
         defaultVideoProvider: provider,
+        defaultVideoModel: providerInfo.model,
       };
 
       if (isDefaultEndpoint) {
@@ -515,7 +519,7 @@ export default function SettingsPanel({
                 <div>
                   <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default Provider</label>
                   <select
-                    value={settings.defaultAIProvider || 'openai'}
+                    value={settings.defaultAIProvider || 'huggingface'}
                     onChange={(e) => handleAIProviderChange(e.target.value as AIProvider)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-purple-500"
                   >
@@ -560,7 +564,7 @@ export default function SettingsPanel({
                 <div>
                   <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default Provider</label>
                   <select
-                    value={settings.defaultImageProvider || 'openai'}
+                    value={settings.defaultImageProvider || 'wan2gp'}
                     onChange={(e) => handleImageProviderChange(e.target.value as ImageProvider)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-pink-500"
                   >
@@ -605,7 +609,7 @@ export default function SettingsPanel({
                 <div>
                   <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default Provider</label>
                   <select
-                    value={settings.defaultVideoProvider || 'comfyui'}
+                    value={settings.defaultVideoProvider || 'wan2gp'}
                     onChange={(e) => handleVideoProviderChange(e.target.value)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-orange-500"
                   >
@@ -616,17 +620,25 @@ export default function SettingsPanel({
                 </div>
 
                 <div>
-                  <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default ComfyUI Server</label>
+                  <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default Endpoint</label>
                   <input
                     type="text"
                     value={settings.defaultVideoEndpoint || ''}
                     onChange={(e) => onUpdateSettings({ defaultVideoEndpoint: e.target.value })}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-orange-500 font-mono"
-                    placeholder="http://localhost:8188"
+                    placeholder="http://127.0.0.1:8773"
                   />
-                  <p className="text-slate-500 text-xs mt-1">
-                    This endpoint is used for Video Gen nodes with embedded or loaded ComfyUI workflows.
-                  </p>
+                </div>
+
+                <div>
+                  <label className="text-slate-500 dark:text-slate-400 text-xs block mb-1">Default Model</label>
+                  <input
+                    type="text"
+                    value={settings.defaultVideoModel || ''}
+                    onChange={(e) => onUpdateSettings({ defaultVideoModel: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-orange-500"
+                    placeholder="ltx2_22B_distilled"
+                  />
                 </div>
               </div>
             </div>

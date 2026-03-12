@@ -62,6 +62,14 @@
             "description": "Number of frames (overrides workflow default)"
         },
         {
+            "id": "duration",
+            "name": "Duration",
+            "type": "number",
+            "position": "left",
+            "required": false,
+            "description": "Video duration in seconds (overrides node setting)"
+        },
+        {
             "id": "audio",
             "name": "Audio",
             "type": "audio",

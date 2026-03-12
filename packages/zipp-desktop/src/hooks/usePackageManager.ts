@@ -134,7 +134,7 @@ export function applyDefaultProviders(graph: WorkflowGraph, settings: ProjectSet
           model: settings.defaultAIModel || '',
           apiKeyConstant: settings.defaultAIApiKeyConstant || '',
           apiKey: '',
-          provider: settings.defaultAIProvider || 'openai',
+          provider: settings.defaultAIProvider || 'huggingface',
         },
       };
     }
@@ -153,7 +153,7 @@ export function applyDefaultProviders(graph: WorkflowGraph, settings: ProjectSet
             : (settings.defaultImageEndpoint || ''),
           model: isLocal ? (node.data.model || '') : (settings.defaultImageModel || ''),
           apiKeyConstant: isLocal ? '' : (settings.defaultImageApiKeyConstant || ''),
-          apiFormat: existingFormat || settings.defaultImageProvider || 'openai',
+          apiFormat: existingFormat || settings.defaultImageProvider || 'wan2gp',
         },
       };
     }

@@ -528,11 +528,35 @@ var __PLUGIN_EXPORTS__ = (() => {
           const hasAwait = /\bawait\b/.test(userCode);
           const asyncPrefix = hasAwait ? "async " : "";
           const awaitPrefix = hasAwait ? "await " : "";
-          if (hasReturn) {
+          if (hasReturn && hasAwait) {
+            const transformedCode = userCode.replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`).replace(/\breturn\s*;/g, "break;");
             code += `
-  // Logic block: wrapped in ${hasAwait ? "async " : ""}IIFE for proper return behavior
+  // Logic block: inline with await + return (do/while pattern)
+  let context = workflow_context;`;
+            code += `
+  let input = ${inputVar};`;
+            for (const [handleId, sourceVar] of inputs) {
+              if (handleId !== "default" && handleId !== "input") {
+                code += `
+  let ${handleId} = ${sourceVar};`;
+              }
+            }
+            if (isInLoop && loopStartId) {
+              const sanitizedLoopId = sanitizeId(loopStartId);
+              code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+            }
+            code += `
+  ${letOrAssign}${outputVar} = null;
+  do {
+    ${transformedCode}
+  } while (false);
+  workflow_context["${node.id}"] = ${outputVar};`;
+          } else if (hasReturn) {
+            code += `
+  // Logic block: wrapped in IIFE for proper return behavior
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = ${awaitPrefix}(${asyncPrefix}function(${iifeParams.join(", ")}) {${namedInputsSetup}
+  ${letOrAssign}${outputVar} = (function(${iifeParams.join(", ")}) {${namedInputsSetup}
     ${userCode}
   })(${iifeArgs.join(", ")});
   workflow_context["${node.id}"] = ${outputVar};`;
@@ -557,11 +581,31 @@ var __PLUGIN_EXPORTS__ = (() => {
               code += `
   ${letOrAssign}${outputVar} = ${userCode};
   workflow_context["${node.id}"] = ${outputVar};`;
+            } else if (hasAwait) {
+              code += `
+  // Logic block: multi-statement with await (inline)
+  let context = workflow_context;
+  let input = ${inputVar};`;
+              for (const [handleId, sourceVar] of inputs) {
+                if (handleId !== "default" && handleId !== "input") {
+                  code += `
+  let ${handleId} = ${sourceVar};`;
+                }
+              }
+              if (isInLoop && loopStartId) {
+                const sanitizedLoopId = sanitizeId(loopStartId);
+                code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+              }
+              code += `
+  ${userCode};
+  ${letOrAssign}${outputVar} = null;
+  workflow_context["${node.id}"] = ${outputVar};`;
             } else {
               code += `
-  // Logic block: multi-statement (no return)${hasAwait ? " - async" : ""}
+  // Logic block: multi-statement (no return)
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = ${awaitPrefix}(${asyncPrefix}function(${iifeParams.join(", ")}) {${namedInputsSetup}
+  ${letOrAssign}${outputVar} = (function(${iifeParams.join(", ")}) {${namedInputsSetup}
     ${userCode};
     return null;
   })(${iifeArgs.join(", ")});

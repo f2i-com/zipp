@@ -671,12 +671,16 @@ async function generateVideoWan2GP(
   // If there's an image input, include for img2vid
   if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
     const imgInput = imageInputs[0];
+    ctx.log('info', `[VideoGen] Image input detected, type: ${typeof imgInput}, value preview: ${typeof imgInput === 'string' ? imgInput.substring(0, 120) : JSON.stringify(imgInput).substring(0, 120)}`);
     if (typeof imgInput === 'string') {
       body.image_start = imgInput;
     } else if (typeof imgInput === 'object' && imgInput !== null) {
       const obj = imgInput as Record<string, unknown>;
       body.image_start = obj.dataUrl || obj.path || obj.url || '';
     }
+    ctx.log('info', `[VideoGen] image_start set to: ${String(body.image_start).substring(0, 120)}`);
+  } else {
+    ctx.log('info', `[VideoGen] No image input provided (imageInputs: ${JSON.stringify(imageInputs)?.substring(0, 100)})`);
   }
 
   // End image (separate parameter, not from imageInputs array)

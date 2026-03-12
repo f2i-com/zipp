@@ -604,12 +604,16 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     if (imageInputs && imageInputs.length > 0 && imageInputs[0]) {
       const imgInput = imageInputs[0];
+      ctx.log("info", `[VideoGen] Image input detected, type: ${typeof imgInput}, value preview: ${typeof imgInput === "string" ? imgInput.substring(0, 120) : JSON.stringify(imgInput).substring(0, 120)}`);
       if (typeof imgInput === "string") {
         body.image_start = imgInput;
       } else if (typeof imgInput === "object" && imgInput !== null) {
         const obj = imgInput;
         body.image_start = obj.dataUrl || obj.path || obj.url || "";
       }
+      ctx.log("info", `[VideoGen] image_start set to: ${String(body.image_start).substring(0, 120)}`);
+    } else {
+      ctx.log("info", `[VideoGen] No image input provided (imageInputs: ${JSON.stringify(imageInputs)?.substring(0, 100)})`);
     }
     if (imageEnd) {
       if (typeof imageEnd === "string") {
@@ -1902,6 +1906,7 @@ var __PLUGIN_EXPORTS__ = (() => {
           const imageVar = inputs.get("image") || "null";
           const imageEndVar = inputs.get("image_end") || "null";
           const audioVar = inputs.get("audio") || "null";
+          const durationVar = inputs.get("duration");
           let code3 = `
   // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
           code3 += `
@@ -1916,7 +1921,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     ${comfyFrameRate2 !== void 0 ? comfyFrameRate2 : "undefined"},
     ${imageVar !== "null" ? `[${imageVar}]` : "null"},
     ${wan2gpSteps},
-    ${wan2gpDuration},
+    ${durationVar || wan2gpDuration},
     ${imageEndVar !== "null" ? imageEndVar : "null"},
     "${wan2gpVram}",
     ${audioVar}
@@ -2768,6 +2773,15 @@ var __PLUGIN_EXPORTS__ = (() => {
         color: "!bg-green-500",
         label: "frames",
         labelColor: "text-green-400",
+        size: "sm"
+      });
+      handles.push({
+        id: "duration",
+        type: "target",
+        position: import_react4.Position.Left,
+        color: "!bg-cyan-500",
+        label: "duration",
+        labelColor: "text-cyan-400",
         size: "sm"
       });
       if (isWan2gp) {

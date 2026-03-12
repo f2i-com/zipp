@@ -103,7 +103,7 @@
         "systemPrompt": "You are a helpful assistant that analyzes web page content and provides clear, concise summaries.",
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai"
       }
     },
     {

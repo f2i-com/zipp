@@ -34,7 +34,7 @@
         "systemPrompt": "You are an expert at writing image generation prompts. Take the user's concept and expand it into a detailed, vivid prompt for an AI image generator. Focus on visual details like lighting, style, composition, colors, and atmosphere. Output ONLY the prompt, no explanations.",
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai"
       }
     },
     {

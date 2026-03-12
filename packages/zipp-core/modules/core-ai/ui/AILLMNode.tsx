@@ -127,6 +127,7 @@ function AILLMNode({ data }: AILLMNodeProps) {
     !!(data.headers || data.imageFormat || (data.imageInputCount && data.imageInputCount > 0))
   );
   const callbackRefs = useCallbackRefs(data);
+  const isUserProviderChange = useRef(false);
 
   // Update React Flow's internal handle registry when image input count changes
   const imageInputCount = data.imageInputCount || 0;
@@ -136,8 +137,11 @@ function AILLMNode({ data }: AILLMNodeProps) {
     }
   }, [nodeId, updateNodeInternals, imageInputCount]);
 
-  // Side effects for provider changes
+  // Side effects for provider changes - only apply when user selects from dropdown
   useEffect(() => {
+    if (!isUserProviderChange.current) return;
+    isUserProviderChange.current = false;
+
     const providerValue = data.provider;
     if (!providerValue) return;
 
@@ -213,6 +217,7 @@ function AILLMNode({ data }: AILLMNodeProps) {
   }, []);
   const handleProviderChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const providerValue = e.target.value as AIProvider;
+    isUserProviderChange.current = true;
     callbackRefs.onProviderChange.current?.(providerValue);
     // Side effects are now handled by useEffect
   }, []);
@@ -222,7 +227,7 @@ function AILLMNode({ data }: AILLMNodeProps) {
   }, []);
 
   // Get defaults from project settings if available
-  const defaultProvider = data.projectSettings?.defaultAIProvider || 'openai';
+  const defaultProvider = data.projectSettings?.defaultAIProvider || 'huggingface';
   const defaultEndpoint = data.projectSettings?.defaultAIEndpoint || '';
   const defaultModel = data.projectSettings?.defaultAIModel || '';
   const defaultApiKeyConstant = data.projectSettings?.defaultAIApiKeyConstant || '';

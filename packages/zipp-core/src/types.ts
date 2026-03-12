@@ -619,10 +619,12 @@ export interface ProjectSettings {
   /** Default API key constant name for Image Gen */
   defaultImageApiKeyConstant?: string;
 
-  /** Default provider for new Video Gen nodes (currently only ComfyUI) */
+  /** Default provider for new Video Gen nodes */
   defaultVideoProvider?: string;
-  /** Default endpoint URL for Video Gen (ComfyUI server) */
+  /** Default endpoint URL for Video Gen */
   defaultVideoEndpoint?: string;
+  /** Default model for Video Gen */
+  defaultVideoModel?: string;
 
   // ============================================
   // Local Network Security Settings

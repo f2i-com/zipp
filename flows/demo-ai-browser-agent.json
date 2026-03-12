@@ -161,7 +161,7 @@
         "endpoint": "http://127.0.0.1:8774/v1/chat/completions",
         "model": "Qwen/Qwen3.5-9B",
         "provider": "huggingface",
-        "format": "openai"
+        "requestFormat": "openai"
       }
     },
     {

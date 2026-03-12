@@ -231,6 +231,7 @@ const CoreVideoCompiler: ModuleCompiler = {
         const imageVar = inputs.get('image') || 'null';
         const imageEndVar = inputs.get('image_end') || 'null';
         const audioVar = inputs.get('audio') || 'null';
+        const durationVar = inputs.get('duration');
 
         let code = `
   // --- Node: ${node.id} (${nodeType} - wan2gp) ---`;
@@ -246,7 +247,7 @@ const CoreVideoCompiler: ModuleCompiler = {
     ${comfyFrameRate !== undefined ? comfyFrameRate : 'undefined'},
     ${imageVar !== 'null' ? `[${imageVar}]` : 'null'},
     ${wan2gpSteps},
-    ${wan2gpDuration},
+    ${durationVar || wan2gpDuration},
     ${imageEndVar !== 'null' ? imageEndVar : 'null'},
     "${wan2gpVram}",
     ${audioVar}

@@ -57,6 +57,32 @@ const CoreFlowControlCompiler: ModuleCompiler = {
         const conditionValue = escapeString(String(data.compareValue || data.conditionValue || ''));
         const conditionField = escapeString(String(data.conditionField || ''));
 
+        // Check for expression mode first - allows direct JS expression evaluation
+        if (data.expression && typeof data.expression === 'string') {
+          const expr = data.expression;
+          code += `
+  // Condition evaluation (expression mode)
+  let _cond_val_${sanitizedId} = ${inputVar};
+  let _cond_result_${sanitizedId} = false;
+  try {
+    _cond_result_${sanitizedId} = !!(${expr});
+  } catch(e) {
+    console.warn("[Condition] (${node.id}) expression error:", e.message);
+    _cond_result_${sanitizedId} = false;
+  }`;
+
+          // Use let for branch outputs only if not inside a loop (loop pre-declares them)
+          const branchLetOrAssign = ctx.isInLoop ? '' : 'let ';
+          code += `
+  ${letOrAssign}${outputVar} = ${inputVar};
+  console.log("[Condition] (${node.id}): expression result=" + _cond_result_${sanitizedId});
+  ${branchLetOrAssign}${outputVar}_true = _cond_result_${sanitizedId} ? ${inputVar} : null;
+  ${branchLetOrAssign}${outputVar}_false = _cond_result_${sanitizedId} ? null : ${inputVar};
+  console.log("[Condition] (${node.id}): true=" + (${outputVar}_true ? "has value" : "null") + ", false=" + (${outputVar}_false ? "has value" : "null"));
+  workflow_context["${node.id}"] = _cond_result_${sanitizedId};`;
+          break;
+        }
+
         code += `
   // Condition evaluation (operator: ${conditionType}, compareValue: ${conditionValue})
   let _cond_val_${sanitizedId} = ${inputVar};

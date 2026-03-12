@@ -217,14 +217,44 @@ const CoreUtilityCompiler: ModuleCompiler = {
         const asyncPrefix = hasAwait ? 'async ' : '';
         const awaitPrefix = hasAwait ? 'await ' : '';
 
-        if (hasReturn) {
+        if (hasReturn && hasAwait) {
+          // Logic block with both return and await: inline the code using do/while(false) + break
+          // Can't use async IIFE because the runtime's await→yield replacement breaks nested functions.
+          // Transform "return X;" into "outputVar = (X); break;" for early-return support.
+          const transformedCode = userCode
+            .replace(/\breturn\s+([^;]+);/g, `${outputVar} = ($1); break;`)
+            .replace(/\breturn\s*;/g, 'break;');
+
+          code += `
+  // Logic block: inline with await + return (do/while pattern)
+  let context = workflow_context;`;
+          // Set up named inputs inline
+          code += `
+  let input = ${inputVar};`;
+          for (const [handleId, sourceVar] of inputs) {
+            if (handleId !== 'default' && handleId !== 'input') {
+              code += `
+  let ${handleId} = ${sourceVar};`;
+            }
+          }
+          if (isInLoop && loopStartId) {
+            const sanitizedLoopId = sanitizeId(loopStartId);
+            code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+          }
+          code += `
+  ${letOrAssign}${outputVar} = null;
+  do {
+    ${transformedCode}
+  } while (false);
+  workflow_context["${node.id}"] = ${outputVar};`;
+        } else if (hasReturn) {
           // Wrap in immediately-invoked function expression (IIFE) so return statements work properly
           // Pass all variables as IIFE parameters to avoid FormLogic closure capture issues
-          // Use async IIFE if code contains await
           code += `
-  // Logic block: wrapped in ${hasAwait ? 'async ' : ''}IIFE for proper return behavior
+  // Logic block: wrapped in IIFE for proper return behavior
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = ${awaitPrefix}(${asyncPrefix}function(${iifeParams.join(', ')}) {${namedInputsSetup}
+  ${letOrAssign}${outputVar} = (function(${iifeParams.join(', ')}) {${namedInputsSetup}
     ${userCode}
   })(${iifeArgs.join(', ')});
   workflow_context["${node.id}"] = ${outputVar};`;
@@ -254,13 +284,34 @@ const CoreUtilityCompiler: ModuleCompiler = {
             code += `
   ${letOrAssign}${outputVar} = ${userCode};
   workflow_context["${node.id}"] = ${outputVar};`;
-          } else {
-            // Multi-statement code without return - wrap in IIFE with parameters
-            // Use async IIFE if code contains await
+          } else if (hasAwait) {
+            // Multi-statement code with await but no return - inline directly
+            // Can't use async IIFE because the runtime's await→yield replacement breaks nested functions.
             code += `
-  // Logic block: multi-statement (no return)${hasAwait ? ' - async' : ''}
+  // Logic block: multi-statement with await (inline)
   let context = workflow_context;
-  ${letOrAssign}${outputVar} = ${awaitPrefix}(${asyncPrefix}function(${iifeParams.join(', ')}) {${namedInputsSetup}
+  let input = ${inputVar};`;
+            for (const [handleId, sourceVar] of inputs) {
+              if (handleId !== 'default' && handleId !== 'input') {
+                code += `
+  let ${handleId} = ${sourceVar};`;
+              }
+            }
+            if (isInLoop && loopStartId) {
+              const sanitizedLoopId = sanitizeId(loopStartId);
+              code += `
+  let loop_index = _i_${sanitizedLoopId};`;
+            }
+            code += `
+  ${userCode};
+  ${letOrAssign}${outputVar} = null;
+  workflow_context["${node.id}"] = ${outputVar};`;
+          } else {
+            // Multi-statement code without return or await - wrap in IIFE with parameters
+            code += `
+  // Logic block: multi-statement (no return)
+  let context = workflow_context;
+  ${letOrAssign}${outputVar} = (function(${iifeParams.join(', ')}) {${namedInputsSetup}
     ${userCode};
     return null;
   })(${iifeArgs.join(', ')});

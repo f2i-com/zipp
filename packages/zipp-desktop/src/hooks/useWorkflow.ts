@@ -125,7 +125,7 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
               endpoint: projectSettings.defaultAIEndpoint || '',
               model: projectSettings.defaultAIModel || '',
               apiKeyConstant: projectSettings.defaultAIApiKeyConstant || '',
-              provider: projectSettings.defaultAIProvider || 'openai',
+              provider: projectSettings.defaultAIProvider || 'huggingface',
               _hasInheritedDefaults: true, // Mark as having inherited defaults
             },
           };
@@ -145,7 +145,7 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
               endpoint: projectSettings.defaultImageEndpoint || '',
               model: projectSettings.defaultImageModel || '',
               apiKeyConstant: projectSettings.defaultImageApiKeyConstant || '',
-              apiFormat: projectSettings.defaultImageProvider || 'openai',
+              apiFormat: projectSettings.defaultImageProvider || 'wan2gp',
               _hasInheritedDefaults: true,
             },
           };
@@ -204,7 +204,7 @@ export function useWorkflow(options: UseWorkflowOptions = {}) {
               endpoint: projectSettings.defaultAIEndpoint || '',
               model: projectSettings.defaultAIModel || '',
               apiKeyConstant: projectSettings.defaultAIApiKeyConstant || '',
-              provider: projectSettings.defaultAIProvider || 'openai',
+              provider: projectSettings.defaultAIProvider || 'huggingface',
               _hasInheritedDefaults: true,
             },
           };

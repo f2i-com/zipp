@@ -366,6 +366,17 @@ function VideoGenNode({ data }: VideoGenNodeProps) {
             size: 'sm',
         });
 
+        // Duration input (for dynamic video duration from narration length, etc.)
+        handles.push({
+            id: 'duration',
+            type: 'target',
+            position: Position.Left,
+            color: '!bg-cyan-500',
+            label: 'duration',
+            labelColor: 'text-cyan-400',
+            size: 'sm',
+        });
+
         // Audio input (for audio-guided generation - LTX 2.3, etc.)
         if (isWan2gp) {
             handles.push({

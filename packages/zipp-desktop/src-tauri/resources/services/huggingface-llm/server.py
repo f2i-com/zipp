@@ -36,7 +36,7 @@ load_dotenv()
 HOST = os.getenv("HF_LLM_HOST", "127.0.0.1")
 PORT = int(os.getenv("ZIPP_SERVICE_PORT", os.getenv("HF_LLM_PORT", "8774")))
 DEFAULT_MODEL = os.getenv("HF_LLM_DEFAULT_MODEL", "Qwen/Qwen3.5-9B")
-QUANTIZE = os.getenv("HF_LLM_QUANTIZE", "4bit").lower()
+QUANTIZE = os.getenv("HF_LLM_QUANTIZE", "none").lower()
 MAX_NEW_TOKENS_DEFAULT = int(os.getenv("HF_LLM_MAX_NEW_TOKENS", "2048"))
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
@@ -53,6 +53,41 @@ else:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("hf-llm")
+
+# Check for llama-cpp-python (fast GGUF inference)
+LLAMA_CPP_AVAILABLE = False
+try:
+    from llama_cpp import Llama
+    LLAMA_CPP_AVAILABLE = True
+    logger.info("llama-cpp-python available for fast GGUF inference")
+except ImportError:
+    pass
+
+# Detect best attention implementation
+def _detect_attn_implementation() -> str:
+    """Detect the best available attention implementation."""
+    if DEVICE != "cuda":
+        return "eager"
+    try:
+        import flash_attn  # noqa: F401
+        logger.info(f"Flash Attention {flash_attn.__version__} available")
+        return "flash_attention_2"
+    except ImportError:
+        pass
+    # SDPA (PyTorch native scaled dot-product attention) is fast and always available
+    logger.info("Using PyTorch SDPA attention (flash-attn not installed)")
+    return "sdpa"
+
+ATTN_IMPL = _detect_attn_implementation()
+
+# Enable CUDA optimizations
+if DEVICE == "cuda":
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    if hasattr(torch.backends.cuda, "enable_flash_sdp"):
+        torch.backends.cuda.enable_flash_sdp(True)
+    if hasattr(torch.backends.cuda, "enable_mem_efficient_sdp"):
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
 
 # Known vision model types
 VISION_MODEL_TYPES = {
@@ -97,6 +132,7 @@ class ModelManager:
         self.processor = None
         self.model_name: Optional[str] = None
         self.is_vision: bool = False
+        self._backend: str = "transformers"  # "transformers" or "llamacpp"
         self.lock = asyncio.Lock()
         self._loading: bool = False
 
@@ -116,6 +152,7 @@ class ModelManager:
             self.processor = None
         self.model_name = None
         self.is_vision = False
+        self._backend = "transformers"
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -144,24 +181,90 @@ class ModelManager:
 
         self.unload()
 
-        # Check if GGUF — loaded via transformers gguf_file param
+        # Check if GGUF
         gguf_info = self._parse_gguf(model_name)
         if gguf_info:
             repo_or_dir, gguf_file = gguf_info
-            logger.info(f"Loading GGUF via transformers: {repo_or_dir} / {gguf_file}")
-            # Skip bitsandbytes for GGUF (already quantized, dequantized to fp16 by transformers)
-            self._load_transformers(repo_or_dir, "none", gguf_file=gguf_file)
+            if LLAMA_CPP_AVAILABLE:
+                try:
+                    logger.info(f"Loading GGUF via llama-cpp-python: {repo_or_dir} / {gguf_file}")
+                    self._load_llamacpp(repo_or_dir, gguf_file)
+                except Exception as e:
+                    logger.warning(f"llama-cpp-python failed: {e}")
+                    logger.info("Falling back to transformers backend for GGUF")
+                    self.unload()
+                    self._load_transformers(repo_or_dir, "none", gguf_file=gguf_file)
+            else:
+                logger.info(f"Loading GGUF via transformers: {repo_or_dir} / {gguf_file}")
+                self._load_transformers(repo_or_dir, "none", gguf_file=gguf_file)
         else:
             self._load_transformers(model_name, quantize)
 
         self.model_name = model_name
         self._loading = False
+        # Re-enable hub access for future model swaps
+        os.environ.pop("HF_HUB_OFFLINE", None)
+        os.environ.pop("TRANSFORMERS_OFFLINE", None)
+        try:
+            import huggingface_hub.constants as hf_constants
+            hf_constants.HF_HUB_OFFLINE = False
+        except Exception:
+            pass
 
-        if torch.cuda.is_available():
-            mem = torch.cuda.memory_allocated() / 1024**3
-            logger.info(f"Model loaded. VRAM usage: {mem:.1f} GB")
+        # Report model memory usage
+        if self._backend == "llamacpp":
+            logger.info("Model loaded (llama-cpp-python backend).")
+        elif torch.cuda.is_available():
+            try:
+                param_bytes = sum(
+                    p.nelement() * p.element_size() for p in self.model.parameters()
+                )
+                buffer_bytes = sum(
+                    b.nelement() * b.element_size() for b in self.model.buffers()
+                )
+                model_gb = (param_bytes + buffer_bytes) / 1024**3
+                logger.info(f"Model loaded. Estimated size: {model_gb:.1f} GB")
+            except Exception:
+                logger.info("Model loaded.")
         else:
             logger.info("Model loaded.")
+
+    @staticmethod
+    def _is_cached_locally(model_name: str) -> bool:
+        """Check if a model is already cached in the HuggingFace cache directory."""
+        if os.path.isdir(model_name):
+            return True  # Local directory path
+        try:
+            from huggingface_hub import try_to_load_from_cache
+            # Check if config.json exists in cache (a reliable indicator)
+            result = try_to_load_from_cache(model_name, "config.json")
+            return result is not None and isinstance(result, str)
+        except Exception:
+            return False
+
+    def _load_llamacpp(self, repo_or_dir: str, gguf_file: str):
+        """Load a GGUF model via llama-cpp-python for fast inference."""
+        # Resolve the GGUF file path
+        local_path = os.path.join(repo_or_dir, gguf_file) if os.path.isdir(repo_or_dir) else None
+        if local_path and os.path.isfile(local_path):
+            model_path = local_path
+        else:
+            from huggingface_hub import hf_hub_download
+            logger.info(f"Resolving GGUF from HuggingFace Hub: {repo_or_dir}/{gguf_file}")
+            model_path = hf_hub_download(repo_or_dir, gguf_file, token=HF_TOKEN)
+
+        logger.info(f"Loading GGUF: {model_path}")
+        n_gpu = -1 if DEVICE in ("cuda", "mps") else 0
+        self.model = Llama(
+            model_path=model_path,
+            n_gpu_layers=n_gpu,
+            n_ctx=4096,
+            verbose=False,
+        )
+        self.tokenizer = None
+        self.processor = None
+        self.is_vision = False
+        self._backend = "llamacpp"
 
     def _load_transformers(self, model_name: str, quantize: str, gguf_file: str = None):
         """Load a model via HuggingFace transformers (safetensors, GGUF, local dir, or HF hub)."""
@@ -175,39 +278,80 @@ class ModelManager:
 
         gguf_kwargs = {"gguf_file": gguf_file} if gguf_file else {}
 
+        # Check if model is cached locally to avoid network requests
+        is_local = os.path.isdir(model_name) or (not gguf_file and self._is_cached_locally(model_name))
+        if is_local:
+            logger.info(f"Model found in local cache, loading offline")
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+            # Also patch huggingface_hub's runtime constant
+            try:
+                import huggingface_hub.constants as hf_constants
+                hf_constants.HF_HUB_OFFLINE = True
+            except Exception:
+                pass
+        local_kwargs = {"local_files_only": True} if is_local else {}
+
         # Detect vision model from config (skip for GGUF)
         if gguf_file:
             self.is_vision = False
         else:
             try:
                 config = AutoConfig.from_pretrained(
-                    model_name, trust_remote_code=True, token=HF_TOKEN
+                    model_name, trust_remote_code=True, token=HF_TOKEN, **local_kwargs
                 )
                 model_type = getattr(config, "model_type", "")
                 self.is_vision = model_type in VISION_MODEL_TYPES
             except Exception as e:
-                logger.warning(f"Could not load config for vision detection: {e}")
-                self.is_vision = False
+                if is_local:
+                    # Retry without local_files_only
+                    logger.info(f"Local cache incomplete, fetching from hub")
+                    local_kwargs = {}
+                    os.environ.pop("HF_HUB_OFFLINE", None)
+                    os.environ.pop("TRANSFORMERS_OFFLINE", None)
+                    try:
+                        import huggingface_hub.constants as hf_constants
+                        hf_constants.HF_HUB_OFFLINE = False
+                    except Exception:
+                        pass
+                    try:
+                        config = AutoConfig.from_pretrained(
+                            model_name, trust_remote_code=True, token=HF_TOKEN
+                        )
+                        model_type = getattr(config, "model_type", "")
+                        self.is_vision = model_type in VISION_MODEL_TYPES
+                    except Exception as e2:
+                        logger.warning(f"Could not load config for vision detection: {e2}")
+                        self.is_vision = False
+                else:
+                    logger.warning(f"Could not load config for vision detection: {e}")
+                    self.is_vision = False
 
         # Load tokenizer / processor
         if self.is_vision:
             logger.info(f"Detected vision model (type={model_type})")
             self.processor = AutoProcessor.from_pretrained(
-                model_name, trust_remote_code=True, token=HF_TOKEN
+                model_name, trust_remote_code=True, token=HF_TOKEN, **local_kwargs
             )
             self.tokenizer = getattr(self.processor, "tokenizer", self.processor)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(
-                model_name, trust_remote_code=True, token=HF_TOKEN, **gguf_kwargs
+                model_name, trust_remote_code=True, token=HF_TOKEN, **local_kwargs, **gguf_kwargs
             )
 
         # Build quantization config
         quant_config = None
         if DEVICE == "cuda" and quantize == "4bit":
             try:
+                # Use bfloat16 compute dtype on Ampere+ GPUs (SM >= 8.0) for better perf
+                compute_dtype = torch.bfloat16
+                if torch.cuda.is_available():
+                    cap = torch.cuda.get_device_capability()
+                    if cap[0] < 8:
+                        compute_dtype = torch.float16
                 quant_config = BitsAndBytesConfig(
                     load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_compute_dtype=compute_dtype,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
                 )
@@ -226,12 +370,13 @@ class ModelManager:
             "trust_remote_code": True,
             "token": HF_TOKEN,
         }
+        load_kwargs.update(local_kwargs)
         if quant_config:
             load_kwargs["quantization_config"] = quant_config
-            load_kwargs["device_map"] = "auto"
+            load_kwargs["device_map"] = {"": DEVICE}
         elif DEVICE == "cuda":
-            load_kwargs["device_map"] = "auto"
             load_kwargs["torch_dtype"] = torch.float16
+            load_kwargs["device_map"] = {"": DEVICE}
         elif DEVICE == "mps":
             load_kwargs["torch_dtype"] = torch.float16
         else:
@@ -239,8 +384,22 @@ class ModelManager:
 
         load_kwargs.update(gguf_kwargs)
 
+        # Use best available attention implementation
+        if ATTN_IMPL != "eager":
+            load_kwargs["attn_implementation"] = ATTN_IMPL
+            logger.info(f"Using attention: {ATTN_IMPL}")
+
         try:
             self.model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+        except OSError:
+            if is_local:
+                # Cache might be incomplete, retry with network
+                logger.info("Local cache incomplete for model weights, fetching from hub")
+                load_kwargs.pop("local_files_only", None)
+                os.environ.pop("HF_HUB_OFFLINE", None)
+                self.model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+            else:
+                raise
         except (ValueError, TypeError):
             if gguf_file:
                 raise  # GGUF models are always causal LM
@@ -250,7 +409,7 @@ class ModelManager:
             self.is_vision = True
             if self.processor is None:
                 self.processor = AutoProcessor.from_pretrained(
-                    model_name, trust_remote_code=True, token=HF_TOKEN
+                    model_name, trust_remote_code=True, token=HF_TOKEN, **local_kwargs
                 )
                 self.tokenizer = getattr(self.processor, "tokenizer", self.processor)
 
@@ -279,6 +438,29 @@ class ModelManager:
         """Synchronous generation. Returns (text, prompt_tokens, completion_tokens)."""
         max_new = max_tokens or MAX_NEW_TOKENS_DEFAULT
 
+        # llama-cpp-python backend
+        if self._backend == "llamacpp":
+            t0 = time.time()
+            kwargs = {
+                "messages": messages,
+                "max_tokens": max_new,
+                "temperature": max(temperature, 0.01) if temperature > 0 else 0,
+                "top_p": top_p,
+            }
+            if stop:
+                kwargs["stop"] = stop
+            if seed is not None:
+                kwargs["seed"] = seed
+            response = self.model.create_chat_completion(**kwargs)
+            text = response["choices"][0]["message"]["content"]
+            usage = response.get("usage", {})
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            elapsed = time.time() - t0
+            tok_per_sec = completion_tokens / elapsed if elapsed > 0 else 0
+            logger.info(f"Generated {completion_tokens} tokens in {elapsed:.1f}s ({tok_per_sec:.1f} tok/s)")
+            return text, prompt_tokens, completion_tokens
+
         inputs, images = self._prepare_inputs(messages, enable_thinking=enable_thinking)
 
         gen_kwargs = {
@@ -290,7 +472,8 @@ class ModelManager:
         if seed is not None:
             gen_kwargs["seed"] = seed
 
-        with torch.no_grad():
+        t0 = time.time()
+        with torch.inference_mode():
             if self.is_vision and self.processor and images:
                 text_input = self.processor.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True,
@@ -308,6 +491,9 @@ class ModelManager:
                 output_ids = self.model.generate(**inputs, **gen_kwargs)
 
         new_tokens = output_ids[0][prompt_len:]
+        elapsed = time.time() - t0
+        tok_per_sec = len(new_tokens) / elapsed if elapsed > 0 else 0
+        logger.info(f"Generated {len(new_tokens)} tokens in {elapsed:.1f}s ({tok_per_sec:.1f} tok/s)")
         text = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
         return text, prompt_len, len(new_tokens)
@@ -324,6 +510,26 @@ class ModelManager:
     ):
         """Synchronous streaming generation. Yields text chunks."""
         max_new = max_tokens or MAX_NEW_TOKENS_DEFAULT
+
+        # llama-cpp-python backend
+        if self._backend == "llamacpp":
+            kwargs = {
+                "messages": messages,
+                "max_tokens": max_new,
+                "temperature": max(temperature, 0.01) if temperature > 0 else 0,
+                "top_p": top_p,
+                "stream": True,
+            }
+            if stop:
+                kwargs["stop"] = stop
+            if seed is not None:
+                kwargs["seed"] = seed
+            for chunk in self.model.create_chat_completion(**kwargs):
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                content = delta.get("content", "")
+                if content:
+                    yield content
+            return
 
         from transformers import TextIteratorStreamer
 
