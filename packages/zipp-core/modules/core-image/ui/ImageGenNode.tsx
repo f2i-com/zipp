@@ -35,6 +35,8 @@ interface ImageGenNodeData {
   wan2gpSeed?: number;
   wan2gpRandomSeed?: boolean;
   wan2gpResolution?: string;
+  wan2gpSteps?: number;
+  wan2gpSampler?: string;
   size?: string;
   quality?: string;
   outputFormat?: string;
@@ -76,6 +78,8 @@ interface ImageGenNodeData {
   onWan2gpSeedChange?: (value: number) => void;
   onWan2gpRandomSeedChange?: (value: boolean) => void;
   onWan2gpResolutionChange?: (value: string) => void;
+  onWan2gpStepsChange?: (value: number) => void;
+  onWan2gpSamplerChange?: (value: string) => void;
   onSizeChange?: (value: string) => void;
   onQualityChange?: (value: string) => void;
   onOutputFormatChange?: (value: string) => void;
@@ -117,6 +121,8 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
   const onWan2gpSeedChangeRef = useRef(data.onWan2gpSeedChange);
   const onWan2gpRandomSeedChangeRef = useRef(data.onWan2gpRandomSeedChange);
   const onWan2gpResolutionChangeRef = useRef(data.onWan2gpResolutionChange);
+  const onWan2gpStepsChangeRef = useRef(data.onWan2gpStepsChange);
+  const onWan2gpSamplerChangeRef = useRef(data.onWan2gpSamplerChange);
   const onSizeChangeRef = useRef(data.onSizeChange);
   const onQualityChangeRef = useRef(data.onQualityChange);
   const onOutputFormatChangeRef = useRef(data.onOutputFormatChange);
@@ -138,7 +144,17 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic model list from Wan2GP server
-  const [wan2gpImageModels, setWan2gpImageModels] = useState<{id: string; name: string; description?: string}[]>([]);
+  const [wan2gpImageModels, setWan2gpImageModels] = useState<{id: string; name: string; description?: string; default_steps?: number; default_sampler?: string}[]>([]);
+
+  // Default steps and sampler per model (used for auto-update when model changes)
+  // Qwen uses nunchaku distilled weights (trained with lightning solver at 4 steps)
+  // Flux/Z-Image don't have sample_solver support in their handlers
+  const WAN2GP_MODEL_DEFAULTS: Record<string, { steps: number; sampler: string }> = {
+    qwen: { steps: 4, sampler: 'lightning' },
+    flux2_klein_4b: { steps: 4, sampler: 'default' },
+    flux2_klein_9b: { steps: 4, sampler: 'default' },
+    z_image: { steps: 8, sampler: 'default' },
+  };
 
   useEffect(() => {
     if (data.apiFormat === 'wan2gp') {
@@ -159,6 +175,8 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
     onWan2gpSeedChangeRef.current = data.onWan2gpSeedChange;
     onWan2gpRandomSeedChangeRef.current = data.onWan2gpRandomSeedChange;
     onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
+    onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
+    onWan2gpSamplerChangeRef.current = data.onWan2gpSamplerChange;
     onSizeChangeRef.current = data.onSizeChange;
     onQualityChangeRef.current = data.onQualityChange;
     onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -210,6 +228,18 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
       onImageInputCountChangeRef.current?.(0);
     }
   }, []);
+
+  // Auto-update steps and sampler when Wan2GP model changes
+  const handleWan2gpModelChange = useCallback((modelId: string) => {
+    onWan2gpModelChangeRef.current?.(modelId);
+    // Look up defaults from server models first, then local fallback
+    const serverModel = wan2gpImageModels.find(m => m.id === modelId);
+    const localDefaults = WAN2GP_MODEL_DEFAULTS[modelId];
+    const defaultSteps = serverModel?.default_steps ?? localDefaults?.steps ?? 20;
+    const defaultSampler = serverModel?.default_sampler ?? localDefaults?.sampler ?? 'default';
+    onWan2gpStepsChangeRef.current?.(defaultSteps);
+    onWan2gpSamplerChangeRef.current?.(defaultSampler);
+  }, [wan2gpImageModels]);
 
   const handleApiKeyConstantChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     onApiKeyConstantChangeRef.current?.(e.target.value);
@@ -502,7 +532,7 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
                 <select
                   className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
                   value={data.wan2gpModel || 'qwen'}
-                  onChange={(e) => onWan2gpModelChangeRef.current?.(e.target.value)}
+                  onChange={(e) => handleWan2gpModelChange(e.target.value)}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   {wan2gpImageModels.length > 0 ? (
@@ -540,6 +570,36 @@ function ImageGenNode({ data }: ImageGenNodeProps) {
                   <option value="624x832">624x832 (3:4)</option>
                   <option value="512x512">512x512 (1:1)</option>
                 </select>
+              </div>
+            )}
+
+            {/* Wan2GP Steps + Sampler */}
+            {isWan2gp && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Steps</label>
+                  <input
+                    type="number"
+                    className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
+                    value={data.wan2gpSteps ?? 4}
+                    min={1}
+                    max={100}
+                    onChange={(e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 4)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Sampler</label>
+                  <select
+                    className="nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500"
+                    value={data.wan2gpSampler || 'lightning'}
+                    onChange={(e) => onWan2gpSamplerChangeRef.current?.(e.target.value)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <option value="default">Default (Euler)</option>
+                    <option value="lightning">Lightning (Distilled)</option>
+                  </select>
+                </div>
               </div>
             )}
 

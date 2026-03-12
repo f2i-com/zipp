@@ -824,7 +824,8 @@ async function generateWan2GP(
   negativePrompt: string,
   imageInputs?: unknown[],
   vram?: string,
-  seed?: number
+  seed?: number,
+  sampler?: string
 ): Promise<string> {
   // Default endpoint to local Wan2GP service, auto-start if needed
   let baseUrl = endpoint || 'http://127.0.0.1:8773';
@@ -842,6 +843,11 @@ async function generateWan2GP(
     model: model || 'qwen',
     seed: (seed != null && seed >= 0) ? seed : -1,
   };
+
+  // Pass sampler/solver setting
+  if (sampler) {
+    body.sample_solver = sampler;
+  }
 
   // Pass VRAM setting if specified
   if (vram && vram !== 'auto') {
@@ -942,7 +948,8 @@ async function generate(
   maxImageSizeKB: number = 0,
   negativePrompt: string = '',
   wan2gpVram: string = 'auto',
-  wan2gpSeed: number = -1
+  wan2gpSeed: number = -1,
+  wan2gpSampler: string = 'default'
 ): Promise<string> {
   ctx.onNodeStatus?.(nodeId, 'running');
 
@@ -994,7 +1001,8 @@ async function generate(
           negativePrompt,
           imageInputs,
           wan2gpVram,
-          wan2gpSeed
+          wan2gpSeed,
+          wan2gpSampler
         );
         break;
       case 'comfyui':

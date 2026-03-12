@@ -81,6 +81,8 @@ export function getDefaultNodeData(type: NodeType, projectSettings?: ProjectSett
         quality: imgProvider === 'openai' ? 'auto' : '',
         apiKey: '',
         headers: '',
+        wan2gpSteps: 4,
+        wan2gpSampler: 'lightning',
       };
     }
     case 'image_view':

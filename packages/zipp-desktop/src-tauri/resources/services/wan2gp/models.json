@@ -3,8 +3,10 @@
     {
       "id": "qwen",
       "name": "Qwen Image Edit Plus (20B)",
-      "description": "High quality image generation and editing. Auto-selects fastest variant for your GPU.",
+      "description": "High quality image generation and editing. Auto-selects nunchaku variant for your GPU (4 steps + lightning solver).",
       "default_steps": 4,
+      "default_sampler": "lightning",
+      "default_guidance_scale": 1,
       "resolve": {
         "sm120": "qwen_image_edit_plus_20B_nunchaku_r128_fp4",
         "default": "qwen_image_edit_plus_20B_nunchaku_r128_int4"
@@ -14,19 +16,22 @@
       "id": "flux2_klein_4b",
       "name": "Flux 2 Klein (4B)",
       "description": "Fast distilled image generation, 4 steps.",
-      "default_steps": 4
+      "default_steps": 4,
+      "default_guidance_scale": 0
     },
     {
       "id": "flux2_klein_9b",
       "name": "Flux 2 Klein (9B)",
       "description": "Higher quality distilled image generation, 4 steps.",
-      "default_steps": 4
+      "default_steps": 4,
+      "default_guidance_scale": 0
     },
     {
       "id": "z_image",
       "name": "Z-Image Turbo (6B)",
       "description": "Fast efficient 6B image generation. Auto-selects fastest variant for your GPU.",
       "default_steps": 8,
+      "default_guidance_scale": 0,
       "resolve": {
         "sm120": "z_image_nunchaku_r128_fp4",
         "default": "z_image_nunchaku_r256_int4"

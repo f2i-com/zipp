@@ -591,7 +591,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     return baseUrl;
   }
-  async function generateWan2GP(prompt, endpoint, model, width, height, steps, negativePrompt, imageInputs, vram, seed) {
+  async function generateWan2GP(prompt, endpoint, model, width, height, steps, negativePrompt, imageInputs, vram, seed, sampler) {
     let baseUrl = endpoint || "http://127.0.0.1:8773";
     baseUrl = await ensureWan2GPReady(baseUrl);
     const apiUrl = `${baseUrl}/generate/image`;
@@ -605,6 +605,9 @@ var __PLUGIN_EXPORTS__ = (() => {
       model: model || "qwen",
       seed: seed != null && seed >= 0 ? seed : -1
     };
+    if (sampler) {
+      body.sample_solver = sampler;
+    }
     if (vram && vram !== "auto") {
       body.vram = parseInt(vram, 10);
     }
@@ -655,7 +658,7 @@ var __PLUGIN_EXPORTS__ = (() => {
     }
     throw new Error("Wan2GP image generation timed out after 1 hour");
   }
-  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0, negativePrompt = "", wan2gpVram = "auto", wan2gpSeed = -1) {
+  async function generate(prompt, input, endpoint, model, apiKeyConstant, width, height, steps, apiFormat, nodeId, comfyWorkflow, comfyPrimaryPromptNodeId, comfyImageInputNodeIds, imageInputs, comfyImageInputConfigs, comfySeedMode, comfyFixedSeed, comfyAllImageNodeIds, maxImageDimension = 0, maxImageSizeKB = 0, negativePrompt = "", wan2gpVram = "auto", wan2gpSeed = -1, wan2gpSampler = "default") {
     ctx.onNodeStatus?.(nodeId, "running");
     let finalPrompt = prompt;
     if (typeof input === "string" && input) {
@@ -697,7 +700,8 @@ ${input}` : input;
             negativePrompt,
             imageInputs,
             wan2gpVram,
-            wan2gpSeed
+            wan2gpSeed,
+            wan2gpSampler
           );
           break;
         case "comfyui":
@@ -1022,9 +1026,10 @@ ${input}` : input;
               height = Number(parts[1]) || height;
             }
           }
-          const steps = Number(data.steps) || 20;
+          const steps = apiFormat === "wan2gp" ? data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 4 : Number(data.steps) || 20;
           const wan2gpVram = escapeString(String(data.wan2gpVram || "auto"));
           const wan2gpSeed = data.wan2gpRandomSeed !== false ? -1 : Number(data.wan2gpSeed) || -1;
+          const wan2gpSampler = escapeString(String(data.wan2gpSampler || "default"));
           let comfyWorkflowCode = "null";
           if (data.comfyWorkflow) {
             try {
@@ -1121,7 +1126,8 @@ ${input}` : input;
       ${maxImageSizeKB},
       "${escapeString(String(data.negativePrompt || ""))}",
       "${wan2gpVram}",
-      ${wan2gpSeed}
+      ${wan2gpSeed},
+      "${wan2gpSampler}"
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");
@@ -1402,6 +1408,8 @@ ${input}` : input;
     const onWan2gpSeedChangeRef = (0, import_react.useRef)(data.onWan2gpSeedChange);
     const onWan2gpRandomSeedChangeRef = (0, import_react.useRef)(data.onWan2gpRandomSeedChange);
     const onWan2gpResolutionChangeRef = (0, import_react.useRef)(data.onWan2gpResolutionChange);
+    const onWan2gpStepsChangeRef = (0, import_react.useRef)(data.onWan2gpStepsChange);
+    const onWan2gpSamplerChangeRef = (0, import_react.useRef)(data.onWan2gpSamplerChange);
     const onSizeChangeRef = (0, import_react.useRef)(data.onSizeChange);
     const onQualityChangeRef = (0, import_react.useRef)(data.onQualityChange);
     const onOutputFormatChangeRef = (0, import_react.useRef)(data.onOutputFormatChange);
@@ -1422,6 +1430,12 @@ ${input}` : input;
     const onOpenComfyWorkflowDialogRef = (0, import_react.useRef)(data.onOpenComfyWorkflowDialog);
     const fileInputRef = (0, import_react.useRef)(null);
     const [wan2gpImageModels, setWan2gpImageModels] = (0, import_react.useState)([]);
+    const WAN2GP_MODEL_DEFAULTS = {
+      qwen: { steps: 4, sampler: "lightning" },
+      flux2_klein_4b: { steps: 4, sampler: "default" },
+      flux2_klein_9b: { steps: 4, sampler: "default" },
+      z_image: { steps: 8, sampler: "default" }
+    };
     (0, import_react.useEffect)(() => {
       if (data.apiFormat === "wan2gp") {
         const endpoint = data.endpoint || "http://127.0.0.1:8773";
@@ -1440,6 +1454,8 @@ ${input}` : input;
       onWan2gpSeedChangeRef.current = data.onWan2gpSeedChange;
       onWan2gpRandomSeedChangeRef.current = data.onWan2gpRandomSeedChange;
       onWan2gpResolutionChangeRef.current = data.onWan2gpResolutionChange;
+      onWan2gpStepsChangeRef.current = data.onWan2gpStepsChange;
+      onWan2gpSamplerChangeRef.current = data.onWan2gpSamplerChange;
       onSizeChangeRef.current = data.onSizeChange;
       onQualityChangeRef.current = data.onQualityChange;
       onOutputFormatChangeRef.current = data.onOutputFormatChange;
@@ -1488,6 +1504,15 @@ ${input}` : input;
         onImageInputCountChangeRef.current?.(0);
       }
     }, []);
+    const handleWan2gpModelChange = (0, import_react.useCallback)((modelId) => {
+      onWan2gpModelChangeRef.current?.(modelId);
+      const serverModel = wan2gpImageModels.find((m) => m.id === modelId);
+      const localDefaults = WAN2GP_MODEL_DEFAULTS[modelId];
+      const defaultSteps = serverModel?.default_steps ?? localDefaults?.steps ?? 20;
+      const defaultSampler = serverModel?.default_sampler ?? localDefaults?.sampler ?? "default";
+      onWan2gpStepsChangeRef.current?.(defaultSteps);
+      onWan2gpSamplerChangeRef.current?.(defaultSampler);
+    }, [wan2gpImageModels]);
     const handleApiKeyConstantChange = (0, import_react.useCallback)((e) => {
       onApiKeyConstantChangeRef.current?.(e.target.value);
     }, []);
@@ -1713,7 +1738,7 @@ ${input}` : input;
               {
                 className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
                 value: data.wan2gpModel || "qwen",
-                onChange: (e) => onWan2gpModelChangeRef.current?.(e.target.value),
+                onChange: (e) => handleWan2gpModelChange(e.target.value),
                 onMouseDown: (e) => e.stopPropagation(),
                 children: wan2gpImageModels.length > 0 ? wan2gpImageModels.map((m) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: m.id, children: m.name }, m.id)) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "qwen", children: "Qwen Image Edit Plus (20B)" }),
@@ -1745,6 +1770,39 @@ ${input}` : input;
                 ]
               }
             )
+          ] }),
+          isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Steps" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "number",
+                  className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
+                  value: data.wan2gpSteps ?? 4,
+                  min: 1,
+                  max: 100,
+                  onChange: (e) => onWan2gpStepsChangeRef.current?.(parseInt(e.target.value) || 4),
+                  onMouseDown: (e) => e.stopPropagation()
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "text-slate-600 dark:text-slate-400 text-xs block mb-1", children: "Sampler" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "select",
+                {
+                  className: "nodrag nowheel w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-pink-500",
+                  value: data.wan2gpSampler || "lightning",
+                  onChange: (e) => onWan2gpSamplerChangeRef.current?.(e.target.value),
+                  onMouseDown: (e) => e.stopPropagation(),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "default", children: "Default (Euler)" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "lightning", children: "Lightning (Distilled)" })
+                  ]
+                }
+              )
+            ] })
           ] }),
           isWan2gp && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [

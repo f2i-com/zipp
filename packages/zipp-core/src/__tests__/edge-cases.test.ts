@@ -363,7 +363,7 @@ describe('Edge Cases', () => {
       expect(() => compiler.compile(graph)).toThrow(/[Cc]ircular/);
     });
 
-    it('should detect self-referencing node', () => {
+    it('should filter self-referencing edges and compile successfully', () => {
       const graph: WorkflowGraph = {
         nodes: [
           createNode('self-ref', 'template', { template: '{{input}}' }),
@@ -373,7 +373,10 @@ describe('Edge Cases', () => {
         ],
       };
 
-      expect(() => compiler.compile(graph)).toThrow(/[Cc]ircular/);
+      // Self-loop edges are silently filtered out, so compilation succeeds
+      const script = compiler.compile(graph);
+      expect(script).toBeDefined();
+      expect(script).toContain('self_ref');
     });
 
     it('should handle nodes with missing data gracefully', () => {

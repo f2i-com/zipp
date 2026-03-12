@@ -146,6 +146,7 @@ class ImageGenRequest(BaseModel):
     model: str = ""
     image_start: Optional[str] = None
     vram: Optional[int] = None
+    sample_solver: Optional[str] = None
 
 class VideoGenRequest(BaseModel):
     prompt: str
@@ -263,6 +264,7 @@ def _run_generation_subprocess(
     image_end_path: str = None,
     audio_guide_path: str = None,
     vram_gb: int = None,
+    sample_solver: str = None,
 ) -> list:
     """
     Run generation via wgp.py --process CLI mode.
@@ -284,15 +286,25 @@ def _run_generation_subprocess(
     job_dir = os.path.join(OUTPUT_DIR, f"job_{job_id}")
     os.makedirs(job_dir, exist_ok=True)
 
-    # Use model's recommended steps if client sent the generic default (30)
+    # Use model's recommended steps if client sent a generic default (20 for image, 30 for video)
     effective_steps = steps
-    if steps == 30:
-        # Check models.json for model-specific default_steps
-        for category in ("image", "video"):
-            for m in MODELS_CONFIG.get(category, []):
-                if m["id"] == model_type and "default_steps" in m:
-                    effective_steps = m["default_steps"]
-                    break
+    if steps in (20, 30) and model_config and "default_steps" in model_config:
+        effective_steps = model_config["default_steps"]
+
+    # Look up model-specific defaults from models.json
+    # model_type may be resolved (e.g. "qwen_image_edit_plus_20B_nunchaku_r128_fp4")
+    # so also check if any model's resolve values match
+    model_config = None
+    for category in ("image", "video"):
+        for m in MODELS_CONFIG.get(category, []):
+            if m["id"] == model_type:
+                model_config = m
+                break
+            # Check if model_type is a resolved variant
+            resolve = m.get("resolve", {})
+            if model_type in resolve.values():
+                model_config = m
+                break
 
     # Build settings dict - only override what we need, Wan2GP applies defaults
     settings = {
@@ -303,8 +315,19 @@ def _run_generation_subprocess(
         "video_length": video_length,
         "num_inference_steps": effective_steps,
         "seed": seed,
-        "guidance_scale": guidance_scale,
     }
+
+    # Only include guidance_scale if explicitly provided (not the default 5.0),
+    # or if model config specifies one. Otherwise let Wan2GP's model defaults apply.
+    if guidance_scale != 5.0:
+        settings["guidance_scale"] = guidance_scale
+    elif model_config and "default_guidance_scale" in model_config:
+        settings["guidance_scale"] = model_config["default_guidance_scale"]
+    # else: omit guidance_scale so Wan2GP model defaults take over
+
+    # Pass sample_solver if specified (e.g. "lightning" for distilled models)
+    if sample_solver:
+        settings["sample_solver"] = sample_solver
 
     # Compute mmgp profile from VRAM:
     # - If vram_gb provided by request, use it
@@ -611,6 +634,7 @@ async def generate_image(req: ImageGenRequest):
         seed=req.seed,
         image_start_path=image_start_path,
         vram_gb=req.vram,
+        sample_solver=req.sample_solver,
     )
 
     thread = threading.Thread(target=_run_job, args=(job_id, "image", kwargs), daemon=True)

@@ -49,9 +49,12 @@ const CoreImageCompiler: ModuleCompiler = {
             height = Number(parts[1]) || height;
           }
         }
-        const steps = Number(data.steps) || 20;
+        const steps = apiFormat === 'wan2gp'
+          ? (data.wan2gpSteps != null ? Number(data.wan2gpSteps) : 4)
+          : (Number(data.steps) || 20);
         const wan2gpVram = escapeString(String(data.wan2gpVram || 'auto'));
         const wan2gpSeed = data.wan2gpRandomSeed !== false ? -1 : (Number(data.wan2gpSeed) || -1);
+        const wan2gpSampler = escapeString(String(data.wan2gpSampler || 'default'));
 
         // ComfyUI workflow configuration
         // For the workflow JSON, we stringify it as a raw JSON value (not a string literal)
@@ -185,7 +188,8 @@ const CoreImageCompiler: ModuleCompiler = {
       ${maxImageSizeKB},
       "${escapeString(String(data.negativePrompt || ''))}",
       "${wan2gpVram}",
-      ${wan2gpSeed}
+      ${wan2gpSeed},
+      "${wan2gpSampler}"
     );
     if (${outputVar} === "__ABORT__") {
       console.log("[Workflow] aborted");

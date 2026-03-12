@@ -646,6 +646,7 @@ export default function ZippBuilder({
         onWan2gpSeedChange: handlers.onWan2gpSeedChange(node.id),
         onWan2gpRandomSeedChange: handlers.onWan2gpRandomSeedChange(node.id),
         onWan2gpResolutionChange: handlers.onWan2gpResolutionChange(node.id),
+        onWan2gpSamplerChange: handlers.onWan2gpSamplerChange(node.id),
         // Dynamic image input count
         onImageInputCountChange: handlers.onImageInputCountChange(node.id),
         // ComfyUI workflow dialog opener (opens dialog at ZippBuilder level to escape transform context)

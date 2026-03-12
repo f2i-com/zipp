@@ -131,6 +131,28 @@
       "showWhen": { "apiFormat": ["wan2gp"] }
     },
     {
+      "id": "wan2gpSteps",
+      "name": "Steps",
+      "type": "number",
+      "default": 4,
+      "min": 1,
+      "max": 100,
+      "description": "Number of inference steps",
+      "showWhen": { "apiFormat": ["wan2gp"] }
+    },
+    {
+      "id": "wan2gpSampler",
+      "name": "Sampler",
+      "type": "select",
+      "default": "lightning",
+      "options": [
+        { "value": "default", "label": "Default (Euler)" },
+        { "value": "lightning", "label": "Lightning (Distilled)" }
+      ],
+      "description": "Sampling algorithm (Lightning for nunchaku distilled models, Default for standard weights)",
+      "showWhen": { "apiFormat": ["wan2gp"] }
+    },
+    {
       "id": "wan2gpSeed",
       "name": "Seed",
       "type": "number",

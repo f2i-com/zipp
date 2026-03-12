@@ -23,12 +23,11 @@ export type LogHandler = (entry: LogEntry) => void;
 // Check if we're in development mode
 const isDevelopment = (() => {
   try {
-    // Check for Vite environment
-    if (typeof import.meta !== 'undefined') {
-      const meta = import.meta as { env?: { DEV?: boolean; MODE?: string } };
-      if (meta.env?.DEV === true) return true;
-      if (meta.env?.MODE === 'development') return true;
-    }
+    // Check for Vite environment (use indirect eval to avoid syntax errors in non-ESM contexts like Jest)
+    // eslint-disable-next-line no-eval
+    const meta = new Function('try { return import.meta } catch(e) { return undefined }')() as { env?: { DEV?: boolean; MODE?: string } } | undefined;
+    if (meta?.env?.DEV === true) return true;
+    if (meta?.env?.MODE === 'development') return true;
     // Check for Node environment (with proper typing)
     if (typeof globalThis !== 'undefined' && 'process' in globalThis) {
       const nodeProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
